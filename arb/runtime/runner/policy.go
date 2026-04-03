@@ -32,7 +32,7 @@ func DefaultPolicy() Policy {
 func DefaultRuntimeLimits() RuntimeLimits {
 	return RuntimeLimits{
 		CouncilLLMTimeoutSeconds:  240,
-		AttorneyACPTimeoutSeconds: 480,
+		AttorneyACPTimeoutSeconds: 900,
 		MaxResponseBytes:          128 * 1024,
 		InvalidAttemptLimit:       3,
 		CouncilMaxOutputTokens:    1200,

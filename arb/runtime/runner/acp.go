@@ -238,6 +238,13 @@ func (rc *runContext) executeAttorneyOpportunity(ctx context.Context, _ any, opp
 			}
 			return nil, err
 		}
+		if err := rc.validateAttorneyPayloadAgainstState(opportunity, actionType, payload); err != nil {
+			invalidDecisionAttempts++
+			if invalidDecisionAttempts >= rc.cfg.Runtime.InvalidAttemptLimit {
+				setNotifyErr(fmt.Errorf("%s exceeded invalid-attempt limit", opportunity.Role))
+			}
+			return nil, err
+		}
 		stepResp, err := rc.cfg.Engine.Step(rc.state, actionType, opportunity.Role, payload)
 		if err != nil {
 			invalidDecisionAttempts++
@@ -450,7 +457,7 @@ func validateAttorneyPayload(actionType string, payload map[string]any, fileByID
 func validateOfferedFiles(value any, fileByID map[string]CaseFile, policy Policy) error {
 	entries := listOfMaps(value)
 	if len(entries) > policy.MaxExhibitsPerFiling {
-		return fmt.Errorf("offered_files exceed per-filing limit of %d", policy.MaxExhibitsPerFiling)
+		return fmt.Errorf("offered_files exceed per-filing limit of %d (attempted %d)", policy.MaxExhibitsPerFiling, len(entries))
 	}
 	for _, entry := range entries {
 		fileID := mapString(entry["file_id"])
@@ -459,7 +466,7 @@ func validateOfferedFiles(value any, fileByID map[string]CaseFile, policy Policy
 		}
 		file, ok := fileByID[fileID]
 		if !ok {
-			return fmt.Errorf("unknown offered file %q", fileID)
+			return fmt.Errorf("unknown offered file %q; offered_files must use visible case file_id values, not workspace paths or downloaded filenames", fileID)
 		}
 		if file.SizeBytes > policy.MaxExhibitBytes {
 			return fmt.Errorf("offered file %q exceeds byte limit of %d", fileID, policy.MaxExhibitBytes)
@@ -471,7 +478,7 @@ func validateOfferedFiles(value any, fileByID map[string]CaseFile, policy Policy
 func validateReports(value any, policy Policy) error {
 	entries := listOfMaps(value)
 	if len(entries) > policy.MaxReportsPerFiling {
-		return fmt.Errorf("technical_reports exceed per-filing limit of %d", policy.MaxReportsPerFiling)
+		return fmt.Errorf("technical_reports exceed per-filing limit of %d (attempted %d)", policy.MaxReportsPerFiling, len(entries))
 	}
 	for _, entry := range entries {
 		title := mapString(entry["title"])
@@ -661,6 +668,7 @@ func acpCustomMethod(name string) string {
 }
 
 func (rc *runContext) attorneyView(opportunity Opportunity) map[string]any {
+	limits := rc.attorneyLimits(opportunity)
 	return map[string]any{
 		"proposition":       rc.complaint.Proposition,
 		"evidence_standard": currentEvidenceStandard(rc.state, rc.cfg.Policy),
@@ -682,6 +690,7 @@ func (rc *runContext) attorneyView(opportunity Opportunity) map[string]any {
 			"exhibits":          rc.attorneyExhibits(),
 			"technical_reports": mapList(mapAny(rc.state["case"])["technical_reports"]),
 		},
+		"limits":  limits,
 		"council": rc.council,
 	}
 }
@@ -705,6 +714,7 @@ func (rc *runContext) buildAttorneyPrompt(opportunity Opportunity) (string, erro
 		"PROPOSITION":                rc.complaint.Proposition,
 		"EVIDENCE_STANDARD":          currentEvidenceStandard(rc.state, rc.cfg.Policy),
 		"CURRENT_RECORD":             marshalIndented(view["record"]),
+		"LIMITS_SECTION":             rc.attorneyLimitsSection(opportunity),
 		"COUNCIL":                    marshalIndented(view["council"]),
 		"VISIBLE_CASE_FILES_SECTION": visibleFilesSection,
 		"WORKSPACE_SECTION":          workspaceSection,
@@ -771,6 +781,153 @@ func (rc *runContext) attorneyExhibits() []map[string]any {
 	return out
 }
 
+func (rc *runContext) attorneyLimits(opportunity Opportunity) map[string]any {
+	caseObj := mapAny(rc.state["case"])
+	usedExhibits := filingCountForRole(mapList(caseObj["offered_files"]), opportunity.Role)
+	usedReports := filingCountForRole(mapList(caseObj["technical_reports"]), opportunity.Role)
+	limits := map[string]any{
+		"text_char_limit": phaseTextCharLimit(rc.cfg.Policy, opportunity.Phase),
+	}
+	if opportunity.Phase == "arguments" || opportunity.Phase == "rebuttals" {
+		limits["max_exhibits_per_filing"] = rc.cfg.Policy.MaxExhibitsPerFiling
+		limits["max_exhibits_per_side"] = rc.cfg.Policy.MaxExhibitsPerSide
+		limits["used_exhibits_for_side"] = usedExhibits
+		limits["remaining_exhibits_for_side"] = remainingCapacity(rc.cfg.Policy.MaxExhibitsPerSide, usedExhibits)
+		limits["max_reports_per_filing"] = rc.cfg.Policy.MaxReportsPerFiling
+		limits["max_reports_per_side"] = rc.cfg.Policy.MaxReportsPerSide
+		limits["used_reports_for_side"] = usedReports
+		limits["remaining_reports_for_side"] = remainingCapacity(rc.cfg.Policy.MaxReportsPerSide, usedReports)
+		limits["offered_files_rule"] = "Use only visible case file_id values in offered_files."
+		limits["outside_material_rule"] = "Outside material that is not already a visible case file belongs in technical_reports."
+	}
+	if opportunity.Phase == "surrebuttals" {
+		limits["outside_material_rule"] = "offered_files and technical_reports are not allowed in this phase."
+	}
+	return limits
+}
+
+func (rc *runContext) attorneyLimitsSection(opportunity Opportunity) string {
+	limits := rc.attorneyLimits(opportunity)
+	lines := []string{}
+	if limit, _ := limits["text_char_limit"].(int); limit > 0 {
+		lines = append(lines, fmt.Sprintf("Text limit for this submission: %d characters.", limit))
+	}
+	switch opportunity.Phase {
+	case "arguments", "rebuttals":
+		lines = append(lines,
+			fmt.Sprintf(
+				"Exhibits: at most %d in this filing. This side has used %d of %d total, with %d left.",
+				limits["max_exhibits_per_filing"].(int),
+				limits["used_exhibits_for_side"].(int),
+				limits["max_exhibits_per_side"].(int),
+				limits["remaining_exhibits_for_side"].(int),
+			),
+		)
+		lines = append(lines,
+			fmt.Sprintf(
+				"Technical reports: at most %d in this filing. This side has used %d of %d total, with %d left.",
+				limits["max_reports_per_filing"].(int),
+				limits["used_reports_for_side"].(int),
+				limits["max_reports_per_side"].(int),
+				limits["remaining_reports_for_side"].(int),
+			),
+		)
+		lines = append(lines, "Use only visible case file_id values in offered_files. Do not use workspace paths, downloaded filenames, or invented names there.")
+		lines = append(lines, "Outside material that is not already a visible case file belongs in technical_reports, not offered_files.")
+	case "surrebuttals":
+		lines = append(lines, "offered_files and technical_reports are not allowed in this phase.")
+	}
+	return strings.Join(lines, "\n")
+}
+
+func phaseTextCharLimit(policy Policy, phase string) int {
+	switch phase {
+	case "openings":
+		return policy.MaxOpeningChars
+	case "arguments":
+		return policy.MaxArgumentChars
+	case "rebuttals":
+		return policy.MaxRebuttalChars
+	case "surrebuttals":
+		return policy.MaxSurrebuttalChars
+	case "closings":
+		return policy.MaxClosingChars
+	default:
+		return 0
+	}
+}
+
+func filingCountForRole(items []map[string]any, role string) int {
+	count := 0
+	for _, item := range items {
+		if mapString(item["role"]) == role {
+			count++
+		}
+	}
+	return count
+}
+
+func remainingCapacity(limit int, used int) int {
+	if limit-used < 0 {
+		return 0
+	}
+	return limit - used
+}
+
+func (rc *runContext) validateAttorneyPayloadAgainstState(opportunity Opportunity, actionType string, payload map[string]any) error {
+	text := strings.TrimSpace(mapString(payload["text"]))
+	if limit := phaseTextCharLimit(rc.cfg.Policy, opportunity.Phase); limit > 0 {
+		charCount := len([]rune(text))
+		if charCount > limit {
+			return fmt.Errorf("%s exceeds character limit of %d (got %d)", filingLabel(actionType), limit, charCount)
+		}
+	}
+	switch actionType {
+	case "submit_argument", "submit_rebuttal":
+		caseObj := mapAny(rc.state["case"])
+		usedExhibits := filingCountForRole(mapList(caseObj["offered_files"]), opportunity.Role)
+		attemptedExhibits := len(listOfMaps(payload["offered_files"]))
+		if usedExhibits+attemptedExhibits > rc.cfg.Policy.MaxExhibitsPerSide {
+			return fmt.Errorf(
+				"offered_files for this side exceed limit of %d (%d already used, %d attempted, %d remaining)",
+				rc.cfg.Policy.MaxExhibitsPerSide,
+				usedExhibits,
+				attemptedExhibits,
+				remainingCapacity(rc.cfg.Policy.MaxExhibitsPerSide, usedExhibits),
+			)
+		}
+		usedReports := filingCountForRole(mapList(caseObj["technical_reports"]), opportunity.Role)
+		attemptedReports := len(listOfMaps(payload["technical_reports"]))
+		if usedReports+attemptedReports > rc.cfg.Policy.MaxReportsPerSide {
+			return fmt.Errorf(
+				"technical_reports for this side exceed limit of %d (%d already used, %d attempted, %d remaining)",
+				rc.cfg.Policy.MaxReportsPerSide,
+				usedReports,
+				attemptedReports,
+				remainingCapacity(rc.cfg.Policy.MaxReportsPerSide, usedReports),
+			)
+		}
+	}
+	return nil
+}
+
+func filingLabel(actionType string) string {
+	switch actionType {
+	case "record_opening_statement":
+		return "opening statement"
+	case "submit_argument":
+		return "argument"
+	case "submit_rebuttal":
+		return "rebuttal"
+	case "submit_surrebuttal":
+		return "surrebuttal"
+	case "deliver_closing_statement":
+		return "closing statement"
+	default:
+		return "submission"
+	}
+}
+
 func marshalInline(value any) string {
 	wire, err := json.Marshal(value)
 	if err != nil {
@@ -785,58 +942,6 @@ func marshalIndented(value any) string {
 		return fmt.Sprintf("%v", value)
 	}
 	return string(wire)
-}
-
-func usesPIContainerWrapper(command string) bool {
-	base := strings.TrimSpace(filepath.Base(command))
-	return base == "acp-podman.sh" || base == "pi-podman.sh"
-}
-
-func prepareEphemeralPIHome(commonRoot string) (string, func() error, error) {
-	homeDir, err := os.MkdirTemp("", "agentarbitration-pi-home-")
-	if err != nil {
-		return "", nil, fmt.Errorf("create PI home dir: %w", err)
-	}
-	cleanup := func() error {
-		if err := os.RemoveAll(homeDir); err != nil {
-			return fmt.Errorf("remove PI home dir %s: %w", homeDir, err)
-		}
-		return nil
-	}
-	agentDir := filepath.Join(homeDir, ".pi", "agent")
-	if err := os.MkdirAll(agentDir, 0o755); err != nil {
-		_ = cleanup()
-		return "", nil, fmt.Errorf("create PI agent dir: %w", err)
-	}
-	for _, file := range []struct {
-		src string
-		dst string
-	}{
-		{
-			src: filepath.Join(commonRoot, "etc", "pi-settings.xproxy.json"),
-			dst: filepath.Join(agentDir, "settings.json"),
-		},
-		{
-			src: filepath.Join(commonRoot, "etc", "pi-models.xproxy.json"),
-			dst: filepath.Join(agentDir, "models.json"),
-		},
-	} {
-		raw, err := os.ReadFile(file.src)
-		if err != nil {
-			_ = cleanup()
-			return "", nil, fmt.Errorf("read %s: %w", file.src, err)
-		}
-		if err := os.WriteFile(file.dst, raw, 0o644); err != nil {
-			_ = cleanup()
-			return "", nil, fmt.Errorf("write %s: %w", file.dst, err)
-		}
-	}
-	authPath := filepath.Join(agentDir, "auth.json")
-	if err := os.WriteFile(authPath, []byte("{}\n"), 0o644); err != nil {
-		_ = cleanup()
-		return "", nil, fmt.Errorf("write %s: %w", authPath, err)
-	}
-	return homeDir, cleanup, nil
 }
 
 func copyTree(dstRoot string, srcRoot string) error {

@@ -247,6 +247,67 @@ func TestValidateAttorneyPayloadRejectsTooManyReports(t *testing.T) {
 	}
 }
 
+func TestValidateAttorneyPayloadAgainstStateRejectsOverlongRebuttal(t *testing.T) {
+	policy := DefaultPolicy()
+	rc := &runContext{
+		cfg: Config{Policy: policy},
+		state: map[string]any{
+			"case": map[string]any{
+				"offered_files":     []map[string]any{},
+				"technical_reports": []map[string]any{},
+			},
+		},
+	}
+	payload := map[string]any{
+		"text": strings.Repeat("a", policy.MaxRebuttalChars+1),
+	}
+	err := rc.validateAttorneyPayloadAgainstState(Opportunity{
+		Role:  "plaintiff",
+		Phase: "rebuttals",
+	}, "submit_rebuttal", payload)
+	if err == nil {
+		t.Fatalf("expected rebuttal length error")
+	}
+	if !strings.Contains(err.Error(), "rebuttal exceeds character limit") || !strings.Contains(err.Error(), fmt.Sprintf("got %d", policy.MaxRebuttalChars+1)) {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateAttorneyPayloadAgainstStateRejectsSideReportOverflow(t *testing.T) {
+	policy := DefaultPolicy()
+	existing := []map[string]any{
+		{"role": "plaintiff", "title": "One", "summary": "A"},
+		{"role": "plaintiff", "title": "Two", "summary": "B"},
+		{"role": "plaintiff", "title": "Three", "summary": "C"},
+	}
+	rc := &runContext{
+		cfg: Config{Policy: policy},
+		state: map[string]any{
+			"case": map[string]any{
+				"offered_files":     []map[string]any{},
+				"technical_reports": existing,
+			},
+		},
+	}
+	payload := map[string]any{
+		"text": "reply",
+		"technical_reports": []any{
+			map[string]any{"title": "Four", "summary": "D"},
+			map[string]any{"title": "Five", "summary": "E"},
+		},
+	}
+	err := rc.validateAttorneyPayloadAgainstState(Opportunity{
+		Role:  "plaintiff",
+		Phase: "rebuttals",
+	}, "submit_rebuttal", payload)
+	if err == nil {
+		t.Fatalf("expected side report overflow error")
+	}
+	if !strings.Contains(err.Error(), "technical_reports for this side exceed limit of 4 (3 already used, 2 attempted, 1 remaining)") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestValidatePolicyRejectsImpossibleThreshold(t *testing.T) {
 	policy := DefaultPolicy()
 	policy.RequiredVotesForDecision = 6
@@ -327,6 +388,9 @@ func TestBuildAttorneyPromptStatesCouncilForum(t *testing.T) {
 	}
 	if !strings.Contains(prompt, "Your job is to pursue the truth through disciplined, vigorous advocacy for your side under the governing standard of evidence.") {
 		t.Fatalf("prompt did not define counsel's job:\n%s", prompt)
+	}
+	if !strings.Contains(prompt, "Text limit for this submission: 4000 characters.") {
+		t.Fatalf("prompt did not state the opening text limit:\n%s", prompt)
 	}
 	if !strings.Contains(prompt, "Do not search only for support.  Search for related evidence that could confirm, limit, qualify, or defeat your theory.") {
 		t.Fatalf("prompt did not require related-evidence search:\n%s", prompt)
@@ -509,14 +573,26 @@ func TestBuildAttorneyPromptConstrainsArgumentExperiments(t *testing.T) {
 	if !strings.Contains(prompt, "Good web-search instruction: \"Search the web for the official market rules for X, dated around Y, and prefer the primary source.\"") {
 		t.Fatalf("argument prompt did not show a good web-search instruction:\n%s", prompt)
 	}
+	if !strings.Contains(prompt, "Exhibits: at most 9 in this filing. This side has used 0 of 12 total, with 12 left.") {
+		t.Fatalf("argument prompt did not state exhibit limits:\n%s", prompt)
+	}
+	if !strings.Contains(prompt, "Technical reports: at most 3 in this filing. This side has used 0 of 4 total, with 4 left.") {
+		t.Fatalf("argument prompt did not state report limits:\n%s", prompt)
+	}
 	if !strings.Contains(prompt, "Bring decisive support into the record through exhibits and technical reports.") {
 		t.Fatalf("argument prompt did not prioritize supported proof:\n%s", prompt)
 	}
-	if !strings.Contains(prompt, "capture it accurately and introduce it through exhibits or technical reports") {
-		t.Fatalf("argument prompt did not require outside material to enter the record:\n%s", prompt)
+	if !strings.Contains(prompt, "capture it accurately and introduce it through technical_reports") {
+		t.Fatalf("argument prompt did not require outside material to enter through technical reports:\n%s", prompt)
 	}
-	if !strings.Contains(prompt, "write the needed case file into the workspace first") {
+	if !strings.Contains(prompt, "write the needed visible case file into the workspace first") {
 		t.Fatalf("argument prompt did not instruct counsel to materialize exact file bytes:\n%s", prompt)
+	}
+	if !strings.Contains(prompt, "Use only visible case file_id values in offered_files. Do not use workspace paths, downloaded filenames, or invented names there.") {
+		t.Fatalf("argument prompt did not restrict offered_files to visible file ids:\n%s", prompt)
+	}
+	if !strings.Contains(prompt, "Outside material that is not already a visible case file belongs in technical_reports, not offered_files.") {
+		t.Fatalf("argument prompt did not distinguish technical reports from offered files:\n%s", prompt)
 	}
 }
 
@@ -536,14 +612,18 @@ func TestBuildAttorneyPromptAllowsRebuttalSupplementalMaterials(t *testing.T) {
 				"evidence_standard": "preponderance",
 			},
 			"case": map[string]any{
-				"phase":             "rebuttals",
-				"openings":          []map[string]any{},
-				"arguments":         []map[string]any{},
-				"rebuttals":         []map[string]any{},
-				"surrebuttals":      []map[string]any{},
-				"closings":          []map[string]any{},
-				"offered_files":     []map[string]any{},
-				"technical_reports": []map[string]any{},
+				"phase":         "rebuttals",
+				"openings":      []map[string]any{},
+				"arguments":     []map[string]any{},
+				"rebuttals":     []map[string]any{},
+				"surrebuttals":  []map[string]any{},
+				"closings":      []map[string]any{},
+				"offered_files": []map[string]any{},
+				"technical_reports": []map[string]any{
+					{"role": "plaintiff", "title": "One", "summary": "A"},
+					{"role": "plaintiff", "title": "Two", "summary": "B"},
+					{"role": "plaintiff", "title": "Three", "summary": "C"},
+				},
 			},
 		},
 	}
@@ -575,11 +655,23 @@ func TestBuildAttorneyPromptAllowsRebuttalSupplementalMaterials(t *testing.T) {
 	if !strings.Contains(prompt, "You may do targeted additional investigation here if it directly helps answer those points.") {
 		t.Fatalf("rebuttal prompt did not allow targeted investigation:\n%s", prompt)
 	}
+	if !strings.Contains(prompt, "Text limit for this submission: 4000 characters.") {
+		t.Fatalf("rebuttal prompt did not state the rebuttal text limit:\n%s", prompt)
+	}
+	if !strings.Contains(prompt, "Technical reports: at most 3 in this filing. This side has used 3 of 4 total, with 1 left.") {
+		t.Fatalf("rebuttal prompt did not state remaining report capacity:\n%s", prompt)
+	}
 	if !strings.Contains(prompt, "\"offered_files\"") || !strings.Contains(prompt, "\"technical_reports\"") {
 		t.Fatalf("rebuttal example payload did not show supplemental materials:\n%s", prompt)
 	}
-	if !strings.Contains(prompt, "write the needed case file into the workspace first") {
+	if !strings.Contains(prompt, "write the needed visible case file into the workspace first") {
 		t.Fatalf("rebuttal prompt did not instruct counsel to materialize exact file bytes:\n%s", prompt)
+	}
+	if !strings.Contains(prompt, "Use offered_files only for visible case files, by file_id.") {
+		t.Fatalf("rebuttal prompt did not restrict offered_files to visible file ids:\n%s", prompt)
+	}
+	if !strings.Contains(prompt, "introduce it through technical_reports") {
+		t.Fatalf("rebuttal prompt did not require outside material to enter through technical reports:\n%s", prompt)
 	}
 }
 

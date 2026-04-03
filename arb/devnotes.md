@@ -111,3 +111,53 @@ expands globs, rejects unmatched glob patterns, and rejects prohibited
 extensions: `.gitignore`, `.sh`, and `.sig`.  The runner then loads exactly
 those files and fails on duplicate basenames, because the case record keys
 files by visible filename.
+
+### `aar case` summary JSON
+
+`aar case` now writes one JSON object to standard output for execution
+results.  On success, the object reports the resolution and the final-round
+counts for votes for and against the proposition.  On failure, the object
+reports the error string.
+
+The command still exits nonzero on failure.  The CLI wraps those failures in a
+reported-error type so the JSON object remains the only case-result payload on
+standard output and the binary does not add a second plain-text error line for
+that path.
+
+### Attorney web search in ACP runs
+
+The attorney prompts already instruct the model to use native web search when
+public investigation matters.  `arb` had not been staging a search-enabled
+model into the temporary PI home for ACP sessions, so the attorneys were told
+to do work that the runtime had not enabled.
+
+The PI-home staging path now overrides the temporary ACP default model to
+`openai://gpt-5?tools=search` and adds that model to the staged PI catalog.
+That keeps the shared PI configuration unchanged while making the `arb`
+attorney sessions match the prompt surface and the xproxy capability surface.
+
+The old attorney timeout also became too short once that search path was real.
+`arb` had been giving ACP attorney turns 480 seconds.  In `ex4`, the plaintiff
+arguments turn now uses public-source investigation heavily enough to exceed
+that limit before filing.  The default ACP attorney timeout is now 900
+seconds.
+
+### Attorney filing limits in prompts
+
+`ex4` exposed a second prompt defect after web search was enabled.  The
+attorneys could now gather the needed material, but the prompt still left key
+filing constraints implicit.  The plaintiff rebuttal then burned its retries on
+ three avoidable mistakes: a rebuttal that exceeded the text limit, too many
+technical reports for the side-wide cap, and earlier attempts to place
+workspace filenames in `offered_files`.
+
+The prompt and attorney view now state the hard limits for the current
+opportunity.  That includes the text limit for the current filing, the per-file
+and per-side exhibit and technical-report caps, the amount already used by the
+current side, and the remaining capacity.  The prompt now also states the real
+record rule: `offered_files` may name only visible case files by `file_id`;
+outside material enters through `technical_reports`.
+
+The ACP-side validation errors now carry the attempted count and the remaining
+side capacity.  That keeps the model close to the actual engine rule and avoids
+wasting retries on blind correction attempts.
