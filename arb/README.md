@@ -71,6 +71,39 @@ This variant shows the common parameters that change a run:
 
 The explicit `--file` path can be repeated.  It accepts shell globs, and it rejects `.gitignore`, `.sh`, and `.sig` files.  When you omit `--policy`, `aar case` loads `etc/policy.json` from the current working directory if that file exists.  Otherwise it uses the built-in default policy.
 
+## Attorney Configuration
+
+By default, `aar case` runs both attorneys through the local ACP wrapper at `../common/pi-container/acp-podman.sh`.  The global `--attorney-model` flag applies to both sides unless a role-specific model override is present.  Search capability comes from the model id itself.  For example, `openai://gpt-5` runs without native search, while `openai://gpt-5?tools=search` requests native search through xproxy.
+
+The global `--acp-command` flag sets the local ACP command for both sides.  Each side can override the shared configuration with its own model, local ACP command, remote ACP endpoint, and ACP session working directory.  A role cannot set both `--*-acp-command` and `--*-acp-endpoint` in the same run.
+
+This command keeps the defendant on the local ACP wrapper and points the plaintiff at a remote ACP endpoint:
+
+```bash
+.bin/aar case \
+  --complaint work/defamation/complaint.md \
+  --out-dir out/defamation-demo \
+  --plaintiff-attorney-model 'openai://gpt-5?tools=search' \
+  --plaintiff-acp-endpoint 'tcp://agent.example.com:7000' \
+  --plaintiff-acp-session-cwd /home/user \
+  --defendant-attorney-model 'openai://gpt-5' \
+  --defendant-acp-command ../common/pi-container/acp-podman.sh
+```
+
+The remote endpoint path uses a persistent TCP connection that carries newline-delimited ACP JSON-RPC messages.  `arb` exposes the current `_aar/*` client methods for case access and filing over that session.  A remote ACP server must already know how to use those methods.
+
+This command shows the same pattern with one global ACP command and a role-specific remote override:
+
+```bash
+.bin/aar case \
+  --complaint work/defamation/complaint.md \
+  --out-dir out/defamation-demo \
+  --attorney-model 'openai://gpt-5' \
+  --acp-command ../common/pi-container/acp-podman.sh \
+  --plaintiff-attorney-model 'openai://gpt-5?tools=search' \
+  --plaintiff-acp-endpoint 'tcp://agent.example.com:7000'
+```
+
 ## Case Parameters
 
 `aar help case` prints the full flag list.  These parameters control most runs:
@@ -85,6 +118,11 @@ The explicit `--file` path can be repeated.  It accepts shell globs, and it reje
 | `--evidence-standard` | Override `policy.evidence_standard`. |
 | `--council-pool` | Council model and persona pool.  Defaults to `../common/data/personas/pool.csv` when `arb/` is the working directory. |
 | `--attorney-model` | Attorney ACP model id, including any search capability request, such as `openai://gpt-5` or `openai://gpt-5?tools=search`. |
+| `--acp-command` | Shared local ACP command for both attorneys.  Defaults to `<common-root>/pi-container/acp-podman.sh`. |
+| `--plaintiff-attorney-model`, `--defendant-attorney-model` | Role-specific attorney model overrides. |
+| `--plaintiff-acp-command`, `--defendant-acp-command` | Role-specific ACP command overrides. |
+| `--plaintiff-acp-endpoint`, `--defendant-acp-endpoint` | Role-specific remote ACP endpoints.  Supported transport: `tcp://host:port`. |
+| `--plaintiff-acp-session-cwd`, `--defendant-acp-session-cwd` | Role-specific `session/new` working-directory overrides. |
 | `--common-root` | Shared `common/` tree used for the pool, xproxy config, and ACP launcher. |
 | `--xproxy-config` | xproxy configuration file.  Defaults under `common/`. |
 | `--xproxy-port` | xproxy port.  Default: `18459`. |
@@ -97,7 +135,7 @@ The explicit `--file` path can be repeated.  It accepts shell globs, and it reje
 
 ## Outputs
 
-Each run writes a complete packet to `--out-dir`.  The main files are `complaint.md`, `policy.json`, `runtime.json`, `run.json`, `state.json`, `council.json`, `digest.md`, `transcript.md`, and `events.ndjson`.  Attorney work product is also exported into the run directory.
+Each run writes a complete packet to `--out-dir`.  The main files are `complaint.md`, `policy.json`, `runtime.json`, `run.json`, `state.json`, `council.json`, `digest.md`, `transcript.md`, and `events.ndjson`.  `run.json` records the resolved attorney configuration for each side in its `attorneys` field.  Attorney work product is also exported into the run directory.
 
 On success, `aar case` prints a JSON object like this:
 
@@ -113,4 +151,4 @@ On failure, it prints:
 
 ## Examples
 
-The checked-in Makefile targets show the current example configurations.  `make demo`, `make ex2`, and `make ex3` run with `openai://gpt-5` as the attorney model.  `make ex4` runs with `openai://gpt-5?tools=search`.
+The checked-in Makefile targets show the current example configurations.  `make demo`, `make ex2`, and `make ex3` run with `openai://gpt-5` as the attorney model.  `make ex4` and `make ex6` run with `openai://gpt-5?tools=search`.
