@@ -42,11 +42,7 @@ func (rc *runContext) executeAttorneyOpportunity(ctx context.Context, _ any, opp
 	ctx, cancel := withTimeout(ctx, rc.cfg.Runtime.AttorneyACPTimeout())
 	defer cancel()
 
-	sessionCwd, err := filepath.Abs(filepath.Dir(rc.cfg.ComplaintPath))
-	if err != nil {
-		return fmt.Errorf("resolve session cwd: %w", err)
-	}
-	session, err := rc.ensureACPSession(ctx, opportunity.Role, sessionCwd)
+	session, err := rc.ensureACPSession(ctx, opportunity.Role)
 	if err != nil {
 		return err
 	}
@@ -313,17 +309,22 @@ func (rc *runContext) executeAttorneyOpportunity(ctx context.Context, _ any, opp
 	return nil
 }
 
-func (rc *runContext) ensureACPSession(ctx context.Context, role string, sessionCwd string) (*acpPersistentSession, error) {
+func (rc *runContext) ensureACPSession(ctx context.Context, role string) (*acpPersistentSession, error) {
 	if session, ok := rc.acpSessions[role]; ok {
 		return session, nil
 	}
+	attorney, err := rc.attorneyInfo(role)
+	if err != nil {
+		return nil, err
+	}
+	sessionCwd := attorney.SessionCwd
 	sessionACPPath := sessionCwd
 	env := append([]string{}, rc.cfg.ACPEnv...)
 	cleanup := func() error { return nil }
 	workspaceDir := ""
 	workProductDir := ""
-	if usesPIContainerWrapper(rc.cfg.ACPCommand) {
-		containerHomeDir, closeHome, err := prepareEphemeralPIHome(rc.cfg.CommonRoot, rc.cfg.AttorneyModel)
+	if usesPIContainerWrapper(attorney.ACPCommand) {
+		containerHomeDir, closeHome, err := prepareEphemeralPIHome(rc.cfg.CommonRoot, attorney.Model)
 		if err != nil {
 			return nil, err
 		}
@@ -338,10 +339,11 @@ func (rc *runContext) ensureACPSession(ctx context.Context, role string, session
 	}
 	env = append(env, "PI_ACP_CLIENT_TOOLS="+marshalInline(acpClientToolSpecs(workspaceDir != "")))
 	client, err := acp.NewClient(acp.Config{
-		Command: rc.cfg.ACPCommand,
-		Args:    rc.cfg.ACPArgs,
-		Cwd:     sessionCwd,
-		Env:     env,
+		Command:  attorney.ACPCommand,
+		Endpoint: attorney.ACPEndpoint,
+		Args:     rc.cfg.ACPArgs,
+		Cwd:      sessionCwd,
+		Env:      env,
 	})
 	if err != nil {
 		return nil, errors.Join(err, cleanup())
@@ -533,6 +535,10 @@ func listOfMaps(value any) []map[string]any {
 	}
 }
 
+func ACPClientToolSpecs(includeWorkspaceWriter bool) []map[string]any {
+	return acpClientToolSpecs(includeWorkspaceWriter)
+}
+
 func acpClientToolSpecs(includeWorkspaceWriter bool) []map[string]any {
 	specs := []map[string]any{
 		{
@@ -667,12 +673,45 @@ func acpCustomMethod(name string) string {
 	return "_aar/" + strings.TrimSpace(name)
 }
 
+func (rc *runContext) attorneyInfo(role string) (AttorneyRunInfo, error) {
+	if attorney, ok := rc.attorneys[role]; ok {
+		return attorney, nil
+	}
+	model := strings.TrimSpace(rc.cfg.AttorneyModel)
+	if model == "" {
+		model = DefaultAttorneyModel
+	}
+	spec, err := parseAttorneyModel(model)
+	if err != nil {
+		return AttorneyRunInfo{}, err
+	}
+	sessionCwd := ""
+	if strings.TrimSpace(rc.cfg.ComplaintPath) != "" {
+		sessionCwd, err = filepath.Abs(filepath.Dir(rc.cfg.ComplaintPath))
+		if err != nil {
+			return AttorneyRunInfo{}, fmt.Errorf("resolve attorney session cwd: %w", err)
+		}
+	}
+	return AttorneyRunInfo{
+		Role:          role,
+		Model:         model,
+		SearchEnabled: spec.SearchRequested,
+		ACPTransport:  "stdio",
+		ACPCommand:    rc.cfg.ACPCommand,
+		SessionCwd:    sessionCwd,
+	}, nil
+}
+
 func (rc *runContext) attorneyView(opportunity Opportunity) map[string]any {
 	limits := rc.attorneyLimits(opportunity)
+	attorneyModel := ""
+	if attorney, err := rc.attorneyInfo(opportunity.Role); err == nil {
+		attorneyModel = attorney.Model
+	}
 	return map[string]any{
 		"proposition":       rc.complaint.Proposition,
 		"evidence_standard": currentEvidenceStandard(rc.state, rc.cfg.Policy),
-		"attorney_model":    rc.cfg.AttorneyModel,
+		"attorney_model":    attorneyModel,
 		"phase":             currentPhase(rc.state),
 		"opportunity": map[string]any{
 			"id":            opportunity.ID,
@@ -696,23 +735,23 @@ func (rc *runContext) attorneyView(opportunity Opportunity) map[string]any {
 	}
 }
 
-func (rc *runContext) attorneyCapabilitySection() (string, error) {
-	spec, err := parseAttorneyModel(rc.cfg.AttorneyModel)
+func (rc *runContext) attorneyCapabilitySection(role string) (string, error) {
+	attorney, err := rc.attorneyInfo(role)
 	if err != nil {
 		return "", err
 	}
-	if spec.SearchRequested {
+	if attorney.SearchEnabled {
 		return "Model capabilities for this run:\nNative web search through the model is available. If public investigation matters, use it. To invoke it, ask explicitly for a web search on the precise question, topic, names, dates, terms, and source type you need.", nil
 	}
 	return "Model capabilities for this run:\nNative web search through the model is not available. Do not ask the model to browse the web, retrieve public sources, or inspect URLs on its own. Use the current record, visible case files, local analysis, and other allowed runtime tools instead.", nil
 }
 
-func (rc *runContext) attorneyPhaseInvestigationSection(phase string) (string, error) {
-	spec, err := parseAttorneyModel(rc.cfg.AttorneyModel)
+func (rc *runContext) attorneyPhaseInvestigationSection(role string, phase string) (string, error) {
+	attorney, err := rc.attorneyInfo(role)
 	if err != nil {
 		return "", err
 	}
-	searchEnabled := spec.SearchRequested
+	searchEnabled := attorney.SearchEnabled
 	switch phase {
 	case "arguments":
 		if searchEnabled {
@@ -738,10 +777,10 @@ func (rc *runContext) buildAttorneyPrompt(opportunity Opportunity) (string, erro
 		visibleFilesSection = "Visible case files:\n" + marshalIndented(caseFileMetas(rc.caseFiles)) + "\n"
 		workspaceSection = "If local tools need exact file bytes, write the visible file into the workspace first. Do not reconstruct byte-sensitive files by hand.\n"
 	}
-	if usesPIContainerWrapper(rc.cfg.ACPCommand) {
+	if attorney, err := rc.attorneyInfo(opportunity.Role); err == nil && usesPIContainerWrapper(attorney.ACPCommand) {
 		workProductSection = "Private work product: Use `/home/user/work-product/` for internal notes, timelines, source leads, adverse facts, unresolved questions, and draft analyses. This directory is not part of the record unless you later turn material from it into an exhibit or technical report. Its contents may be exported after the proceeding for review.\n"
 	}
-	capabilitySection, err := rc.attorneyCapabilitySection()
+	capabilitySection, err := rc.attorneyCapabilitySection(opportunity.Role)
 	if err != nil {
 		return "", err
 	}
@@ -763,7 +802,7 @@ func (rc *runContext) buildAttorneyPrompt(opportunity Opportunity) (string, erro
 	if err != nil {
 		return "", err
 	}
-	phaseInvestigationSection, err := rc.attorneyPhaseInvestigationSection(opportunity.Phase)
+	phaseInvestigationSection, err := rc.attorneyPhaseInvestigationSection(opportunity.Role, opportunity.Phase)
 	if err != nil {
 		return "", err
 	}

@@ -180,3 +180,61 @@ The `arb` Makefile now chooses attorney models explicitly by example.  `demo`,
 `ex2`, and `ex3` use `openai://gpt-5` without native search.  `ex4` keeps
 `openai://gpt-5?tools=search`, because that example depends on public-source
 investigation.
+
+### Per-role ACP configuration and remote endpoints
+
+ACP still centers on stdio.  The ACP transport page says the protocol defines
+stdio today and lists streamable HTTP as draft work in progress.  It also
+permits custom transports.  The current `pi-acp` adapter in this repository
+documents only JSON-RPC 2.0 over stdio.  Those sources matter here:
+
+- ACP transports: https://agentclientprotocol.com/protocol/transports
+- ACP introduction: https://agentclientprotocol.com/get-started/introduction
+- `pi-acp` README: ../common/submodules/pi-acp/README.md
+- `pi-acp` engineering notes: ../common/submodules/pi-acp/AGENTS.md
+- GitHub Copilot CLI ACP server reference, which documents a TCP mode as a custom remote transport: https://docs.github.com/en/copilot/reference/copilot-cli-reference/acp-server
+
+`arb` now resolves attorney configuration per role.  The global
+`--attorney-model` and `--acp-command` flags remain the defaults.  The CLI also
+accepts plaintiff and defendant overrides for model, ACP command, ACP endpoint,
+and ACP session cwd.  That allows one side to stay on the local wrapper while
+the other side points at a different ACP server.
+
+The remote path uses a custom TCP transport.  The client opens a persistent TCP
+connection and exchanges newline-delimited ACP JSON-RPC messages over that
+stream.  This is a deliberate custom transport, not an implementation of the
+draft streamable-HTTP work.  The runner records the resolved attorney
+configuration for each side in `run.json` and in the `run_initialized` event.
+
+The runner still depends on `_aar/*` client methods for case access and filing.
+`pi-acp` learns those methods from environment staging in the local wrapper
+path.  A remote ACP server must already know how to use the current `_aar/*`
+method contract.  The new transport path does not make an arbitrary ACP server
+usable as an `arb` attorney by itself.
+
+### Proxy-backed plaintiff demo
+
+The proxy demo now stages the backend PI home through the same code path that
+ordinary attorney runs use.  `aar` exposes two helper commands for that
+purpose: one stages the PI home into a supplied directory, and one prints the
+current `_aar/*` tool catalog as JSON.  The demo script now uses those helpers
+instead of carrying its own copies of `settings.json`, `models.json`, and the
+tool schema.
+
+That change fixed a real mismatch.  The earlier script omitted
+`_aar/write_case_file` and hand-built the PI configuration.  After the change,
+the proxy-backed plaintiff opening matched the ordinary local path closely
+enough to complete: note file write, opening submission, accepted filing.
+
+It did not fix the plaintiff arguments failure in `ex6`.  The plaintiff still
+stalled in the arguments phase.  The failure mode changed, which narrows the
+cause.  The old run spent its time rewriting notes around citation formatting
+and source packaging.  The new run used the full tool surface and reached the
+substance faster.  It still kept rewriting `case-notes.md`, but the content now
+tracked the adverse merits directly: the notes concluded that the official
+record supports ground entry but likely not the territorial-objective element,
+and that the plaintiff's best colorable `YES` theory runs into the explicit
+edge-case carveout.  That points to a prompt or role-interface problem about
+how plaintiff advocacy should proceed when truthful investigation turns the case
+against the assigned side.  It does not point to ACP transport or PI-home
+staging any longer.

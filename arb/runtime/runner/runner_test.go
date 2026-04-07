@@ -904,7 +904,7 @@ func TestEnsureACPSessionReusesExistingSession(t *testing.T) {
 			"plaintiff": existing,
 		},
 	}
-	session, err := rc.ensureACPSession(context.Background(), "plaintiff", "/tmp/case")
+	session, err := rc.ensureACPSession(context.Background(), "plaintiff")
 	if err != nil {
 		t.Fatalf("ensureACPSession returned error: %v", err)
 	}

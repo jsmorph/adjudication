@@ -8,22 +8,27 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/url"
 	"os/exec"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type Config struct {
-	Command string
-	Args    []string
-	Cwd     string
-	Env     []string
+	Command  string
+	Args     []string
+	Cwd      string
+	Env      []string
+	Endpoint string
 }
 
 type Client struct {
 	cmd        *exec.Cmd
-	stdin      io.WriteCloser
+	conn       net.Conn
+	writer     io.WriteCloser
 	stderrBuf  bytes.Buffer
 	nextID     atomic.Int64
 	mu         sync.Mutex
@@ -89,8 +94,15 @@ type rpcError struct {
 
 func NewClient(cfg Config) (*Client, error) {
 	command := strings.TrimSpace(cfg.Command)
-	if command == "" {
-		return nil, fmt.Errorf("acp command is required")
+	endpoint := strings.TrimSpace(cfg.Endpoint)
+	switch {
+	case command != "" && endpoint != "":
+		return nil, fmt.Errorf("acp command and endpoint are mutually exclusive")
+	case command == "" && endpoint == "":
+		return nil, fmt.Errorf("acp command or endpoint is required")
+	}
+	if endpoint != "" {
+		return newEndpointClient(endpoint)
 	}
 	cmd := exec.Command(command, cfg.Args...)
 	if strings.TrimSpace(cfg.Cwd) != "" {
@@ -116,7 +128,7 @@ func NewClient(cfg Config) (*Client, error) {
 	}
 	c := &Client{
 		cmd:      cmd,
-		stdin:    stdin,
+		writer:   stdin,
 		pending:  map[int64]chan rpcResponse{},
 		handlers: map[int]func(Notification){},
 		methods:  map[string]func(context.Context, map[string]any) (map[string]any, error){},
@@ -129,6 +141,47 @@ func NewClient(cfg Config) (*Client, error) {
 	return c, nil
 }
 
+func newEndpointClient(endpoint string) (*Client, error) {
+	network, address, err := parseEndpoint(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	conn, err := net.DialTimeout(network, address, 5*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("connect acp endpoint %s: %w", endpoint, err)
+	}
+	c := &Client{
+		conn:     conn,
+		writer:   conn,
+		pending:  map[int64]chan rpcResponse{},
+		handlers: map[int]func(Notification){},
+		methods:  map[string]func(context.Context, map[string]any) (map[string]any, error){},
+		done:     make(chan struct{}),
+	}
+	go c.readStdout(conn)
+	return c, nil
+}
+
+func parseEndpoint(endpoint string) (string, string, error) {
+	u, err := url.Parse(strings.TrimSpace(endpoint))
+	if err != nil {
+		return "", "", fmt.Errorf("parse acp endpoint %q: %w", endpoint, err)
+	}
+	if u.Scheme != "tcp" {
+		return "", "", fmt.Errorf("unsupported acp endpoint transport %q", u.Scheme)
+	}
+	if u.Host == "" {
+		return "", "", fmt.Errorf("acp endpoint %q must include host:port", endpoint)
+	}
+	if u.Path != "" && u.Path != "/" {
+		return "", "", fmt.Errorf("acp endpoint %q must not include a path", endpoint)
+	}
+	if u.RawQuery != "" || u.Fragment != "" || u.User != nil {
+		return "", "", fmt.Errorf("acp endpoint %q must not include query, fragment, or user info", endpoint)
+	}
+	return "tcp", u.Host, nil
+}
+
 func (c *Client) Close() error {
 	c.mu.Lock()
 	if c.closed {
@@ -136,13 +189,24 @@ func (c *Client) Close() error {
 		return nil
 	}
 	c.closed = true
-	_ = c.stdin.Close()
+	writer := c.writer
+	conn := c.conn
+	cmd := c.cmd
 	c.mu.Unlock()
-	if c.cmd.Process != nil {
-		_ = c.cmd.Process.Kill()
+	if writer != nil {
+		_ = writer.Close()
+	}
+	if conn != nil {
+		_ = conn.Close()
+	}
+	if cmd != nil && cmd.Process != nil {
+		_ = cmd.Process.Kill()
 	}
 	<-c.done
-	err := c.cmd.Wait()
+	if cmd == nil {
+		return nil
+	}
+	err := cmd.Wait()
 	if err == nil {
 		return nil
 	}
@@ -242,7 +306,7 @@ func (c *Client) request(ctx context.Context, method string, params any) (rpcRes
 		c.removePending(id)
 		return rpcResponse{}, fmt.Errorf("marshal acp request: %w", err)
 	}
-	if _, err := c.stdin.Write(append(wire, '\n')); err != nil {
+	if _, err := c.writer.Write(append(wire, '\n')); err != nil {
 		c.removePending(id)
 		return rpcResponse{}, fmt.Errorf("write acp request: %w", err)
 	}
@@ -256,7 +320,7 @@ func (c *Client) request(ctx context.Context, method string, params any) (rpcRes
 		}
 		return resp, nil
 	case <-c.done:
-		return rpcResponse{}, fmt.Errorf("acp process exited: %s", c.Stderr())
+		return rpcResponse{}, c.transportClosedError()
 	}
 }
 
@@ -395,12 +459,22 @@ func (c *Client) failPending(err error) {
 	defer c.mu.Unlock()
 	for id, ch := range c.pending {
 		delete(c.pending, id)
-		msg := "acp process exited"
+		msg := "acp transport closed"
 		if err != nil && err != io.EOF {
 			msg = err.Error()
 		}
 		ch <- rpcResponse{Error: &rpcError{Message: msg}}
 	}
+}
+
+func (c *Client) transportClosedError() error {
+	if c.readErr != nil && c.readErr != io.EOF {
+		return fmt.Errorf("acp transport closed: %w", c.readErr)
+	}
+	if stderr := c.Stderr(); stderr != "" {
+		return fmt.Errorf("acp transport closed: %s", stderr)
+	}
+	return fmt.Errorf("acp transport closed")
 }
 
 func (c *Client) writeJSON(v any) error {
@@ -413,6 +487,6 @@ func (c *Client) writeJSON(v any) error {
 	if c.closed {
 		return fmt.Errorf("acp client is closed")
 	}
-	_, err = c.stdin.Write(append(wire, '\n'))
+	_, err = c.writer.Write(append(wire, '\n'))
 	return err
 }

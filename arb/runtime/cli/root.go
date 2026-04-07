@@ -39,6 +39,10 @@ func Run(args []string, stdout io.Writer, stderr io.Writer) error {
 		return RunCase(args[1:], stdout, stderr)
 	case "complain":
 		return RunComplain(args[1:], stdout, stderr)
+	case "stage-attorney-pi-home":
+		return RunStageAttorneyPIHome(args[1:], stdout, stderr)
+	case "attorney-tools":
+		return RunAttorneyTools(args[1:], stdout, stderr)
 	case "validate":
 		return RunValidate(args[1:], stdout, stderr)
 	case "help", "-h", "--help":
@@ -51,6 +55,10 @@ func Run(args []string, stdout io.Writer, stderr io.Writer) error {
 			return RunCase([]string{"-h"}, stdout, stderr)
 		case "complain":
 			return RunComplain([]string{"-h"}, stdout, stderr)
+		case "stage-attorney-pi-home":
+			return RunStageAttorneyPIHome([]string{"-h"}, stdout, stderr)
+		case "attorney-tools":
+			return RunAttorneyTools([]string{"-h"}, stdout, stderr)
 		case "validate":
 			return RunValidate([]string{"-h"}, stdout, stderr)
 		default:
@@ -69,6 +77,8 @@ func printRootUsage(w io.Writer) {
 	fmt.Fprintln(w, "Subcommands:")
 	fmt.Fprintln(w, "  case       Initialize an arbitration case from a complaint")
 	fmt.Fprintln(w, "  complain   Draft complaint.md from a situation markdown file")
+	fmt.Fprintln(w, "  stage-attorney-pi-home   Stage PI settings for an attorney backend")
+	fmt.Fprintln(w, "  attorney-tools           Print the _aar tool catalog as JSON")
 	fmt.Fprintln(w, "  validate   Validate a complaint file")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Use 'aar help <subcommand>' for subcommand flags.")

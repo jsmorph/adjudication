@@ -135,6 +135,71 @@ func TestRunCaseRejectsInvalidAttorneyModel(t *testing.T) {
 	}
 }
 
+func TestRunCaseRejectsInvalidPlaintiffAttorneyModel(t *testing.T) {
+	dir := t.TempDir()
+	complaintPath := filepath.Join(dir, "complaint.md")
+	if err := os.WriteFile(complaintPath, []byte("# Proposition\n\nP\n"), 0o644); err != nil {
+		t.Fatalf("write complaint: %v", err)
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	err := RunCase([]string{
+		"--complaint", complaintPath,
+		"--out-dir", filepath.Join(dir, "out"),
+		"--plaintiff-attorney-model", "gpt-5",
+	}, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("RunCase returned nil error, want failure")
+	}
+	if !IsReportedError(err) {
+		t.Fatalf("RunCase error = %T, want reported error", err)
+	}
+	var summary caseRunSummary
+	if decodeErr := json.Unmarshal(stdout.Bytes(), &summary); decodeErr != nil {
+		t.Fatalf("stdout is not JSON: %v\n%s", decodeErr, stdout.String())
+	}
+	if summary.Status != "error" {
+		t.Fatalf("summary status = %q, want error", summary.Status)
+	}
+	if !strings.Contains(summary.Error, "model must match ENDPOINT://MODEL[?ARGS]") {
+		t.Fatalf("summary error = %q, want invalid model message", summary.Error)
+	}
+}
+
+func TestRunCaseRejectsConflictingPlaintiffACPSettings(t *testing.T) {
+	dir := t.TempDir()
+	complaintPath := filepath.Join(dir, "complaint.md")
+	if err := os.WriteFile(complaintPath, []byte("# Proposition\n\nP\n"), 0o644); err != nil {
+		t.Fatalf("write complaint: %v", err)
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	err := RunCase([]string{
+		"--complaint", complaintPath,
+		"--out-dir", filepath.Join(dir, "out"),
+		"--plaintiff-acp-command", "/tmp/acp",
+		"--plaintiff-acp-endpoint", "tcp://127.0.0.1:7000",
+	}, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("RunCase returned nil error, want failure")
+	}
+	if !IsReportedError(err) {
+		t.Fatalf("RunCase error = %T, want reported error", err)
+	}
+	var summary caseRunSummary
+	if decodeErr := json.Unmarshal(stdout.Bytes(), &summary); decodeErr != nil {
+		t.Fatalf("stdout is not JSON: %v\n%s", decodeErr, stdout.String())
+	}
+	if summary.Status != "error" {
+		t.Fatalf("summary status = %q, want error", summary.Status)
+	}
+	if !strings.Contains(summary.Error, "cannot set both --plaintiff-acp-command and --plaintiff-acp-endpoint") {
+		t.Fatalf("summary error = %q, want conflicting ACP config message", summary.Error)
+	}
+}
+
 func TestReportedErrorWrapsOriginalError(t *testing.T) {
 	base := errors.New("boom")
 	err := &ReportedError{Err: base}

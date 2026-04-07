@@ -20,18 +20,8 @@ func Run(ctx context.Context, cfg Config, complaint spec.Complaint) (result Resu
 	if cfg.ComplaintPath == "" {
 		return Result{}, fmt.Errorf("complaint path is required")
 	}
-	if cfg.ACPCommand == "" {
-		return Result{}, fmt.Errorf("acp command is required")
-	}
 	if cfg.Engine.Command == nil {
 		return Result{}, fmt.Errorf("lean engine command is required")
-	}
-	if strings.TrimSpace(cfg.AttorneyModel) == "" {
-		cfg.AttorneyModel = DefaultAttorneyModel
-	}
-	attorneyModelSpec, err := parseAttorneyModel(cfg.AttorneyModel)
-	if err != nil {
-		return Result{}, err
 	}
 	if err := ValidatePolicy(cfg.Policy); err != nil {
 		return Result{}, err
@@ -41,6 +31,14 @@ func Run(ctx context.Context, cfg Config, complaint spec.Complaint) (result Resu
 	}
 	if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
 		return Result{}, fmt.Errorf("create out dir: %w", err)
+	}
+	attorneys, err := attorneyRunInfos(cfg, cfg.ComplaintPath)
+	if err != nil {
+		return Result{}, err
+	}
+	attorneyMap := make(map[string]AttorneyRunInfo, len(attorneys))
+	for _, attorney := range attorneys {
+		attorneyMap[attorney.Role] = attorney
 	}
 	startedAt := time.Now().UTC()
 	server, err := maybeStartXProxy(cfg.XProxyConfigPath, cfg.XProxyPort)
@@ -90,6 +88,7 @@ func Run(ctx context.Context, cfg Config, complaint spec.Complaint) (result Resu
 		caseFiles:       caseFiles,
 		fileByID:        fileByID,
 		council:         council,
+		attorneys:       attorneyMap,
 		acpSessions:     map[string]*acpPersistentSession{},
 		workProductDirs: map[string]string{},
 	}
@@ -101,8 +100,7 @@ func Run(ctx context.Context, cfg Config, complaint spec.Complaint) (result Resu
 	if err := rc.recordEvent("run_initialized", "system", currentPhase(rc.state), map[string]any{
 		"complaint":         complaint,
 		"evidence_standard": cfg.Policy.EvidenceStandard,
-		"attorney_model":    cfg.AttorneyModel,
-		"attorney_search":   attorneyModelSpec.SearchRequested,
+		"attorneys":         attorneys,
 		"council":           council,
 	}); err != nil {
 		return Result{}, err
@@ -123,8 +121,7 @@ func Run(ctx context.Context, cfg Config, complaint spec.Complaint) (result Resu
 				Resolution:       currentResolution(rc.state),
 				Complaint:        complaint,
 				EvidenceStandard: currentEvidenceStandard(rc.state, cfg.Policy),
-				AttorneyModel:    cfg.AttorneyModel,
-				AttorneySearch:   attorneyModelSpec.SearchRequested,
+				Attorneys:        attorneys,
 				CaseFiles:        caseFileMetas(caseFiles),
 				Council:          council,
 				Events:           rc.events,

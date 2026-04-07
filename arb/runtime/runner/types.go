@@ -32,40 +32,58 @@ type RuntimeLimits struct {
 	CouncilMaxOutputTokens    int64 `json:"council_max_output_tokens"`
 }
 
+type AttorneyRoleConfig struct {
+	Model       string
+	ACPCommand  string
+	ACPEndpoint string
+	SessionCwd  string
+}
+
+type AttorneyRunInfo struct {
+	Role          string `json:"role"`
+	Model         string `json:"model"`
+	SearchEnabled bool   `json:"search_enabled"`
+	ACPTransport  string `json:"acp_transport"`
+	ACPCommand    string `json:"acp_command,omitempty"`
+	ACPEndpoint   string `json:"acp_endpoint,omitempty"`
+	SessionCwd    string `json:"-"`
+}
+
 type Config struct {
-	RunID            string
-	ComplaintPath    string
-	CaseFilePaths    []string
-	OutputDir        string
-	CommonRoot       string
-	CouncilPoolPath  string
-	AttorneyModel    string
-	Policy           Policy
-	Runtime          RuntimeLimits
-	XProxyConfigPath string
-	XProxyPort       int
-	ACPCommand       string
-	ACPArgs          []string
-	ACPEnv           []string
-	Engine           lean.Engine
+	RunID             string
+	ComplaintPath     string
+	CaseFilePaths     []string
+	OutputDir         string
+	CommonRoot        string
+	CouncilPoolPath   string
+	AttorneyModel     string
+	PlaintiffAttorney AttorneyRoleConfig
+	DefendantAttorney AttorneyRoleConfig
+	Policy            Policy
+	Runtime           RuntimeLimits
+	XProxyConfigPath  string
+	XProxyPort        int
+	ACPCommand        string
+	ACPArgs           []string
+	ACPEnv            []string
+	Engine            lean.Engine
 }
 
 type Result struct {
-	RunID            string         `json:"run_id"`
-	StartedAt        string         `json:"started_at"`
-	FinishedAt       string         `json:"finished_at"`
-	Status           string         `json:"status"`
-	Phase            string         `json:"phase"`
-	Resolution       string         `json:"resolution"`
-	Complaint        spec.Complaint `json:"complaint"`
-	EvidenceStandard string         `json:"evidence_standard"`
-	AttorneyModel    string         `json:"attorney_model"`
-	AttorneySearch   bool           `json:"attorney_search_enabled"`
-	CaseFiles        []CaseFileMeta `json:"case_files"`
-	Council          []CouncilSeat  `json:"council"`
-	Events           []Event        `json:"events"`
-	FinalState       map[string]any `json:"final_state"`
-	FinalReason      string         `json:"final_reason"`
+	RunID            string            `json:"run_id"`
+	StartedAt        string            `json:"started_at"`
+	FinishedAt       string            `json:"finished_at"`
+	Status           string            `json:"status"`
+	Phase            string            `json:"phase"`
+	Resolution       string            `json:"resolution"`
+	Complaint        spec.Complaint    `json:"complaint"`
+	EvidenceStandard string            `json:"evidence_standard"`
+	Attorneys        []AttorneyRunInfo `json:"attorneys"`
+	CaseFiles        []CaseFileMeta    `json:"case_files"`
+	Council          []CouncilSeat     `json:"council"`
+	Events           []Event           `json:"events"`
+	FinalState       map[string]any    `json:"final_state"`
+	FinalReason      string            `json:"final_reason"`
 }
 
 type CaseFile struct {
@@ -117,6 +135,7 @@ type runContext struct {
 	caseFiles       []CaseFile
 	fileByID        map[string]CaseFile
 	council         []CouncilSeat
+	attorneys       map[string]AttorneyRunInfo
 	acpSessions     map[string]*acpPersistentSession
 	workProductDirs map[string]string
 	events          []Event

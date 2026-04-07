@@ -34,14 +34,52 @@ func parseAttorneyModel(model string) (xproxy.ModelSpec, error) {
 	return spec, nil
 }
 
-func prepareEphemeralPIHome(commonRoot string, model string) (string, func() error, error) {
+func StageAttorneyPIHome(commonRoot string, homeDir string, model string) error {
 	model = strings.TrimSpace(model)
 	if model == "" {
 		model = DefaultAttorneyModel
 	}
 	spec, err := parseAttorneyModel(model)
 	if err != nil {
-		return "", nil, err
+		return err
+	}
+	agentDir := filepath.Join(homeDir, ".pi", "agent")
+	if err := os.MkdirAll(agentDir, 0o755); err != nil {
+		return fmt.Errorf("create PI agent dir: %w", err)
+	}
+	settingsRaw, err := os.ReadFile(filepath.Join(commonRoot, "etc", "pi-settings.xproxy.json"))
+	if err != nil {
+		return fmt.Errorf("read pi settings: %w", err)
+	}
+	settingsRaw, err = stageAttorneyPISettings(settingsRaw, model)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), settingsRaw, 0o644); err != nil {
+		return fmt.Errorf("write settings.json: %w", err)
+	}
+	modelsRaw, err := os.ReadFile(filepath.Join(commonRoot, "etc", "pi-models.xproxy.json"))
+	if err != nil {
+		return fmt.Errorf("read pi model catalog: %w", err)
+	}
+	modelsRaw, err = stageAttorneyPIModelCatalog(modelsRaw, model, spec)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), modelsRaw, 0o644); err != nil {
+		return fmt.Errorf("write models.json: %w", err)
+	}
+	authPath := filepath.Join(agentDir, "auth.json")
+	if err := os.WriteFile(authPath, []byte("{}\n"), 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", authPath, err)
+	}
+	return nil
+}
+
+func prepareEphemeralPIHome(commonRoot string, model string) (string, func() error, error) {
+	model = strings.TrimSpace(model)
+	if model == "" {
+		model = DefaultAttorneyModel
 	}
 	homeDir, err := os.MkdirTemp("", "agentarbitration-pi-home-")
 	if err != nil {
@@ -60,35 +98,8 @@ func prepareEphemeralPIHome(commonRoot string, model string) (string, func() err
 		}
 		return "", nil, err
 	}
-	agentDir := filepath.Join(homeDir, ".pi", "agent")
-	if err := os.MkdirAll(agentDir, 0o755); err != nil {
-		return fail(fmt.Errorf("create PI agent dir: %w", err))
-	}
-	settingsRaw, err := os.ReadFile(filepath.Join(commonRoot, "etc", "pi-settings.xproxy.json"))
-	if err != nil {
-		return fail(fmt.Errorf("read pi settings: %w", err))
-	}
-	settingsRaw, err = stageAttorneyPISettings(settingsRaw, model)
-	if err != nil {
+	if err := StageAttorneyPIHome(commonRoot, homeDir, model); err != nil {
 		return fail(err)
-	}
-	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), settingsRaw, 0o644); err != nil {
-		return fail(fmt.Errorf("write settings.json: %w", err))
-	}
-	modelsRaw, err := os.ReadFile(filepath.Join(commonRoot, "etc", "pi-models.xproxy.json"))
-	if err != nil {
-		return fail(fmt.Errorf("read pi model catalog: %w", err))
-	}
-	modelsRaw, err = stageAttorneyPIModelCatalog(modelsRaw, model, spec)
-	if err != nil {
-		return fail(err)
-	}
-	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), modelsRaw, 0o644); err != nil {
-		return fail(fmt.Errorf("write models.json: %w", err))
-	}
-	authPath := filepath.Join(agentDir, "auth.json")
-	if err := os.WriteFile(authPath, []byte("{}\n"), 0o644); err != nil {
-		return fail(fmt.Errorf("write %s: %w", authPath, err))
 	}
 	return homeDir, cleanup, nil
 }

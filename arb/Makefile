@@ -1,4 +1,4 @@
-.PHONY: build test prove install demo ex2 ex3 clean
+.PHONY: build test prove install demo ex2 ex3 ex4 ex6 clean
 
 BIN_DIR := .bin
 GO_ENV := CGO_ENABLED=0 GOCACHE=$(CURDIR)/.cache/go-build
@@ -39,5 +39,9 @@ ex4: build
 	rm -rf out/ex4-demo
 	.bin/aar case --complaint examples/ex4/complaint.md --out-dir out/ex4-demo --attorney-model $(ATTORNEY_MODEL_SEARCH)
 
+ex6: build
+	rm -rf out/ex6-demo
+	.bin/aar case --complaint examples/ex6/complaint.md --out-dir out/ex6-demo --attorney-model $(ATTORNEY_MODEL_SEARCH)
+
 clean:
-	rm -rf $(BIN_DIR) engine/.lake/build out/ex1-demo out/ex2-demo out/ex3-demo out/ex4-demo
+	rm -rf $(BIN_DIR) engine/.lake/build out/ex1-demo out/ex2-demo out/ex3-demo out/ex4-demo out/ex6-demo
