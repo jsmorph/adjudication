@@ -1350,6 +1350,24 @@ theorem reachable_deliberation_has_nextCouncilMember
                     · simp [step] at hStep
 
 /--
+In a reachable live deliberation state, the summary records that the current
+round still has a voter slot available.
+-/
+theorem reachable_live_deliberation_deliberationSummary_has_round_capacity
+    (s : ArbitrationState)
+    (hs : Reachable s)
+    (hPhase : s.case.phase = "deliberation")
+    (hStatus : s.case.status ≠ "closed") :
+    (deliberationSummary s).current_round_vote_count <
+      (deliberationSummary s).seated_count := by
+  rcases reachable_deliberation_has_nextCouncilMember s hs hPhase hStatus with
+    ⟨member, hNext⟩
+  have hUnique : councilIdsUnique s.case := reachable_councilIdsUnique s hs
+  have hIntegrity : councilVoteIntegrity s.case := reachable_councilVoteIntegrity s hs
+  exact nextCouncilMember_some_implies_deliberationSummary_round_capacity
+    s member hUnique hIntegrity hNext
+
+/--
 Every reachable non-closed state has a next opportunity.
 
 This is the Stage 3 theorem.  It says the engine does not strand a live case.

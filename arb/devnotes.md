@@ -66,7 +66,7 @@ the executable branching structure in `Main.lean`.
 
 ### Deliberation-neutrality policy decision
 
-Reference: [Verification notes](docs/verification-notes.md)
+Reference: [Verification](docs/verification.md)
 
 The proof work exposed a policy-space problem rather than a coding defect.
 `currentResolution?` checks `demonstrated` before `not_demonstrated`.  That is
@@ -81,7 +81,7 @@ policy space rather than a theorem with an extra side condition.
 
 ### Deliberation-neutrality proof
 
-Reference: [Verification plan](docs/verification-plan.md)
+Reference: [Verification](docs/verification.md)
 
 Stage 7 is now complete in `engine/Proofs/Neutrality.lean`.  The proof does
 not quantify over arbitrary malformed cases.  It proves neutrality over
@@ -238,3 +238,271 @@ edge-case carveout.  That points to a prompt or role-interface problem about
 how plaintiff advocacy should proceed when truthful investigation turns the case
 against the assigned side.  It does not point to ACP transport or PI-home
 staging any longer.
+
+## 2026-04-08
+
+### Verification document consolidation
+
+Reference: [Verification](docs/verification.md)
+
+The verification material had split into a status note, a stage plan, and a
+findings note.  That separation made the current state harder to read, because
+a reader had to reconstruct one story from three files.  The documentation now
+uses `docs/verification.md` as the canonical record for established results,
+the finished stage structure, proof-driven findings, and the limits of what the
+Lean engine can prove.
+
+### Abstract verification structures
+
+Reference: [More verification notes](docs/more-verification-notes.md)
+
+The next proof work now has a separate note about abstractions that the current
+engine already suggests.  The strongest candidates are a progress preorder over
+fixed-frame runs, a compact deliberation summary, a viable-outcomes notion for
+threshold reachability, the existing vote-flip involution, a lexicographic
+termination potential, and a trace semantics for successful runs.  The
+recommended first extension is a deliberation-summary layer that isolates
+counts, remaining eligible voters, round budget, and outcome attainability from
+the full case record.
+
+### Deliberation summary proof layer
+
+Reference: [More verification notes](docs/more-verification-notes.md)
+
+The first implementation step now spans
+`engine/Proofs/DeliberationSummaryCore.lean` and
+`engine/Proofs/DeliberationSummary.lean`.  The core file now carries the
+compact proof-side `DeliberationSummary` record, the direct case-level
+correspondence with `currentResolution?`, and the lower council arithmetic that
+the summary layer needs.  The wrapper file keeps the reachable vote-count,
+seated-count, and positive-threshold bounds that rely on later proof layers.
+
+### Summary-core dependency split
+
+Reference: [Verification](docs/verification.md)
+
+The import graph had blocked the next summary-based compression.  `OutcomeSoundness.lean`
+and `NoStuck.lean` sat below `DeliberationSummary.lean`, because that file had
+been importing `BoundedTermination.lean` for a few local arithmetic lemmas and
+for the reachable wrappers.  The summary layer now splits at that boundary:
+`DeliberationSummaryCore.lean` sits below `OutcomeSoundness.lean`, while
+`DeliberationSummary.lean` keeps only the reachable wrappers above `NoStuck`.
+
+That change pulled the direct `currentResolution?` soundness facts into the
+summary core and let `OutcomeSoundness.lean` consume them directly.  The lower
+termination file now imports the core arithmetic instead of defining the same
+council-length and current-round-capacity lemmas itself.  The remaining import
+pressure is now on the liveness side rather than on outcome soundness.
+
+### Summary-form liveness bridge
+
+Reference: [Verification](docs/verification.md)
+
+The next split now reaches one theorem in `NoStuck.lean`.  The selector fact
+that `nextCouncilMember?` returns a seated member who has not yet voted moved
+into `DeliberationSummaryCore.lean`, together with the summary-capacity lemma
+that turns that fact into `current_round_vote_count < seated_count`.  `NoStuck.lean`
+now uses those lower results to prove the summary-form round-capacity theorem
+for every reachable live deliberation state.
+
+This matters because it moves one real liveness theorem below
+`ViableOutcomes.lean` instead of leaving the whole summary bridge above the
+existing Stage 3 file.  The remaining pressure is now narrower: the viability
+and closure facts still sit above `NoStuck.lean`, but the basic summary view
+of live deliberation no longer does.
+
+### Viability-core dependency split
+
+Reference: [Verification](docs/verification.md)
+
+The same import pressure then showed up inside the viability layer.  The
+summary-level viability definitions and lemmas had been sitting in
+`ViableOutcomes.lean` above the executable update correspondences, even though
+most of them did not depend on removal arithmetic or on later proof layers.
+The viability layer now splits the same way the summary layer did:
+`ViableOutcomesCore.lean` carries the pure viability language and the
+summary-only theorems, while `ViableOutcomes.lean` keeps the direct vote and
+removal update correspondences.
+
+This matters on the closure side.  `OutcomeSoundness.lean` now imports
+`ViableOutcomesCore.lean` and proves the `no_majority` branch through summary
+non-viability instead of reopening the threshold arithmetic directly from
+`currentResolution? = none`.  The core file now also carries a summary closure
+predicate for `no_majority`, so the lower layer can package the executable
+closure reasons with the below-threshold conclusion before `OutcomeSoundness.lean`
+translates the result back to the state-level statement.  `OutcomeSoundness.lean`
+now also proves the direct bridge in both directions: summary `no_majority`
+closure is sufficient for `continueDeliberation` to close that way, and an
+executable `no_majority` closure from deliberation implies the same summary
+predicate on the source state.  That leaves the higher file responsible only
+for the executable update correspondence lemmas that still depend on the later
+termination layer.
+
+### Viable outcomes proof layer
+
+Reference: [More verification notes](docs/more-verification-notes.md)
+
+The second implementation step now spans `engine/Proofs/ViableOutcomesCore.lean`
+and `engine/Proofs/ViableOutcomes.lean`.  The core file defines summary-level
+viability for the two substantive outcomes, proves the first shrinkage facts,
+and packages the pure summary-side closure lemmas.  A vote for one side
+preserves that side's viability and can only shrink the other side's viability.
+Removing one seated member can only shrink viability for both sides.  The
+higher file then proves that these summary updates match the intermediate
+deliberation states produced by direct vote and removal updates before
+`continueDeliberation` runs.
+
+### Summary-based public wrappers
+
+Reference: [More verification notes](docs/more-verification-notes.md)
+
+The first bridge theorems for the third stage now split across
+`engine/Proofs/OutcomeSoundness.lean`, `engine/Proofs/NoStuck.lean`,
+`engine/Proofs/ViableOutcomesCore.lean`, and `engine/Proofs/ViableOutcomes.lean`.
+The liveness side now proves the summary-form current-round capacity bound in
+`NoStuck.lean`.  The closure side now proves the `no_majority` arithmetic
+through summary non-viability in `OutcomeSoundness.lean`.  The core viability
+file handles the summary-side facts: executable `currentResolution?` implies
+the corresponding summary-viability fact, summary-level exhaustion implies
+executable non-resolution, and the summary-level count flip swaps the two
+substantive outcomes.  The higher viability file then handles the executable
+vote and removal update correspondences.  `engine/Proofs/Neutrality.lean` now
+uses that lower summary form directly, so the reachable vote-flip theorem is
+stated over the same public result but proved through `DeliberationSummary`
+instead of through another round of raw vote-count case analysis on the case
+record.
+
+### Closed-resolution bridge
+
+Reference: [Verification](docs/verification.md)
+
+The next compression step turned the summary closure language into one uniform
+bridge for closed deliberation results.  `ViableOutcomesCore.lean` now defines
+the proof-side `DeliberationSummary.closedResolution?` function and proves the
+summary equalities that correspond to substantive threshold closure and to
+`no_majority` closure.  `OutcomeSoundness.lean` now proves the executable
+bridge in both directions: if the source summary reports a closed resolution,
+`continueDeliberation` returns exactly that closed result, and if
+`continueDeliberation` closes a deliberation-phase case, the source summary
+reports the same result.
+
+This matters because the summary layer no longer describes only the
+`no_majority` branch.  It now packages the whole closed-output boundary of
+`continueDeliberation`, which is the right granularity for later monotonicity
+or inevitability theorems.  The remaining higher work is correspondingly
+narrower: the executable vote and removal update correspondences still sit
+above this layer, but the closure logic itself now has one proof-side shape.
+
+### Executable viability transport
+
+Reference: [More verification notes](docs/more-verification-notes.md)
+
+The next step converted those remaining executable update correspondences into
+real viability statements.  `ViableOutcomes.lean` still uses the summary equalities
+for the intermediate vote and removal cases before `continueDeliberation`, but
+it now proves what those equalities mean for the engine state.  A vote for
+`demonstrated` preserves demonstrated viability and preserves impossibility of
+`not_demonstrated`.  A vote for `not_demonstrated` preserves not-demonstrated
+viability and preserves impossibility of `demonstrated`.  A seated-member
+removal preserves impossibility for both substantive outcomes.
+
+This matters because the higher viability file is no longer only a transport
+layer.  It now carries executable impossibility facts that the later public
+step theorems can consume without reopening the arithmetic in the summary core.
+
+### Same-round final-state bridge
+
+Reference: [Verification](docs/verification.md)
+
+The next step pushed that transport across the `continueDeliberation` boundary
+when the round does not advance.  `ViableOutcomes.lean` now proves a compact
+congruence fact for `DeliberationSummary`: if `continueDeliberation` keeps the
+same deliberation round, then the final state has the same summary as the
+intermediate `stateWithCase s c`.  That is the right bridge because the
+function may still close the case in place, but closure changes none of the
+summary fields.
+
+That bridge supports two new public same-round results.  First, a successful
+council-vote step now yields an existential `sameRoundVoteTransport` theorem:
+for the submitted vote label, the final state preserves viability of the voted
+side and preserves impossibility of the opposite side.  Second, a successful
+council-member removal step now preserves demonstrated impossibility,
+not-demonstrated impossibility, and therefore total substantive non-viability
+when the round stays fixed.
+
+### Progress-viability bridge
+
+Reference: [More verification notes](docs/more-verification-notes.md)
+
+The next step connected those same-round deliberation facts to the structural
+progress layer without overstating what `fixedFrameProgress` can prove by
+itself.  `ProgressViability.lean` imports both `Progress.lean` and
+`ViableOutcomes.lean` and proves two public bridge theorems.  A successful
+same-round council-vote step now yields both `fixedFrameProgress s t` and an
+existential `sameRoundVoteTransport` witness.  A successful same-round
+council-member removal step now yields `fixedFrameProgress s t` together with
+an implication from source total substantive non-viability to target total
+substantive non-viability.
+
+This matters because it marks the boundary of the current abstraction honestly.
+The present preorder tracks case frame, materials, seats, phase rank, and
+round.  It does not track current-round votes.  The new bridge therefore pairs
+progress with viability transport on the concrete same-round deliberation steps
+where the vote update is known, instead of claiming a false global monotonicity
+theorem for `fixedFrameProgress` alone.
+
+### Same-round deliberation progress
+
+Reference: [Verification](docs/verification.md)
+
+The next step turned that bridge into a proof-side relation.  `ProgressViability.lean`
+now defines `viableOutcomesShrink`, which says that target viability for either
+substantive outcome implies source viability for that same outcome.  It then
+defines `sameRoundDeliberationProgress`, which combines `fixedFrameProgress`,
+same-round equality, and that shrink relation.  Both new relations are
+reflexive and transitive.
+
+The public step theorems now establish that same-round relation for successful
+council-vote and council-removal steps.  The vote side uses a new lower wrapper
+in `StepPreservation.lean` that exposes the already-forced vote-label
+disjunction from `recordCouncilVote`.  The removal-side non-viability
+preservation theorem now follows from `viableOutcomesShrink` instead of sitting
+as a separate ad hoc implication.  This is the first abstract relation in the
+library that tracks both structural progress and substantive viability
+shrinkage without pretending that the global preorder already contains current-round
+vote data.
+
+### Same-round closure inevitability
+
+Reference: [More verification notes](docs/more-verification-notes.md)
+
+The next step completed that same-round line.  `ProgressViability.lean` now
+proves that `sameRoundDeliberationProgress` preserves `no_majority` closure
+reasons in the only form that matters for later closure: the target state has
+completed the round.  The key structural lemma here is seat-count monotonicity
+under `fixedFrameProgress` plus source council-id uniqueness.  That suffices to
+carry the "too few seats" closure reason forward, while same-round equality and
+fixed policy carry the last-round reason.
+
+The file then packages the main theorem: if the source summary already has no
+viable substantive outcome and already has one `no_majority` closure reason,
+then any later same-round progress state that completes the round is forced to
+summary `no_majority` closure.  The executable corollary is direct through
+`OutcomeSoundness.lean`: `continueDeliberation` on that target state must close
+as `no_majority`.  The public council-vote and council-removal theorems now
+inherit that result.  This finishes the summary, viability, and same-round
+progress agenda as a coherent proof line.
+
+### Fixed-frame progress preorder
+
+Reference: [More verification notes](docs/more-verification-notes.md)
+
+The next implementation step now lives in `engine/Proofs/Progress.lean`.  The
+file defines `fixedFrameProgress`, a state relation anchored to the source
+frame and paired with the monotone coordinates that the library had been
+proving separately: append-only admitted materials, shrinking seated-member
+identifiers, nondecreasing phase rank, and nondecreasing deliberation round.
+The first theorem batch proves reflexivity and transitivity, shows that every
+successful public step establishes that relation, and packages the initialized
+run form as the conjunction of the initialization frame and source-anchored
+progress from the initialized state.

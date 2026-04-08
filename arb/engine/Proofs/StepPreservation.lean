@@ -1490,7 +1490,7 @@ successful path:
 1. the voting member was seated in the source case; and
 2. that member did not already appear in the current round's vote list.
 -/
-theorem step_submit_council_vote_details
+private theorem step_submit_council_vote_details_core
     (s t : ArbitrationState)
     (action : CourtAction)
     (hType : action.action_type = "submit_council_vote")
@@ -1499,6 +1499,7 @@ theorem step_submit_council_vote_details
       s.case.phase = "deliberation" ∧
       memberId ∈ councilMemberIds (seatedCouncilMembers s.case) ∧
       memberId ∉ (currentRoundVotes s.case).map (·.member_id) ∧
+      (trimString vote = "demonstrated" ∨ trimString vote = "not_demonstrated") ∧
       continueDeliberation s
         { s.case with council_votes := s.case.council_votes.concat {
             member_id := memberId
@@ -1611,7 +1612,59 @@ theorem step_submit_council_vote_details
                                   exact List.any_eq_true.mpr ⟨existing, by simpa [votes] using hExistingMem,
                                     by simp [hExistingId]⟩
                                 simp [hAlready] at hAnyTrue
-                              exact ⟨memberId, vote, rationale, hPhase, hMemberSeated, hNotAlready, hRecord⟩
+                              have hVoteCases :
+                                  trimString vote = "demonstrated" ∨
+                                    trimString vote = "not_demonstrated" := by
+                                by_cases hDem : trimString vote = "demonstrated"
+                                · exact Or.inl hDem
+                                · by_cases hNot : trimString vote = "not_demonstrated"
+                                  · exact Or.inr hNot
+                                  · have hInvalid :
+                                        (trimString vote != "demonstrated" &&
+                                          trimString vote != "not_demonstrated") = true := by
+                                      simp [hDem, hNot]
+                                    simp [hVoteValid] at hInvalid
+                              exact ⟨memberId, vote, rationale, hPhase, hMemberSeated,
+                                hNotAlready, hVoteCases, hRecord⟩
+
+theorem step_submit_council_vote_details
+    (s t : ArbitrationState)
+    (action : CourtAction)
+    (hType : action.action_type = "submit_council_vote")
+    (hStep : step { state := s, action := action } = .ok t) :
+    ∃ memberId vote rationale,
+      s.case.phase = "deliberation" ∧
+      memberId ∈ councilMemberIds (seatedCouncilMembers s.case) ∧
+      memberId ∉ (currentRoundVotes s.case).map (·.member_id) ∧
+      continueDeliberation s
+        { s.case with council_votes := s.case.council_votes.concat {
+            member_id := memberId
+            round := s.case.deliberation_round
+            vote := trimString vote
+            rationale := trimString rationale
+          } } = .ok t := by
+  rcases step_submit_council_vote_details_core s t action hType hStep with
+    ⟨memberId, vote, rationale, hPhase, hSeated, hFresh, _hVote, hCont⟩
+  exact ⟨memberId, vote, rationale, hPhase, hSeated, hFresh, hCont⟩
+
+theorem step_submit_council_vote_details_with_valid_vote
+    (s t : ArbitrationState)
+    (action : CourtAction)
+    (hType : action.action_type = "submit_council_vote")
+    (hStep : step { state := s, action := action } = .ok t) :
+    ∃ memberId vote rationale,
+      s.case.phase = "deliberation" ∧
+      memberId ∈ councilMemberIds (seatedCouncilMembers s.case) ∧
+      memberId ∉ (currentRoundVotes s.case).map (·.member_id) ∧
+      (trimString vote = "demonstrated" ∨ trimString vote = "not_demonstrated") ∧
+      continueDeliberation s
+        { s.case with council_votes := s.case.council_votes.concat {
+            member_id := memberId
+            round := s.case.deliberation_round
+            vote := trimString vote
+            rationale := trimString rationale
+          } } = .ok t := by
+  exact step_submit_council_vote_details_core s t action hType hStep
 
 /--
 A successful council-removal step reaches `continueDeliberation` from the case

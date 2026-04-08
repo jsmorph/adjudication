@@ -1,4 +1,4 @@
-import Proofs.CaseFrame
+import Proofs.ViableOutcomesCore
 
 namespace ArbProofs
 
@@ -18,8 +18,8 @@ is the right place to start.  This file proves that the three closing branches
 of `continueDeliberation` are sound with respect to the recorded votes, the
 configured threshold, and the round and seating conditions.
 
-This is not yet the final reachable-state theorem promised in
-`verification-plan.md`.  It is the first layer that the global theorem will
+This is not yet the final reachable-state theorem recorded in
+`docs/verification.md`.  It is the first layer that the global theorem will
 need.  The result says that whenever deliberation closes a case, the closure is
 justified by the deliberation record that the engine carries in state.
 -/
@@ -68,56 +68,6 @@ theorem voteCountFor_le_length
   simpa [voteCountFor] using voteCountFor_fold_le_length votes value 0
 
 /--
-If `currentResolution?` returns `demonstrated`, the current round already has
-enough `demonstrated` votes to satisfy the threshold.
-
-This is the smallest direct link between the executable resolution function and
-the public vote count.
--/
-theorem currentResolution_demonstrated_implies_sound
-    (c : ArbitrationCase)
-    (requiredVotes : Nat)
-    (hResolution : currentResolution? c requiredVotes = some "demonstrated") :
-    voteCountFor (currentRoundVotes c) "demonstrated" ≥ requiredVotes := by
-  unfold currentResolution? at hResolution
-  by_cases hDem : voteCountFor (currentRoundVotes c) "demonstrated" ≥ requiredVotes
-  · exact hDem
-  · simp [hDem] at hResolution
-
-/--
-If `currentResolution?` returns `not_demonstrated`, the current round already
-has enough `not_demonstrated` votes to satisfy the threshold.
--/
-theorem currentResolution_not_demonstrated_implies_sound
-    (c : ArbitrationCase)
-    (requiredVotes : Nat)
-    (hResolution : currentResolution? c requiredVotes = some "not_demonstrated") :
-    voteCountFor (currentRoundVotes c) "not_demonstrated" ≥ requiredVotes := by
-  unfold currentResolution? at hResolution
-  by_cases hDem : voteCountFor (currentRoundVotes c) "demonstrated" ≥ requiredVotes
-  · simp [hDem] at hResolution
-  · by_cases hNot : voteCountFor (currentRoundVotes c) "not_demonstrated" ≥ requiredVotes
-    · exact hNot
-    · simp [hDem, hNot] at hResolution
-
-/--
-If `currentResolution?` returns `none`, neither side has yet reached the vote
-threshold in the current round.
--/
-theorem currentResolution_none_implies_below_threshold
-    (c : ArbitrationCase)
-    (requiredVotes : Nat)
-    (hResolution : currentResolution? c requiredVotes = none) :
-    voteCountFor (currentRoundVotes c) "demonstrated" < requiredVotes ∧
-      voteCountFor (currentRoundVotes c) "not_demonstrated" < requiredVotes := by
-  unfold currentResolution? at hResolution
-  by_cases hDem : voteCountFor (currentRoundVotes c) "demonstrated" ≥ requiredVotes
-  · simp [hDem] at hResolution
-  · by_cases hNot : voteCountFor (currentRoundVotes c) "not_demonstrated" ≥ requiredVotes
-    · simp [hDem, hNot] at hResolution
-    · exact ⟨Nat.lt_of_not_ge hDem, Nat.lt_of_not_ge hNot⟩
-
-/--
 Successful initialization always opens the live case in the `openings` phase.
 
 This generic fact is useful in the reachable-state wrapper below.  The
@@ -155,6 +105,287 @@ theorem initializeCase_phase_openings
                 simp
 
 /--
+The summary-side `noMajorityClosure` predicate is sufficient for
+`continueDeliberation` to close as `no_majority`.
+
+This theorem packages the executable branch condition in the same compact
+summary language used by the later closure soundness proof.
+-/
+theorem continueDeliberation_closed_no_majority_of_summary_noMajorityClosure
+    (s : ArbitrationState)
+    (c : ArbitrationCase)
+    (hClosure :
+      (deliberationSummaryForCase
+        c
+        s.policy.required_votes_for_decision
+        s.policy.max_deliberation_rounds).noMajorityClosure) :
+    continueDeliberation s c =
+      .ok (stateWithCase s { c with status := "closed", phase := "closed", resolution := "no_majority" }) := by
+  rcases hClosure with ⟨hRoundComplete, hNoViable, hReason⟩
+  have hRoundComplete' : (currentRoundVotes c).length = seatedCouncilMemberCount c := by
+    simpa [deliberationSummaryForCase] using hRoundComplete
+  have hSummaryNone :
+      (deliberationSummaryForCase
+        c
+        s.policy.required_votes_for_decision
+        s.policy.max_deliberation_rounds).currentResolution? = none := by
+    exact
+      (deliberationSummaryForCase
+        c
+        s.policy.required_votes_for_decision
+        s.policy.max_deliberation_rounds).currentResolution_none_of_noSubstantiveOutcomeViable
+        hNoViable
+  have hCurrent :
+      currentResolution? c s.policy.required_votes_for_decision = none := by
+    exact (deliberationSummaryForCase_currentResolution
+      c
+      s.policy.required_votes_for_decision
+      s.policy.max_deliberation_rounds).symm.trans hSummaryNone
+  unfold continueDeliberation
+  rcases hReason with hTooFew | ⟨hSummaryRoundComplete, hLastRound⟩
+  · have hTooFew' : seatedCouncilMemberCount c < s.policy.required_votes_for_decision := by
+      simpa [deliberationSummaryForCase] using hTooFew
+    simp [hRoundComplete', hCurrent, hTooFew', stateWithCase]
+    rfl
+  · have hLastRound' : c.deliberation_round ≥ s.policy.max_deliberation_rounds := by
+      simpa [deliberationSummaryForCase] using hLastRound
+    have hRoundComplete'' : (currentRoundVotes c).length = seatedCouncilMemberCount c := by
+      simpa [deliberationSummaryForCase] using hSummaryRoundComplete
+    by_cases hTooFew : seatedCouncilMemberCount c < s.policy.required_votes_for_decision
+    · simp [hRoundComplete'', hCurrent, hTooFew, stateWithCase]
+      rfl
+    · simp [hRoundComplete'', hCurrent, hTooFew, hLastRound', stateWithCase]
+      rfl
+
+/--
+If `continueDeliberation` closes as `no_majority`, the source deliberation
+state satisfied the summary-side closure predicate for that branch.
+-/
+theorem continueDeliberation_closed_no_majority_implies_summary_noMajorityClosure
+    (s t : ArbitrationState)
+    (c : ArbitrationCase)
+    (hDeliberation : c.phase = "deliberation")
+    (hCont : continueDeliberation s c = .ok t)
+    (hClosed : t.case.phase = "closed")
+    (hResolution : t.case.resolution = "no_majority") :
+    (deliberationSummaryForCase
+      c
+      s.policy.required_votes_for_decision
+      s.policy.max_deliberation_rounds).noMajorityClosure := by
+  unfold continueDeliberation at hCont
+  by_cases hRoundComplete : (currentRoundVotes c).length = seatedCouncilMemberCount c
+  · cases hCurrent : currentResolution? c s.policy.required_votes_for_decision with
+    | some resolution =>
+        simp [hRoundComplete, hCurrent, stateWithCase] at hCont
+        cases hCont
+        unfold currentResolution? at hCurrent
+        by_cases hDem : voteCountFor (currentRoundVotes c) "demonstrated" ≥ s.policy.required_votes_for_decision
+        · simp [hDem] at hCurrent
+          have hImpossible : False := by
+            have hEq : "demonstrated" = "no_majority" := by
+              simpa [hCurrent] using hResolution
+            simp at hEq
+          exact hImpossible.elim
+        · by_cases hNot : voteCountFor (currentRoundVotes c) "not_demonstrated" ≥ s.policy.required_votes_for_decision
+          · simp [hDem, hNot] at hCurrent
+            have hImpossible : False := by
+              have hEq : "not_demonstrated" = "no_majority" := by
+                simpa [hCurrent] using hResolution
+              simp at hEq
+            exact hImpossible.elim
+          · simp [hDem, hNot] at hCurrent
+    | none =>
+        by_cases hTooFew : seatedCouncilMemberCount c < s.policy.required_votes_for_decision
+        · simp [hRoundComplete, hCurrent, hTooFew, stateWithCase] at hCont
+          cases hCont
+          exact
+            deliberationSummaryForCase_noMajorityClosure_of_currentResolution_none_of_round_complete
+              c
+              s.policy.required_votes_for_decision
+              s.policy.max_deliberation_rounds
+              hCurrent
+              hRoundComplete
+              (Or.inl hTooFew)
+        · by_cases hLastRound : c.deliberation_round ≥ s.policy.max_deliberation_rounds
+          · simp [hRoundComplete, hCurrent, hTooFew, hLastRound, stateWithCase] at hCont
+            cases hCont
+            exact
+              deliberationSummaryForCase_noMajorityClosure_of_currentResolution_none_of_round_complete
+                c
+                s.policy.required_votes_for_decision
+                s.policy.max_deliberation_rounds
+                hCurrent
+                hRoundComplete
+                (Or.inr hLastRound)
+          · simp [hRoundComplete, hCurrent, hTooFew, hLastRound, stateWithCase] at hCont
+            cases hCont
+            simp [hDeliberation] at hClosed
+  · simp [hRoundComplete, stateWithCase] at hCont
+    cases hCont
+    simp [hDeliberation] at hClosed
+
+/--
+The summary-side `closedResolution?` value determines the exact closed
+`continueDeliberation` result.
+
+This theorem packages the three executable closing branches behind one summary
+predicate: threshold closure for either substantive outcome, or `no_majority`
+closure when the round is complete and the executable closure reason holds.
+-/
+theorem continueDeliberation_closed_of_summary_closedResolution
+    (s : ArbitrationState)
+    (c : ArbitrationCase)
+    (resolution : String)
+    (hClosedResolution :
+      (deliberationSummaryForCase
+        c
+        s.policy.required_votes_for_decision
+        s.policy.max_deliberation_rounds).closedResolution? = some resolution) :
+    continueDeliberation s c =
+      .ok (stateWithCase s { c with status := "closed", phase := "closed", resolution := resolution }) := by
+  by_cases hRoundComplete : (currentRoundVotes c).length = seatedCouncilMemberCount c
+  · have hSummaryRoundComplete :
+        (deliberationSummaryForCase
+          c
+          s.policy.required_votes_for_decision
+          s.policy.max_deliberation_rounds).current_round_vote_count =
+          (deliberationSummaryForCase
+            c
+            s.policy.required_votes_for_decision
+            s.policy.max_deliberation_rounds).seated_count := by
+      simpa [deliberationSummaryForCase] using hRoundComplete
+    cases hCurrent : currentResolution? c s.policy.required_votes_for_decision with
+    | some chosen =>
+        have hChosen : chosen = resolution := by
+          simpa [DeliberationSummary.closedResolution?, hSummaryRoundComplete, hCurrent]
+            using hClosedResolution
+        subst chosen
+        unfold continueDeliberation
+        simp [hRoundComplete, hCurrent, stateWithCase]
+        rfl
+    | none =>
+        have hReason :
+            (deliberationSummaryForCase
+              c
+              s.policy.required_votes_for_decision
+              s.policy.max_deliberation_rounds).noMajorityClosureReason := by
+          by_cases hReason :
+              (deliberationSummaryForCase
+                c
+                s.policy.required_votes_for_decision
+                s.policy.max_deliberation_rounds).noMajorityClosureReason
+          · exact hReason
+          · simp [DeliberationSummary.closedResolution?, hSummaryRoundComplete, hCurrent, hReason]
+              at hClosedResolution
+        have hNoViable :
+            (deliberationSummaryForCase
+              c
+              s.policy.required_votes_for_decision
+              s.policy.max_deliberation_rounds).noSubstantiveOutcomeViable := by
+          exact
+            deliberationSummaryForCase_noSubstantiveOutcomeViable_of_currentResolution_none_of_round_complete
+              c
+              s.policy.required_votes_for_decision
+              s.policy.max_deliberation_rounds
+              hCurrent
+              hRoundComplete
+        have hClosure :
+            (deliberationSummaryForCase
+              c
+              s.policy.required_votes_for_decision
+              s.policy.max_deliberation_rounds).noMajorityClosure := by
+          exact ⟨hSummaryRoundComplete, hNoViable, hReason⟩
+        have hNoMajority :
+            continueDeliberation s c =
+              .ok (stateWithCase s { c with status := "closed", phase := "closed", resolution := "no_majority" }) := by
+          exact continueDeliberation_closed_no_majority_of_summary_noMajorityClosure s c hClosure
+        have hChosen : resolution = "no_majority" := by
+          have hEq : "no_majority" = resolution := by
+            simpa [DeliberationSummary.closedResolution?, hSummaryRoundComplete, hCurrent, hReason]
+              using hClosedResolution
+          simpa using hEq.symm
+        subst resolution
+        exact hNoMajority
+  · simp [DeliberationSummary.closedResolution?, deliberationSummaryForCase, hRoundComplete]
+      at hClosedResolution
+
+/--
+A closed `continueDeliberation` result records exactly the summary-side
+`closedResolution?` value of the source deliberation state.
+-/
+theorem continueDeliberation_closed_implies_summary_closedResolution
+    (s t : ArbitrationState)
+    (c : ArbitrationCase)
+    (hDeliberation : c.phase = "deliberation")
+    (hCont : continueDeliberation s c = .ok t)
+    (hClosed : t.case.phase = "closed") :
+    (deliberationSummaryForCase
+      c
+      s.policy.required_votes_for_decision
+      s.policy.max_deliberation_rounds).closedResolution? = some t.case.resolution := by
+  unfold continueDeliberation at hCont
+  by_cases hRoundComplete : (currentRoundVotes c).length = seatedCouncilMemberCount c
+  · have hSummaryRoundComplete :
+        (deliberationSummaryForCase
+          c
+          s.policy.required_votes_for_decision
+          s.policy.max_deliberation_rounds).current_round_vote_count =
+          (deliberationSummaryForCase
+            c
+            s.policy.required_votes_for_decision
+            s.policy.max_deliberation_rounds).seated_count := by
+      simpa [deliberationSummaryForCase] using hRoundComplete
+    cases hCurrent : currentResolution? c s.policy.required_votes_for_decision with
+    | some resolution =>
+        simp [hRoundComplete, hCurrent, stateWithCase] at hCont
+        cases hCont
+        exact
+          (deliberationSummaryForCase
+            c
+            s.policy.required_votes_for_decision
+            s.policy.max_deliberation_rounds).closedResolution_eq_of_currentResolution
+              resolution
+              hSummaryRoundComplete
+              (by simpa using hCurrent)
+    | none =>
+        by_cases hTooFew : seatedCouncilMemberCount c < s.policy.required_votes_for_decision
+        · simp [hRoundComplete, hCurrent, hTooFew, stateWithCase] at hCont
+          cases hCont
+          exact
+            (deliberationSummaryForCase
+              c
+              s.policy.required_votes_for_decision
+              s.policy.max_deliberation_rounds).closedResolution_eq_no_majority_of_noMajorityClosure
+                (deliberationSummaryForCase_noMajorityClosure_of_currentResolution_none_of_round_complete
+                  c
+                  s.policy.required_votes_for_decision
+                  s.policy.max_deliberation_rounds
+                  hCurrent
+                  hRoundComplete
+                  (Or.inl hTooFew))
+        · by_cases hLastRound : c.deliberation_round ≥ s.policy.max_deliberation_rounds
+          · simp [hRoundComplete, hCurrent, hTooFew, hLastRound, stateWithCase] at hCont
+            cases hCont
+            exact
+              (deliberationSummaryForCase
+                c
+                s.policy.required_votes_for_decision
+                s.policy.max_deliberation_rounds).closedResolution_eq_no_majority_of_noMajorityClosure
+                  (deliberationSummaryForCase_noMajorityClosure_of_currentResolution_none_of_round_complete
+                    c
+                    s.policy.required_votes_for_decision
+                    s.policy.max_deliberation_rounds
+                    hCurrent
+                    hRoundComplete
+                    (Or.inr hLastRound))
+          · simp [hRoundComplete, hCurrent, hTooFew, hLastRound, stateWithCase] at hCont
+            cases hCont
+            simp [hDeliberation] at hClosed
+  · simp [hRoundComplete, stateWithCase] at hCont
+    cases hCont
+    simp [hDeliberation] at hClosed
+
+/--
 If deliberation closes a case as `demonstrated`, the closed state records
 enough `demonstrated` votes for the configured threshold.
 
@@ -170,32 +401,39 @@ theorem continueDeliberation_closed_demonstrated_sound
     (hClosed : t.case.phase = "closed")
     (hResolution : t.case.resolution = "demonstrated") :
     demonstratedOutcomeSound t := by
-  unfold continueDeliberation at hCont
-  by_cases hRoundComplete : (currentRoundVotes c).length = seatedCouncilMemberCount c
-  · cases hCurrent : currentResolution? c s.policy.required_votes_for_decision with
-    | some resolution =>
-        simp [hRoundComplete, hCurrent] at hCont
-        cases hCont
-        have hChosen : resolution = "demonstrated" := by
-          simpa [stateWithCase] using hResolution
-        subst hChosen
-        simpa [demonstratedOutcomeSound, stateWithCase] using
-          currentResolution_demonstrated_implies_sound c s.policy.required_votes_for_decision hCurrent
-    | none =>
-        by_cases hTooFew : seatedCouncilMemberCount c < s.policy.required_votes_for_decision
-        · simp [hRoundComplete, hCurrent, hTooFew] at hCont
-          cases hCont
-          simp [stateWithCase] at hResolution
-        · by_cases hLastRound : c.deliberation_round ≥ s.policy.max_deliberation_rounds
-          · simp [hRoundComplete, hCurrent, hTooFew, hLastRound] at hCont
-            cases hCont
-            simp [stateWithCase] at hResolution
-          · simp [hRoundComplete, hCurrent, hTooFew, hLastRound] at hCont
-            cases hCont
-            simp [stateWithCase, hDeliberation] at hClosed
-  · simp [hRoundComplete] at hCont
-    cases hCont
-    simp [stateWithCase, hDeliberation] at hClosed
+  let d := deliberationSummaryForCase
+    c
+    s.policy.required_votes_for_decision
+    s.policy.max_deliberation_rounds
+  have hSummaryClosed : d.closedResolution? = some "demonstrated" := by
+    simpa [d, hResolution] using
+      continueDeliberation_closed_implies_summary_closedResolution s t c
+        hDeliberation hCont hClosed
+  have hSummaryCurrent : d.currentResolution? = some "demonstrated" := by
+    exact d.currentResolution_eq_of_closedResolution_ne_no_majority
+      "demonstrated"
+      hSummaryClosed
+      (by simp)
+  have hSound :
+      voteCountFor (currentRoundVotes c) "demonstrated" ≥
+        s.policy.required_votes_for_decision := by
+    exact currentResolution_demonstrated_implies_sound c
+      s.policy.required_votes_for_decision
+      (by simpa [d] using hSummaryCurrent)
+  have hExact :
+      continueDeliberation s c =
+        .ok (stateWithCase s { c with status := "closed", phase := "closed", resolution := "demonstrated" }) := by
+    exact continueDeliberation_closed_of_summary_closedResolution s c "demonstrated"
+      (by simpa [d] using hSummaryClosed)
+  have hState :
+      t = stateWithCase s { c with status := "closed", phase := "closed", resolution := "demonstrated" } := by
+    have hOk :
+        Except.ok t =
+          Except.ok (stateWithCase s { c with status := "closed", phase := "closed", resolution := "demonstrated" }) :=
+      hCont.symm.trans hExact
+    simpa using hOk
+  subst t
+  simpa [demonstratedOutcomeSound, stateWithCase] using hSound
 
 /--
 If deliberation closes a case as `not_demonstrated`, the closed state records
@@ -209,32 +447,39 @@ theorem continueDeliberation_closed_not_demonstrated_sound
     (hClosed : t.case.phase = "closed")
     (hResolution : t.case.resolution = "not_demonstrated") :
     notDemonstratedOutcomeSound t := by
-  unfold continueDeliberation at hCont
-  by_cases hRoundComplete : (currentRoundVotes c).length = seatedCouncilMemberCount c
-  · cases hCurrent : currentResolution? c s.policy.required_votes_for_decision with
-    | some resolution =>
-        simp [hRoundComplete, hCurrent] at hCont
-        cases hCont
-        have hChosen : resolution = "not_demonstrated" := by
-          simpa [stateWithCase] using hResolution
-        subst hChosen
-        simpa [notDemonstratedOutcomeSound, stateWithCase] using
-          currentResolution_not_demonstrated_implies_sound c s.policy.required_votes_for_decision hCurrent
-    | none =>
-        by_cases hTooFew : seatedCouncilMemberCount c < s.policy.required_votes_for_decision
-        · simp [hRoundComplete, hCurrent, hTooFew] at hCont
-          cases hCont
-          simp [stateWithCase] at hResolution
-        · by_cases hLastRound : c.deliberation_round ≥ s.policy.max_deliberation_rounds
-          · simp [hRoundComplete, hCurrent, hTooFew, hLastRound] at hCont
-            cases hCont
-            simp [stateWithCase] at hResolution
-          · simp [hRoundComplete, hCurrent, hTooFew, hLastRound] at hCont
-            cases hCont
-            simp [stateWithCase, hDeliberation] at hClosed
-  · simp [hRoundComplete] at hCont
-    cases hCont
-    simp [stateWithCase, hDeliberation] at hClosed
+  let d := deliberationSummaryForCase
+    c
+    s.policy.required_votes_for_decision
+    s.policy.max_deliberation_rounds
+  have hSummaryClosed : d.closedResolution? = some "not_demonstrated" := by
+    simpa [d, hResolution] using
+      continueDeliberation_closed_implies_summary_closedResolution s t c
+        hDeliberation hCont hClosed
+  have hSummaryCurrent : d.currentResolution? = some "not_demonstrated" := by
+    exact d.currentResolution_eq_of_closedResolution_ne_no_majority
+      "not_demonstrated"
+      hSummaryClosed
+      (by simp)
+  have hSound :
+      voteCountFor (currentRoundVotes c) "not_demonstrated" ≥
+        s.policy.required_votes_for_decision := by
+    exact currentResolution_not_demonstrated_implies_sound c
+      s.policy.required_votes_for_decision
+      (by simpa [d] using hSummaryCurrent)
+  have hExact :
+      continueDeliberation s c =
+        .ok (stateWithCase s { c with status := "closed", phase := "closed", resolution := "not_demonstrated" }) := by
+    exact continueDeliberation_closed_of_summary_closedResolution s c "not_demonstrated"
+      (by simpa [d] using hSummaryClosed)
+  have hState :
+      t = stateWithCase s { c with status := "closed", phase := "closed", resolution := "not_demonstrated" } := by
+    have hOk :
+        Except.ok t =
+          Except.ok (stateWithCase s { c with status := "closed", phase := "closed", resolution := "not_demonstrated" }) :=
+      hCont.symm.trans hExact
+    simpa using hOk
+  subst t
+  simpa [notDemonstratedOutcomeSound, stateWithCase] using hSound
 
 /--
 If deliberation closes a case as `no_majority`, neither side reached the vote
@@ -252,38 +497,33 @@ theorem continueDeliberation_closed_no_majority_sound
     (hClosed : t.case.phase = "closed")
     (hResolution : t.case.resolution = "no_majority") :
     noMajorityOutcomeSound t := by
-  unfold continueDeliberation at hCont
-  by_cases hRoundComplete : (currentRoundVotes c).length = seatedCouncilMemberCount c
-  · cases hCurrent : currentResolution? c s.policy.required_votes_for_decision with
-    | some resolution =>
-        simp [hRoundComplete, hCurrent] at hCont
-        cases hCont
-        subst hResolution
-        unfold currentResolution? at hCurrent
-        by_cases hDem : voteCountFor (currentRoundVotes c) "demonstrated" ≥ s.policy.required_votes_for_decision
-        · simp [hDem] at hCurrent
-        · by_cases hNot : voteCountFor (currentRoundVotes c) "not_demonstrated" ≥ s.policy.required_votes_for_decision
-          · simp [hDem, hNot] at hCurrent
-          · simp [hDem, hNot] at hCurrent
-    | none =>
-        have hBelow :=
-          currentResolution_none_implies_below_threshold c s.policy.required_votes_for_decision hCurrent
-        by_cases hTooFew : seatedCouncilMemberCount c < s.policy.required_votes_for_decision
-        · simp [hRoundComplete, hCurrent, hTooFew] at hCont
-          cases hCont
-          simpa [noMajorityOutcomeSound, stateWithCase] using
-            And.intro hBelow.1 (And.intro hBelow.2 (Or.inl hTooFew))
-        · by_cases hLastRound : c.deliberation_round ≥ s.policy.max_deliberation_rounds
-          · simp [hRoundComplete, hCurrent, hTooFew, hLastRound] at hCont
-            cases hCont
-            simpa [noMajorityOutcomeSound, stateWithCase] using
-              And.intro hBelow.1 (And.intro hBelow.2 (Or.inr ⟨hRoundComplete, hLastRound⟩))
-          · simp [hRoundComplete, hCurrent, hTooFew, hLastRound] at hCont
-            cases hCont
-            simp [stateWithCase, hDeliberation] at hClosed
-  · simp [hRoundComplete] at hCont
-    cases hCont
-    simp [stateWithCase, hDeliberation] at hClosed
+  let d := deliberationSummaryForCase
+    c
+    s.policy.required_votes_for_decision
+    s.policy.max_deliberation_rounds
+  have hSummaryClosed : d.closedResolution? = some "no_majority" := by
+    simpa [d, hResolution] using
+      continueDeliberation_closed_implies_summary_closedResolution s t c
+        hDeliberation hCont hClosed
+  have hSummaryClosure : d.noMajorityClosure :=
+    d.noMajorityClosure_of_closedResolution_no_majority hSummaryClosed
+  have hSummarySound : d.noMajoritySound :=
+    d.noMajoritySound_of_noMajorityClosure hSummaryClosure
+  have hExact :
+      continueDeliberation s c =
+        .ok (stateWithCase s { c with status := "closed", phase := "closed", resolution := "no_majority" }) := by
+    exact continueDeliberation_closed_of_summary_closedResolution s c "no_majority"
+      (by simpa [d] using hSummaryClosed)
+  have hState :
+      t = stateWithCase s { c with status := "closed", phase := "closed", resolution := "no_majority" } := by
+    have hOk :
+        Except.ok t =
+          Except.ok (stateWithCase s { c with status := "closed", phase := "closed", resolution := "no_majority" }) :=
+      hCont.symm.trans hExact
+    simpa using hOk
+  subst t
+  simpa [noMajorityOutcomeSound, stateWithCase, DeliberationSummary.noMajoritySound,
+    DeliberationSummary.noMajorityClosureReason, deliberationSummaryForCase] using hSummarySound
 
 /--
 An opening-statement step never closes the case.

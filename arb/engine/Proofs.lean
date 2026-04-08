@@ -8,10 +8,16 @@ import Proofs.StepPreservation
 import Proofs.CaseFrame
 import Proofs.ReachableInvariants
 import Proofs.ReachableMaterialLimits
+import Proofs.DeliberationSummaryCore
+import Proofs.ViableOutcomesCore
 import Proofs.OutcomeSoundness
 import Proofs.CouncilIntegrity
 import Proofs.NoStuck
 import Proofs.CouncilStatus
 import Proofs.RecordProvenance
 import Proofs.BoundedTermination
+import Proofs.DeliberationSummary
+import Proofs.ViableOutcomes
 import Proofs.Neutrality
+import Proofs.Progress
+import Proofs.ProgressViability

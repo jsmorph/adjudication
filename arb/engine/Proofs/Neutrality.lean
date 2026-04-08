@@ -1,4 +1,5 @@
-import Proofs.BoundedTermination
+import Proofs.DeliberationSummary
+import Proofs.ViableOutcomesCore
 
 namespace ArbProofs
 
@@ -116,7 +117,7 @@ private theorem voteCountFor_foldl_acc
                 unfold voteCountFor
                 simp [List.foldl, hValue]
 
-private theorem voteCountFor_cons
+private theorem voteCountFor_cons_neutrality
     (vote : CouncilVote)
     (votes : List CouncilVote)
     (value : String) :
@@ -154,7 +155,7 @@ private theorem voteCountFor_flipped_votes_demonstrated
   | nil =>
       simp [voteCountFor]
   | cons vote votes ih =>
-      simp only [List.map, voteCountFor_cons, ih]
+      simp only [List.map, voteCountFor_cons_neutrality, ih]
       rw [flipCouncilVote_demonstrated_increment]
 
 private theorem voteCountFor_flipped_votes_not_demonstrated
@@ -165,10 +166,10 @@ private theorem voteCountFor_flipped_votes_not_demonstrated
   | nil =>
       simp [voteCountFor]
   | cons vote votes ih =>
-      simp only [List.map, voteCountFor_cons, ih]
+      simp only [List.map, voteCountFor_cons_neutrality, ih]
       rw [flipCouncilVote_not_demonstrated_increment]
 
-private theorem substantive_vote_counts_le_length
+private theorem substantive_vote_counts_le_length_neutrality
     (votes : List CouncilVote) :
     voteCountFor votes "demonstrated" +
       voteCountFor votes "not_demonstrated" ≤
@@ -177,7 +178,7 @@ private theorem substantive_vote_counts_le_length
   | nil =>
       simp [voteCountFor]
   | cons vote votes ih =>
-      rw [voteCountFor_cons, voteCountFor_cons]
+      rw [voteCountFor_cons_neutrality, voteCountFor_cons_neutrality]
       by_cases hDem : trimString vote.vote = "demonstrated"
       · have hNotNe : trimString vote.vote ≠ "not_demonstrated" := by
           intro hEq
@@ -201,7 +202,7 @@ private theorem strict_majority_excludes_dual_threshold
     ¬ (voteCountFor votes "demonstrated" ≥ requiredVotes ∧
         voteCountFor votes "not_demonstrated" ≥ requiredVotes) := by
   intro hBoth
-  have hCounts := substantive_vote_counts_le_length votes
+  have hCounts := substantive_vote_counts_le_length_neutrality votes
   rcases hBoth with ⟨hDem, hNot⟩
   omega
 
@@ -277,63 +278,83 @@ private theorem reachable_strict_majority
   | step s t action hs hStep ih =>
       exact step_preserves_strict_majority s t action ih hStep
 
-private theorem currentRoundVotes_length_le_seatedCouncilMemberCount
-    (c : ArbitrationCase)
-    (hUnique : councilIdsUnique c)
-    (hIntegrity : councilVoteIntegrity c) :
-    (currentRoundVotes c).length ≤ seatedCouncilMemberCount c := by
-  have hLen :
-      (currentRoundVoteIds c).length ≤ (seatedCouncilMemberIds c).length :=
-    list_length_le_of_nodup_subset
-      hIntegrity.1
-      (seatedCouncilMemberIds_nodup c hUnique)
-      (currentRoundVoteIds_subset_seatedCouncilMemberIds c hIntegrity)
-  simpa [currentRoundVoteIds, seatedCouncilMemberIds, seatedCouncilMemberCount,
-    councilMemberIds] using hLen
+private theorem deliberationSummary_flipCaseVotes
+    (s : ArbitrationState) :
+    deliberationSummary (stateWithCase s (flipCaseVotes s.case)) =
+      (deliberationSummary s).flipSubstantiveCounts := by
+  apply DeliberationSummary.ext
+  · rfl
+  · rfl
+  · calc
+      (deliberationSummaryForCase (flipCaseVotes s.case)
+            s.policy.required_votes_for_decision
+            s.policy.max_deliberation_rounds).current_round_vote_count
+        = (currentRoundVotes (flipCaseVotes s.case)).length := by
+            simp [deliberationSummaryForCase]
+      _ = ((currentRoundVotes s.case).map flipCouncilVote).length := by
+            rw [currentRoundVotes_flipCaseVotes]
+      _ = (currentRoundVotes s.case).length := by
+            simp
+      _ = (deliberationSummaryForCase s.case
+            s.policy.required_votes_for_decision
+            s.policy.max_deliberation_rounds).current_round_vote_count := by
+            simp [deliberationSummaryForCase]
+  · calc
+      (deliberationSummaryForCase (flipCaseVotes s.case)
+            s.policy.required_votes_for_decision
+            s.policy.max_deliberation_rounds).demonstrated_count
+        = voteCountFor (currentRoundVotes (flipCaseVotes s.case)) "demonstrated" := by
+            simp [deliberationSummaryForCase]
+      _ = voteCountFor ((currentRoundVotes s.case).map flipCouncilVote) "demonstrated" := by
+            rw [currentRoundVotes_flipCaseVotes]
+      _ = voteCountFor (currentRoundVotes s.case) "not_demonstrated" := by
+            exact voteCountFor_flipped_votes_demonstrated (currentRoundVotes s.case)
+      _ = (deliberationSummaryForCase s.case
+            s.policy.required_votes_for_decision
+            s.policy.max_deliberation_rounds).not_demonstrated_count := by
+            simp [deliberationSummaryForCase]
+  · calc
+      (deliberationSummaryForCase (flipCaseVotes s.case)
+            s.policy.required_votes_for_decision
+            s.policy.max_deliberation_rounds).not_demonstrated_count
+        = voteCountFor (currentRoundVotes (flipCaseVotes s.case)) "not_demonstrated" := by
+            simp [deliberationSummaryForCase]
+      _ = voteCountFor ((currentRoundVotes s.case).map flipCouncilVote) "not_demonstrated" := by
+            rw [currentRoundVotes_flipCaseVotes]
+      _ = voteCountFor (currentRoundVotes s.case) "demonstrated" := by
+            exact voteCountFor_flipped_votes_not_demonstrated (currentRoundVotes s.case)
+      _ = (deliberationSummaryForCase s.case
+            s.policy.required_votes_for_decision
+            s.policy.max_deliberation_rounds).demonstrated_count := by
+            simp [deliberationSummaryForCase]
+  · rfl
+  · rfl
 
-private theorem currentResolution_flip_of_bound
-    (c : ArbitrationCase)
-    (councilSize requiredVotes : Nat)
-    (hLength : (currentRoundVotes c).length ≤ councilSize)
-    (hMajority : councilSize < 2 * requiredVotes) :
-    currentResolution? (flipCaseVotes c) requiredVotes =
-      flipResolution (currentResolution? c requiredVotes) := by
-  have hFlipDemCount :
-      voteCountFor (currentRoundVotes (flipCaseVotes c)) "demonstrated" =
-        voteCountFor (currentRoundVotes c) "not_demonstrated" := by
-    simpa [currentRoundVotes_flipCaseVotes] using
-      voteCountFor_flipped_votes_demonstrated (currentRoundVotes c)
-  have hFlipNotCount :
-      voteCountFor (currentRoundVotes (flipCaseVotes c)) "not_demonstrated" =
-        voteCountFor (currentRoundVotes c) "demonstrated" := by
-    simpa [currentRoundVotes_flipCaseVotes] using
-      voteCountFor_flipped_votes_not_demonstrated (currentRoundVotes c)
-  by_cases hDem : voteCountFor (currentRoundVotes c) "demonstrated" ≥ requiredVotes
-  · have hNotLt : voteCountFor (currentRoundVotes c) "not_demonstrated" < requiredVotes := by
+private theorem currentResolution_flipSubstantiveCounts_of_bound
+    (d : DeliberationSummary)
+    (hSubstantiveBound : d.substantive_vote_count ≤ d.seated_count)
+    (hMajority : d.seated_count < 2 * d.required_votes) :
+    (d.flipSubstantiveCounts).currentResolution? =
+      flipResolution d.currentResolution? := by
+  have hDualThreshold :
+      ¬ (d.demonstrated_count ≥ d.required_votes ∧
+          d.not_demonstrated_count ≥ d.required_votes) := by
+    intro hBoth
+    rcases hBoth with ⟨hDem, hNot⟩
+    unfold DeliberationSummary.substantive_vote_count at hSubstantiveBound
+    omega
+  by_cases hDem : d.demonstrated_count ≥ d.required_votes
+  · have hNotLt : d.not_demonstrated_count < d.required_votes := by
       apply Nat.lt_of_not_ge
       intro hNot
-      exact strict_majority_excludes_dual_threshold
-        (currentRoundVotes c) councilSize requiredVotes hLength hMajority ⟨hDem, hNot⟩
-    have hFlipDemLt : voteCountFor (currentRoundVotes (flipCaseVotes c)) "demonstrated" < requiredVotes := by
-      simpa [hFlipDemCount] using hNotLt
-    have hFlipNot : voteCountFor (currentRoundVotes (flipCaseVotes c)) "not_demonstrated" ≥ requiredVotes := by
-      simpa [hFlipNotCount] using hDem
-    simp [currentResolution?, flipResolution, hDem, hFlipDemLt, hFlipNot]
-  · by_cases hNot : voteCountFor (currentRoundVotes c) "not_demonstrated" ≥ requiredVotes
-    · have hFlipDem : voteCountFor (currentRoundVotes (flipCaseVotes c)) "demonstrated" ≥ requiredVotes := by
-        simpa [hFlipDemCount] using hNot
-      simp [currentResolution?, flipResolution, hDem, hNot, hFlipDem]
-    · have hFlipDemLt : voteCountFor (currentRoundVotes (flipCaseVotes c)) "demonstrated" < requiredVotes := by
-        exact Nat.lt_of_not_ge (by simpa [hFlipDemCount] using hNot)
-      have hFlipNotLt : voteCountFor (currentRoundVotes (flipCaseVotes c)) "not_demonstrated" < requiredVotes := by
-        exact Nat.lt_of_not_ge (by simpa [hFlipNotCount] using hDem)
-      have hFlipDemFalse :
-          ¬ voteCountFor (currentRoundVotes (flipCaseVotes c)) "demonstrated" ≥ requiredVotes :=
-        Nat.not_le.mpr hFlipDemLt
-      have hFlipNotFalse :
-          ¬ voteCountFor (currentRoundVotes (flipCaseVotes c)) "not_demonstrated" ≥ requiredVotes :=
-        Nat.not_le.mpr hFlipNotLt
-      simp [currentResolution?, flipResolution, hDem, hNot, hFlipDemFalse, hFlipNotFalse]
+      exact hDualThreshold ⟨hDem, hNot⟩
+    simp [DeliberationSummary.currentResolution?, DeliberationSummary.flipSubstantiveCounts,
+      flipResolution, hDem, Nat.not_le.mpr hNotLt]
+  · by_cases hNot : d.not_demonstrated_count ≥ d.required_votes
+    · simp [DeliberationSummary.currentResolution?, DeliberationSummary.flipSubstantiveCounts,
+        flipResolution, hDem, hNot]
+    · simp [DeliberationSummary.currentResolution?, DeliberationSummary.flipSubstantiveCounts,
+        flipResolution, hDem, hNot]
 
 /--
 Flipping every current-round vote in a reachable state swaps the result of
@@ -350,21 +371,29 @@ theorem reachable_currentResolution_is_neutral_under_vote_flip
     (hs : Reachable s) :
     currentResolution? (flipCaseVotes s.case) s.policy.required_votes_for_decision =
       flipResolution (currentResolution? s.case s.policy.required_votes_for_decision) := by
-  have hUnique : councilIdsUnique s.case := reachable_councilIdsUnique s hs
-  have hIntegrity : councilVoteIntegrity s.case := reachable_councilVoteIntegrity s hs
-  have hVoteBound : (currentRoundVotes s.case).length ≤ seatedCouncilMemberCount s.case :=
-    currentRoundVotes_length_le_seatedCouncilMemberCount s.case hUnique hIntegrity
-  have hSeatedBound : seatedCouncilMemberCount s.case ≤ s.policy.council_size :=
-    reachable_seatedCouncilMemberCount_le_councilSize s hs
-  have hLength : (currentRoundVotes s.case).length ≤ s.policy.council_size := by
-    exact Nat.le_trans hVoteBound hSeatedBound
-  have hMajority : s.policy.council_size < 2 * s.policy.required_votes_for_decision :=
-    reachable_strict_majority s hs
-  exact currentResolution_flip_of_bound
-    s.case
-    s.policy.council_size
-    s.policy.required_votes_for_decision
-    hLength
-    hMajority
+  have hSubstantiveBound :
+      (deliberationSummary s).substantive_vote_count ≤
+        (deliberationSummary s).seated_count := by
+    exact Nat.le_trans
+      (deliberationSummary_substantive_vote_count_le_current_round_vote_count s)
+      (reachable_deliberationSummary_vote_count_le_seated_count s hs)
+  have hSummaryMajority :
+      (deliberationSummary s).seated_count <
+        2 * (deliberationSummary s).required_votes := by
+    exact Nat.lt_of_le_of_lt
+      (reachable_deliberationSummary_seated_count_le_council_size s hs)
+      (by simpa [deliberationSummary] using reachable_strict_majority s hs)
+  calc
+    currentResolution? (flipCaseVotes s.case) s.policy.required_votes_for_decision
+      = (deliberationSummary (stateWithCase s (flipCaseVotes s.case))).currentResolution? := by
+          rw [deliberationSummary_currentResolution (stateWithCase s (flipCaseVotes s.case))]
+          rfl
+    _ = ((deliberationSummary s).flipSubstantiveCounts).currentResolution? := by
+          rw [deliberationSummary_flipCaseVotes]
+    _ = flipResolution ((deliberationSummary s).currentResolution?) := by
+          exact currentResolution_flipSubstantiveCounts_of_bound
+            (deliberationSummary s) hSubstantiveBound hSummaryMajority
+    _ = flipResolution (currentResolution? s.case s.policy.required_votes_for_decision) := by
+          simp [deliberationSummary_currentResolution]
 
 end ArbProofs
