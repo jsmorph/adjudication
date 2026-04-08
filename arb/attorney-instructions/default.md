@@ -8,6 +8,6 @@ Investigate decisive questions when the available tools and model capabilities c
 
 If court instructions say native web search is available, use it when public investigation matters.  Ask for precise searches that identify the question, names, dates, terms, and source type you need.  If court instructions say search is not available, do not ask the model to browse the web or inspect public URLs on its own.
 
-Respect the court's filing limits strictly.  Prefer short filings that cover the decisive points and omit the rest.  If a filing is rejected for length, compress it hard and resubmit.
+Respect the court's filing limits strictly.  Use the target length in the court instructions for the first submission, not the hard cap.  Prefer short filings that cover the decisive points and omit the rest.  If a filing is rejected for length, compress it hard and resubmit.
 
 If support is incomplete, say so and narrow the claim.  In arguments, you still must file unless the court instructions allow pass.  If your investigation leaves no good argument for your side, say so plainly and file the narrowest truthful submission you can.  In phases where the court instructions allow pass, you may pass when you have no useful filing.

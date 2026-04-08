@@ -389,6 +389,9 @@ func TestBuildAttorneyPromptStatesCouncilForum(t *testing.T) {
 	if !strings.Contains(prompt, "Text limit for this submission: 4000 characters.") {
 		t.Fatalf("prompt did not state the opening text limit:\n%s", prompt)
 	}
+	if !strings.Contains(prompt, "Target length for the first submission: 3000 characters or less.") {
+		t.Fatalf("prompt did not state the opening target length:\n%s", prompt)
+	}
 	if !strings.Contains(prompt, "Native web search through the model is available.") {
 		t.Fatalf("prompt did not state search availability:\n%s", prompt)
 	}
@@ -705,6 +708,9 @@ func TestBuildAttorneyPromptAllowsRebuttalSupplementalMaterials(t *testing.T) {
 	}
 	if !strings.Contains(prompt, "Text limit for this submission: 4000 characters.") {
 		t.Fatalf("rebuttal prompt did not state the rebuttal text limit:\n%s", prompt)
+	}
+	if !strings.Contains(prompt, "Target length for the first submission: 3000 characters or less.") {
+		t.Fatalf("rebuttal prompt did not state the rebuttal target length:\n%s", prompt)
 	}
 	if !strings.Contains(prompt, "Technical reports: at most 3 in this filing. This side has used 3 of 4 total, with 1 left.") {
 		t.Fatalf("rebuttal prompt did not state remaining report capacity:\n%s", prompt)

@@ -873,6 +873,7 @@ func (rc *runContext) attorneyLimitsSection(opportunity Opportunity) string {
 	lines := []string{}
 	if limit, _ := limits["text_char_limit"].(int); limit > 0 {
 		lines = append(lines, fmt.Sprintf("Text limit for this submission: %d characters.", limit))
+		lines = append(lines, fmt.Sprintf("Target length for the first submission: %d characters or less.", targetSubmissionCharLimit(limit)))
 	}
 	switch opportunity.Phase {
 	case "arguments", "rebuttals":
@@ -900,6 +901,17 @@ func (rc *runContext) attorneyLimitsSection(opportunity Opportunity) string {
 		lines = append(lines, "offered_files and technical_reports are not allowed in this phase.")
 	}
 	return strings.Join(lines, "\n")
+}
+
+func targetSubmissionCharLimit(limit int) int {
+	if limit <= 0 {
+		return 0
+	}
+	target := (limit * 3) / 4
+	if target <= 0 {
+		return limit
+	}
+	return target
 }
 
 func phaseTextCharLimit(policy Policy, phase string) int {
