@@ -48,6 +48,8 @@ Rule nodes should capture complaint criteria, carve-outs, fallback rules, and bu
 
 The graph should not infer more than the packet supports.  If a filing gestures at a proposition but never states it cleanly, the graph should either omit that proposition or record a narrower one.  The graph is useful only if each node can be defended from the packet without interpretive embroidery.
 
-## Worked Example
+## Placement
 
-[Example 6 merits graph JSON](../examples/ex6/merits-graph.json) is a worked example derived from run `run-1775667767580182267`.  [Example 6 Mermaid view](../examples/ex6/merits-graph.mmd) projects the same graph into a compact issue-and-vote map.  The example compresses repeated filings into normalized propositions, because the point of the graph is to show the structure of the dispute rather than the number of times each side repeated it.
+Merits-graph files belong in the run packet under `out/`, not in the example source directory.  The packet already contains the materials from which the graph is derived: `run.json`, `digest.md`, and `transcript.md`.  The derived files should sit beside those packet artifacts as `out/<run>/merits-graph.json`, `out/<run>/merits-graph.mmd`, and, when rendered for inspection, `out/<run>/merits-graph.png`.
+
+This placement matters because the graph is a property of one run, not of the static example inputs.  A regenerated run can change the filings, the vote split, or the decisive claims.  Storing the graph under `examples/` makes it look like source material for the case rather than derived analysis of one packet.
