@@ -1,0 +1,36 @@
+package cli
+
+import (
+	"flag"
+	"fmt"
+	"io"
+	"os"
+
+	"adjudication/arbd/runtime/spec"
+)
+
+func RunValidate(args []string, stdout io.Writer, stderr io.Writer) error {
+	var fs *flag.FlagSet
+	fs = flag.NewFlagSet("validate", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	complaintPath := fs.String("complaint", "", "Complaint markdown file")
+	fs.Usage = func() {
+		fmt.Fprintf(stderr, "Usage: aard validate --complaint FILE\n\n")
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *complaintPath == "" {
+		return fmt.Errorf("--complaint is required")
+	}
+	raw, err := os.ReadFile(*complaintPath)
+	if err != nil {
+		return fmt.Errorf("read complaint: %w", err)
+	}
+	if _, err := spec.ParseComplaintMarkdown(string(raw)); err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(stdout, "ok")
+	return err
+}
