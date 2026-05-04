@@ -25,13 +25,11 @@ This repository contains the Lean engine, the Go runtime, the `aar` CLI, and a s
 
 ## Run An Arbitration From Scratch
 
-These commands assume the current working directory is `arb/`.  `aar complain` reads a markdown file and extracts the `# Proposition` section into canonical complaint form.  `aar case` initializes the run from that complaint, loads the council pool from `../common/data/personas/pool.csv` by default, writes the run packet to the requested output directory, and prints a JSON summary to stdout.
+These commands assume the current working directory is `arb/`.  `aar complain` reads a markdown file and writes canonical complaint form.  If the source contains a `Proposition` heading, the command extracts that section.  Otherwise it treats the whole trimmed file as the proposition.  `aar case` initializes the run from that complaint, loads the council pool from `../common/data/personas/pool.csv` by default, writes the run packet to the requested output directory, and prints a JSON summary to stdout.
 
-Create a case directory with a situation file.  In the current implementation, the complaint format contains only the proposition.
+Create a case directory with a situation file.  The source file may be plain text or a markdown file with a `Proposition` heading.  The canonical complaint format contains only the proposition.
 
 ```markdown
-# Proposition
-
 Whether the published statement defamed the plaintiff.
 ```
 

@@ -28,11 +28,9 @@ make prove
 
 ## Complaint Format
 
-`aard complain` and `aard validate` use one required heading:
+`aard complain` and `aard validate` accept plain text or a markdown file with a `Question` heading.  If the source contains that heading, the commands use the section.  Otherwise they treat the whole trimmed file as the question.  The canonical complaint output keeps the heading:
 
 ```markdown
-# Question
-
 What percentage of artwork Y is novel in view of artwork X?
 ```
 

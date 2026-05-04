@@ -55,3 +55,23 @@ The first review pass found two runtime issues worth fixing.  First, the exporte
 `arbd` now derives the exported council list from the final Lean state.  That keeps the packet aligned with the source of truth and carries each member's final `status` into JSON and the rendered markdown reports.  The runner still keeps the sampled council list in memory for persona text during live execution.
 
 The same review found that `--file .gitignore` slipped past `validateExplicitCaseFilePath`, because `filepath.Ext(".gitignore")` is empty.  The validator now rejects `.gitignore` by basename before it checks ordinary extensions.  That change affects only the explicit `--file` path, which is where the gap existed.
+
+## 2026-05-04
+
+### Flexible complaint input
+
+Reference: [Complaint parser](runtime/spec/complaint.go)
+
+The degree runtime needs one question string.  The source file no longer has to
+carry a literal `# Question` heading for the parser to produce that value.  When
+a `Question` section exists, the parser uses that section.  When no such section
+exists, the parser treats the whole trimmed file as the question.
+
+The canonical writer still emits a `# Question` heading.  That keeps generated
+complaint packets stable and readable.  Empty input fails, and an explicit empty
+`Question` section fails, because either case lacks a question.
+
+- [x] Preserve canonical complaint output.
+- [x] Accept plain text as complaint input.
+- [x] Reject blank complaints and blank explicit sections.
+- [x] Cover parser behavior in tests.

@@ -11,9 +11,18 @@ type Complaint struct {
 
 func ParseComplaintMarkdown(input string) (Complaint, error) {
 	sections := parseMarkdownSections(input)
-	question := strings.TrimSpace(sections["question"])
+	if question, ok := sections["question"]; ok {
+		question = strings.TrimSpace(question)
+		if question == "" {
+			return Complaint{}, fmt.Errorf("empty Question section")
+		}
+		return Complaint{
+			Question: question,
+		}, nil
+	}
+	question := strings.TrimSpace(normalizeLineEndings(input))
 	if question == "" {
-		return Complaint{}, fmt.Errorf("missing Question section")
+		return Complaint{}, fmt.Errorf("empty complaint")
 	}
 	return Complaint{
 		Question: question,
@@ -37,7 +46,7 @@ func parseMarkdownSections(input string) map[string]string {
 		}
 		sections[current] = strings.TrimSpace(strings.Join(body, "\n"))
 	}
-	for _, raw := range strings.Split(strings.ReplaceAll(input, "\r\n", "\n"), "\n") {
+	for _, raw := range strings.Split(normalizeLineEndings(input), "\n") {
 		line := strings.TrimSpace(raw)
 		if strings.HasPrefix(line, "#") {
 			flush()
@@ -57,4 +66,9 @@ func normalizeHeading(line string) string {
 	line = strings.TrimLeft(line, "#")
 	line = strings.TrimSpace(strings.ToLower(line))
 	return line
+}
+
+func normalizeLineEndings(input string) string {
+	input = strings.ReplaceAll(input, "\r\n", "\n")
+	return strings.ReplaceAll(input, "\r", "\n")
 }

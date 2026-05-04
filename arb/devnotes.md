@@ -571,3 +571,25 @@ targets load by default.  The target-length guidance now uses 75% of the hard
 cap again for both the first-submission prompt target and the retry hint.  That
 gives openings a `3750` target under a `5000` cap, while leaving the hard cap
 itself configurable through policy JSON.
+
+## 2026-05-04
+
+### Flexible complaint input
+
+Reference: [Complaint parser](runtime/spec/complaint.go)
+
+The arbitration runtime needs one proposition string.  The source file format
+no longer has to carry a literal `# Proposition` heading for the parser to
+produce that value.  When a `Proposition` section exists, the parser uses that
+section.  When no such section exists, the parser treats the whole trimmed file
+as the proposition.
+
+The canonical writer still emits a `# Proposition` heading.  That keeps
+generated complaint packets stable and readable.  Empty input fails, and an
+explicit empty `Proposition` section fails, because either case lacks a
+proposition.
+
+- [x] Preserve canonical complaint output.
+- [x] Accept plain text as complaint input.
+- [x] Reject blank complaints and blank explicit sections.
+- [x] Cover parser behavior in tests.
