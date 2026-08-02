@@ -10,6 +10,10 @@ The `service` branch began at commit `1f62a56f66da3a476a7f4064a86a580a2970fadc`,
 
 The service branch will own the multi-case Clerk services, web programs, MCP adapters, local OpenClaw and Pi launchers, agent templates, attested execution, Docker deployment, run reporting, and their required support files.  Installed `adc`, `aar`, and `aard` binaries remain the procedure owners, including their case-owned HTTP Role APIs and durable records.  Compatibility will use tested pairs of immutable `carve` and `service` commit IDs until an interface change requires explicit version negotiation.
 
+### Case-packet ownership
+
+Deterministic case-packet construction remains in the `carve` commands because each builder uses procedure-owned complaint or case-file selection.  Attested drivers on `service` will invoke the installed `adc`, `aar`, or `aard` `case-packet` command through the process interface.  Service will retain packet transport, S3 staging, archive verification, container extraction, and attestation handling.
+
 ### Multi-case service extraction
 
 The ADC, ARB, and AARD multi-case packages now have service-owned paths at `service/adc`, `service/arb`, and `service/arbd`.  The `adc-service`, `aar-service`, and `aard-service` commands start those packages without importing a procedure implementation package.  ARB and AARD now keep their process defaults inside the service packages, removing the two remaining imports of their core proceeding packages.
