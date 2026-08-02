@@ -58,15 +58,19 @@ docker build --no-cache \
   .
 ```
 
-Validate the base image before a long run.  This command checks that the image can parse an existing complaint and invoke the ADC CLI.  It does not start OpenClaw, Pi, Docker-in-Docker, or the exec AMI.
+Validate the base image before a long run.  This command checks that the installed core command can read a complaint directory and build the deterministic packet consumed by the service driver.  It does not start OpenClaw, Pi, Docker-in-Docker, or the exec AMI.
 
 ```bash
-CORE_ROOT=/path/to/carve
+CASE_DIR=/path/to/case
+COMPLAINT=complaint.md
 docker run --rm \
-  -v "$CORE_ROOT/adc/examples/ex1:/case:ro" \
+  -v "$CASE_DIR:/case:ro" \
   --entrypoint /opt/core/adc/.bin/adc \
   arbattest-adc:local \
-  validate --complaint /case/complaint.md
+  case-packet \
+  --complaint "/case/$COMPLAINT" \
+  --packet /tmp/case.tar.gz \
+  --manifest /tmp/case-packet.json
 ```
 
 ## Build And Upload On `dev`

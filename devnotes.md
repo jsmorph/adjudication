@@ -155,4 +155,6 @@ The one-complaint helper calls the sibling service-owned driver and stores outpu
 - [x] `sh -n` passed for the POSIX shell programs, and `bash -n` passed for `run-one-attested-adc.sh`.
 - [x] `go vet ./service/adc ./cmd/adc-service ./cmd/adc-run`
 - [x] `go build -buildvcs=false -o /tmp/service-adc-run ./cmd/adc-run`
-- [ ] Build the base image from exact service and core commits, inspect its entrypoint and working directory, display `adc-run --help`, and validate a mounted complaint through the installed core executable.
+- [x] Build the base image from exact service and core commits, inspect its entrypoint and working directory, display `adc-run --help`, and build a packet from a mounted complaint through the installed core executable.
+
+The base image build passed for `service@58bd12061e604cca551ddcebcf9e76e46dea3098` and `carve@755246b50d0726dfc8dce9faf6a852b3a31f8b18`.  Docker produced image `sha256:89b6e85a6de9525bc8402e82b14ecc0fabe9102f4bd38e166819a28059cae938` with entrypoint `/usr/local/bin/adc-run-entrypoint` and working directory `/opt/core/adc`.  The image displayed `adc-run` help and built a deterministic complaint packet through `/opt/core/adc/.bin/adc`.
