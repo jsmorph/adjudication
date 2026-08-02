@@ -30,6 +30,16 @@ Verification:
 - [x] `go vet -buildvcs=false ./arb/runtime/...`
 - [x] `go build -buildvcs=false -o /tmp/carve-service-removal-bins/aar ./arb/runtime/cmd/aar`
 
+### Operational adapter removal
+
+The ARB `run` and `mcp` commands, their runtime packages, and their OpenClaw and Pi templates have left `carve`.  Service commits `6eaed038b468add7099b77edb766b987ba053dcd` and `19b9254442e90c25c6cac21460d80eadb04ba7f3` retain the standalone adapter, launcher, embedded templates, package tests, and paired core-process checks, while `48d19263fde43f010312cb446cd4d6970a019c4f` retains a complete MCP case.  The `council-replay` and `juror-replay` experiments also left the command because the approved service boundary assigns them no operational use.
+
+Verification:
+
+- [x] `go test -buildvcs=false -count=1 ./arb/runtime/...`
+- [x] `go vet -buildvcs=false ./arb/runtime/...`
+- [x] `go build -buildvcs=false -o /tmp/carve-core-only-bins/aar ./arb/runtime/cmd/aar`
+
 ## 2026-07-13
 
 ### Runtime replay certificates

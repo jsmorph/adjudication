@@ -30,6 +30,16 @@ Verification:
 - [x] `go vet -buildvcs=false ./arbd/runtime/...`
 - [x] `go build -buildvcs=false -o /tmp/carve-service-removal-bins/aard ./arbd/runtime/cmd/aard`
 
+### Operational adapter removal
+
+The AARD `run` and `mcp` commands, their runtime packages, and their OpenClaw and Pi templates have left `carve`.  Service commits `6eaed038b468add7099b77edb766b987ba053dcd` and `25dac0e20c08ffa730a661eb4080677bd3bdfaa7` retain the standalone adapter, launcher, embedded templates, package tests, and paired core-process checks, while `48d19263fde43f010312cb446cd4d6970a019c4f` retains a complete MCP case.  The AARD command now builds and tests without imports of either removed runtime package.
+
+Verification:
+
+- [x] `go test -buildvcs=false -count=1 ./arbd/runtime/...`
+- [x] `go vet -buildvcs=false ./arbd/runtime/...`
+- [x] `go build -buildvcs=false -o /tmp/carve-core-only-bins/aard ./arbd/runtime/cmd/aard`
+
 ## 2026-07-13
 
 ### Replay certificates

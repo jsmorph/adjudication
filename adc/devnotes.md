@@ -25,6 +25,16 @@ The ADC multi-case service package and `adc service` dispatch entry have left `c
 - [x] `go vet -buildvcs=false ./adc/runtime/...`
 - [x] `go build -buildvcs=false -o /tmp/carve-service-removal-bins/adc ./adc/runtime/cmd/adc`
 
+### Operational adapter removal
+
+The ADC `run` and `mcp` commands, their runtime packages, and their OpenClaw and Pi templates have left `carve`.  Service commits `6eaed038b468add7099b77edb766b987ba053dcd` and `aaec158d94981e26e9979841b3f7f8ffca17e454` retain the standalone adapter, launcher, embedded templates, tests, and paired core-process check.  The ADC command now builds and tests without imports of either removed runtime package.
+
+### Verification
+
+- [x] `go test -buildvcs=false -count=1 ./adc/runtime/...`
+- [x] `go vet -buildvcs=false ./adc/runtime/...`
+- [x] `go build -buildvcs=false -o /tmp/carve-core-only-bins/adc ./adc/runtime/cmd/adc`
+
 ## 2026-07-15: Judge Rule 60 eval
 
 ### References

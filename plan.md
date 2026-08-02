@@ -155,11 +155,11 @@ This stage should preserve the private listener owned by one running case if D1 
 - [x] Move the ARB local-agent launcher and templates to service-owned paths, replace its proceeding import with `aar case`, and pass its fake-core and paired real-core tests.
 - [x] Move the AARD local-agent launcher and templates to service-owned paths, replace its proceeding import with `aard case`, and pass its fake-core and paired real-core tests.
 - [x] Move the ADC local-agent launcher and templates to service-owned paths, replace its runner import with `adc case` or `adc scenario`, and pass its fake-core and paired real-core tests.
-- [ ] Apply D3 and D7 to MCP, OpenClaw, Pi, agent templates, local-run commands, credential staging, model pools, and container support.
+- [x] Apply D3 and D7 to MCP, OpenClaw, Pi, agent templates, local-run commands, and their credential and process support by assigning them to `service`.
 - [x] Make the three service-owned launchers start a core case process and use its documented Role API without importing a core runner or proceeding package.
 - [x] Preserve participant supervision, secret cleanup, tool-authority, failure, output-limit, fake-core, and paired real-core interface tests.
-- [ ] On `carve`, remove each adapter or launcher only after its retained service replacement passes the paired compatibility test.
-- [ ] If D1 keeps autonomous local runs on `carve`, record those files as core and exclude their duplicates from `service`.
+- [x] On `carve`, remove each adapter and launcher after its retained service replacement passes package and paired compatibility tests.
+- [x] Remove autonomous local runs from `carve` under the approved one-case runtime boundary in D1.
 - [ ] Verify one complete local case per procedure through the selected ownership model.
 
 ### 5. Prune the Service Branch and Remove Auxiliary Material
@@ -168,7 +168,7 @@ This stage should preserve the private listener owned by one running case if D1 
 - [ ] Retain only compatibility schemas, clients, and small fixtures needed to test service behavior against external core binaries.
 - [ ] Use `go list -deps` to confirm that retained service packages do not import deleted procedure implementation packages under the process-boundary option.
 - [ ] Delete `evals/` and the ADC runtime eval package from `carve` after moving procedure assertions into ordinary tests where needed.
-- [ ] Delete ADC probe commands `eval`, `juror`, `llm`, and `pool`, and delete ARB's `council-replay` and `juror-replay` experiments unless D7 assigns a specific operational use to `service`.
+- [ ] Delete ADC probe commands `eval`, `juror`, `llm`, and `pool`.  ARB's `council-replay` and `juror-replay` experiments have left `carve` because D7 assigned them no operational use.
 - [ ] Delete `vmcp/`, `scratch/`, and `skills/` after moving current design rationale into the applicable manual or development journal.
 - [ ] Remove `common/acp`, `common/xproxy`, and the `common/submodules/pi-acp` submodule unless a selected service component still uses one of them.
 - [ ] Remove `.gitmodules` from each branch that no longer contains a submodule entry.
