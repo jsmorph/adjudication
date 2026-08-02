@@ -1,4 +1,4 @@
-package main
+package compat
 
 import (
 	"bufio"
@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -23,58 +24,9 @@ import (
 
 var blackBoxFixtureDirs sync.Map
 
-func TestBlackBoxLawyerAttemptFailureDirectCase(t *testing.T) {
-	fx := newBlackBoxFixture(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
-	defer cancel()
-
-	caseID := "bb-lawyer-direct"
-	outDir := filepath.Join(fx.dir, "case-out")
-	proc := fx.startAAR(ctx, "case",
-		"--case-id", caseID,
-		"--run-id", "run-"+caseID,
-		"--complaint", fx.complaintPath,
-		"--out-dir", outDir,
-		"--engine", fx.enginePath,
-		"--policy", fx.policyPath,
-		"--council-pool", fx.councilPoolPath,
-		"--common-root", fx.commonRoot,
-		"--caseapi-addr", "127.0.0.1:0",
-		"--invalid-attempt-limit", "1",
-		"--lawyer-timeout-seconds", "30",
-		"--timeout-seconds", "10",
-	)
-	defer proc.kill()
-
-	caseBase := proc.waitForStderrPrefix(ctx, t, "caseapi listening on ")
-	lawyerBase := caseBase + "/lawyerapi/v1"
-	ready := waitLawyerReady(ctx, t, lawyerBase, caseID, "plaintiff")
-	postLawyerTool(ctx, t, lawyerBase, map[string]any{
-		"case_id":        caseID,
-		"role_id":        "plaintiff",
-		"opportunity_id": stringAt(ready, "turn", "opportunity_id"),
-		"tool":           "submit_decision",
-		"arguments": map[string]any{
-			"kind":      "tool",
-			"tool_name": "record_opening_statement",
-			"payload":   map[string]any{},
-		},
-	}, false)
-
-	err := proc.wait()
-	if err != nil {
-		t.Fatalf("aar case exited with error: %v\nstderr:\n%s\nstdout:\n%s", err, proc.stderrString(), proc.stdoutString())
-	}
-	summary := lastJSONLine(t, proc.stdoutString())
-	assertString(t, summary, "status", "failed")
-	assertFailure(t, mapAny(summary["failure"]), "plaintiff", "attempts_exhausted")
-
-	run := readJSONFile(t, filepath.Join(outDir, "run.json"))
-	assertString(t, run, "status", "failed")
-	caseObj := mapAny(mapAny(run["final_state"])["case"])
-	assertString(t, caseObj, "status", "failed")
-	assertEventTypes(t, filepath.Join(outDir, "events.ndjson"), "opportunity_failed")
-}
+var serviceBinDir = flag.String("service-bin-dir", "", "Directory containing service executables")
+var carveBinDir = flag.String("carve-bin-dir", "", "Directory containing carve executables")
+var carveRoot = flag.String("carve-root", "", "Carve checkout root")
 
 func TestBlackBoxLawyerAttemptFailureThroughService(t *testing.T) {
 	fx := newBlackBoxFixture(t)
@@ -82,7 +34,7 @@ func TestBlackBoxLawyerAttemptFailureThroughService(t *testing.T) {
 	defer cancel()
 
 	svc := fx.startService(ctx, t)
-	defer svc.kill()
+	defer svc.kill(t)
 
 	caseID := "bb-lawyer-service"
 	outDir := svc.outputDir("service-lawyer-case")
@@ -124,55 +76,13 @@ func TestBlackBoxLawyerAttemptFailureThroughService(t *testing.T) {
 	assertEventTypes(t, filepath.Join(outDir, "events.ndjson"), "opportunity_failed")
 }
 
-func TestBlackBoxLawyerDeadlineFailureDirectCase(t *testing.T) {
-	fx := newBlackBoxFixture(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
-	defer cancel()
-
-	caseID := "bb-lawyer-deadline"
-	outDir := filepath.Join(fx.dir, "case-deadline-out")
-	proc := fx.startAAR(ctx, "case",
-		"--case-id", caseID,
-		"--run-id", "run-"+caseID,
-		"--complaint", fx.complaintPath,
-		"--out-dir", outDir,
-		"--engine", fx.enginePath,
-		"--policy", fx.policyPath,
-		"--council-pool", fx.councilPoolPath,
-		"--common-root", fx.commonRoot,
-		"--caseapi-addr", "127.0.0.1:0",
-		"--invalid-attempt-limit", "2",
-		"--lawyer-timeout-seconds", "1",
-		"--timeout-seconds", "10",
-	)
-	defer proc.kill()
-
-	caseBase := proc.waitForStderrPrefix(ctx, t, "caseapi listening on ")
-	lawyerBase := caseBase + "/lawyerapi/v1"
-	waitLawyerReady(ctx, t, lawyerBase, caseID, "plaintiff")
-
-	err := proc.wait()
-	if err != nil {
-		t.Fatalf("aar case exited with error: %v\nstderr:\n%s\nstdout:\n%s", err, proc.stderrString(), proc.stdoutString())
-	}
-	summary := lastJSONLine(t, proc.stdoutString())
-	assertString(t, summary, "status", "failed")
-	assertFailure(t, mapAny(summary["failure"]), "plaintiff", "deadline_expired")
-
-	run := readJSONFile(t, filepath.Join(outDir, "run.json"))
-	assertString(t, run, "status", "failed")
-	caseObj := mapAny(mapAny(run["final_state"])["case"])
-	assertString(t, caseObj, "status", "failed")
-	assertEventTypes(t, filepath.Join(outDir, "events.ndjson"), "opportunity_failed")
-}
-
 func TestBlackBoxLawyerDeadlineFailureThroughService(t *testing.T) {
 	fx := newBlackBoxFixture(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	svc := fx.startService(ctx, t)
-	defer svc.kill()
+	defer svc.kill(t)
 
 	caseID := "bb-lawyer-deadline-service"
 	outDir := svc.outputDir("service-lawyer-deadline-case")
@@ -208,7 +118,7 @@ func TestBlackBoxCouncilMemberAttemptFailureThroughService(t *testing.T) {
 	defer cancel()
 
 	svc := fx.startService(ctx, t)
-	defer svc.kill()
+	defer svc.kill(t)
 
 	caseID := "bb-council-service"
 	outDir := svc.outputDir("service-council-case")
@@ -300,7 +210,7 @@ func TestBlackBoxCouncilMemberDeadlineFailureThroughService(t *testing.T) {
 	defer cancel()
 
 	svc := fx.startService(ctx, t)
-	defer svc.kill()
+	defer svc.kill(t)
 
 	caseID := "bb-council-deadline"
 	outDir := svc.outputDir("service-council-deadline-case")
@@ -375,34 +285,12 @@ func TestBlackBoxCouncilMemberDeadlineFailureThroughService(t *testing.T) {
 	assertEventTypes(t, filepath.Join(outDir, "events.ndjson"), "opportunity_failed", "council_member_removed", "council_vote")
 }
 
-func TestBlackBoxRuntimeFailureUsesNonzeroExit(t *testing.T) {
-	fx := newBlackBoxFixture(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	proc := fx.startAAR(ctx, "case",
-		"--case-id", "bb-runtime-failure",
-		"--run-id", "run-bb-runtime-failure",
-		"--complaint", filepath.Join(fx.dir, "missing-complaint.md"),
-		"--out-dir", filepath.Join(fx.dir, "runtime-failure-out"),
-		"--engine", fx.enginePath,
-	)
-	err := proc.wait()
-	if err == nil {
-		t.Fatalf("aar case exit = 0, want nonzero\nstdout:\n%s\nstderr:\n%s", proc.stdoutString(), proc.stderrString())
-	}
-	summary := lastJSONLine(t, proc.stdoutString())
-	assertString(t, summary, "status", "error")
-	if strings.Contains(proc.stderrString(), "caseapi listening on ") {
-		t.Fatalf("runtime failure unexpectedly started case API\nstderr:\n%s", proc.stderrString())
-	}
-}
-
 type blackBoxFixture struct {
 	dir             string
 	arbRoot         string
-	repoRoot        string
 	aarBin          string
+	serviceBin      string
+	mcpBin          string
 	enginePath      string
 	commonRoot      string
 	complaintPath   string
@@ -415,17 +303,25 @@ type blackBoxFixture struct {
 
 func newBlackBoxFixture(t *testing.T) *blackBoxFixture {
 	t.Helper()
-	arbRoot, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	serviceBins := strings.TrimSpace(*serviceBinDir)
+	carveBins := strings.TrimSpace(*carveBinDir)
+	carveCheckout := strings.TrimSpace(*carveRoot)
+	if serviceBins == "" || carveBins == "" || carveCheckout == "" {
+		t.Skip("-service-bin-dir, -carve-bin-dir, and -carve-root are required")
+	}
+	carveCheckout, err := filepath.Abs(carveCheckout)
 	if err != nil {
-		t.Fatalf("resolve arb root: %v", err)
+		t.Fatalf("resolve carve root: %v", err)
 	}
-	aarBin := filepath.Join(arbRoot, ".bin", "aar")
-	enginePath := filepath.Join(arbRoot, ".bin", "aarengine")
-	if _, err := os.Stat(aarBin); err != nil {
-		t.Skipf("%s is required; run make build in arb first", aarBin)
-	}
-	if _, err := os.Stat(enginePath); err != nil {
-		t.Skipf("%s is required; run make build in arb first", enginePath)
+	arbRoot := filepath.Join(carveCheckout, "arb")
+	aarBin := filepath.Join(carveBins, "aar")
+	serviceBin := filepath.Join(serviceBins, "aar-service")
+	mcpBin := filepath.Join(serviceBins, "aar-mcp")
+	enginePath := filepath.Join(arbRoot, "engine", ".lake", "build", "bin", "aarengine")
+	for _, path := range []string{aarBin, serviceBin, mcpBin, enginePath} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("stat compatibility executable %s: %v", path, err)
+		}
 	}
 	provider := newFakeResponsesServer(t)
 	dir, err := os.MkdirTemp("", "aar-blackbox-"+safeTestName(t.Name())+"-")
@@ -472,10 +368,11 @@ func newBlackBoxFixture(t *testing.T) *blackBoxFixture {
 	return &blackBoxFixture{
 		dir:             dir,
 		arbRoot:         arbRoot,
-		repoRoot:        filepath.Dir(arbRoot),
 		aarBin:          aarBin,
+		serviceBin:      serviceBin,
+		mcpBin:          mcpBin,
 		enginePath:      enginePath,
-		commonRoot:      filepath.Join(filepath.Dir(arbRoot), "common"),
+		commonRoot:      filepath.Join(carveCheckout, "common"),
 		complaintPath:   complaintPath,
 		policyPath:      policyPath,
 		councilPoolPath: councilPoolPath,
@@ -490,9 +387,12 @@ func newFakeResponsesServer(t *testing.T) *httptest.Server {
 			http.NotFound(w, r)
 			return
 		}
-		_, _ = io.Copy(io.Discard, r.Body)
+		if _, err := io.Copy(io.Discard, r.Body); err != nil {
+			t.Errorf("read fake provider request: %v", err)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		if err := json.NewEncoder(w).Encode(map[string]any{
 			"id":         "resp_blackbox",
 			"object":     "response",
 			"created_at": time.Now().Unix(),
@@ -518,12 +418,14 @@ func newFakeResponsesServer(t *testing.T) *httptest.Server {
 				"output_tokens": 1,
 				"total_tokens":  2,
 			},
-		})
+		}); err != nil {
+			t.Errorf("write fake provider response: %v", err)
+		}
 	}))
 }
 
-func (fx *blackBoxFixture) startAAR(ctx context.Context, args ...string) *testProcess {
-	cmd := exec.CommandContext(ctx, fx.aarBin, args...)
+func (fx *blackBoxFixture) startCommand(ctx context.Context, command string, args ...string) *testProcess {
+	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Dir = fx.arbRoot
 	cmd.Env = mergedEnv(map[string]string{
 		"OPENAI_API_KEY":  "blackbox-key",
@@ -555,11 +457,12 @@ func (fx *blackBoxFixture) startService(ctx context.Context, t *testing.T) *serv
 	t.Helper()
 	listen := freeListenAddr(t)
 	outRoot := filepath.Join(fx.dir, "service-out-"+strings.ReplaceAll(listen, ":", "-"))
-	proc := fx.startAAR(ctx, "service",
+	proc := fx.startCommand(ctx, fx.serviceBin,
 		"--listen", listen,
 		"--registry-dir", filepath.Join(fx.dir, "registry-"+strings.ReplaceAll(listen, ":", "-")),
 		"--out-root", outRoot,
 		"--aar-bin", fx.aarBin,
+		"--aar-working-dir", fx.arbRoot,
 		"--common-root", fx.commonRoot,
 		"--engine", fx.enginePath,
 	)
@@ -600,9 +503,7 @@ func startTestProcess(cmd *exec.Cmd, stdoutLogPath string, stderrLogPath string)
 		stderrDone:  make(chan error, 1),
 	}
 	if err := cmd.Start(); err != nil {
-		_ = stdoutLog.Close()
-		_ = stderrLog.Close()
-		panic(err)
+		panic(errors.Join(err, stdoutLog.Close(), stderrLog.Close()))
 	}
 	go func() {
 		proc.stdoutDone <- scanLines(stdout, &proc.stdout, nil, stdoutLog)
@@ -656,13 +557,12 @@ func (p *testProcess) waitForStderrPrefix(ctx context.Context, t *testing.T, pre
 	}
 }
 
-func (p *testProcess) wait() error {
-	return <-p.done
-}
-
-func (p *testProcess) kill() {
+func (p *testProcess) kill(t *testing.T) {
+	t.Helper()
 	if p.cmd.Process != nil {
-		_ = p.cmd.Process.Kill()
+		if err := p.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+			t.Errorf("kill process: %v", err)
+		}
 	}
 }
 
@@ -895,7 +795,11 @@ func getJSON(ctx context.Context, t *testing.T, endpoint string) map[string]any 
 	if err != nil {
 		t.Fatalf("GET %s: %v", endpoint, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close GET response body: %v", err)
+		}
+	}()
 	return decodeHTTPJSON(t, resp, endpoint, nil)
 }
 
@@ -914,7 +818,11 @@ func postJSON(ctx context.Context, t *testing.T, endpoint string, body map[strin
 	if err != nil {
 		t.Fatalf("POST %s: %v", endpoint, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close POST response body: %v", err)
+		}
+	}()
 	return decodeHTTPJSON(t, resp, endpoint, wire)
 }
 
@@ -969,7 +877,11 @@ func appendJSONLine(t *testing.T, path string, value any) {
 	if err != nil {
 		t.Fatalf("open %s: %v", path, err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			t.Errorf("close %s: %v", path, err)
+		}
+	}()
 	wire, err := json.Marshal(value)
 	if err != nil {
 		t.Fatalf("marshal log entry for %s: %v", path, err)
@@ -998,23 +910,6 @@ func readJSONFile(t *testing.T, path string) map[string]any {
 		t.Fatalf("parse %s: %v", path, err)
 	}
 	return out
-}
-
-func lastJSONLine(t *testing.T, text string) map[string]any {
-	t.Helper()
-	lines := strings.Split(strings.TrimSpace(text), "\n")
-	for i := len(lines) - 1; i >= 0; i-- {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
-			continue
-		}
-		var out map[string]any
-		if err := json.Unmarshal([]byte(line), &out); err == nil {
-			return out
-		}
-	}
-	t.Fatalf("no JSON line in:\n%s", text)
-	return nil
 }
 
 func assertEventTypes(t *testing.T, path string, want ...string) {

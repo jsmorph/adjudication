@@ -1,6 +1,7 @@
 package compat
 
 import (
+	"flag"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -8,6 +9,10 @@ import (
 	"strings"
 	"testing"
 )
+
+var coreCarveBinDir = flag.String("carve-bin-dir", "", "Directory containing carve executables")
+var _ = flag.String("service-bin-dir", "", "Directory containing service executables")
+var _ = flag.String("carve-root", "", "Carve checkout root")
 
 type commandInterface struct {
 	name       string
@@ -17,9 +22,9 @@ type commandInterface struct {
 }
 
 func TestCoreCommandInterface(t *testing.T) {
-	binDir := strings.TrimSpace(os.Getenv("CARVE_BIN_DIR"))
+	binDir := strings.TrimSpace(*coreCarveBinDir)
 	if binDir == "" {
-		t.Skip("CARVE_BIN_DIR is not set")
+		t.Skip("-carve-bin-dir is not set")
 	}
 
 	interfaces := []commandInterface{
@@ -37,7 +42,8 @@ func TestCoreCommandInterface(t *testing.T) {
 			subcommand: "scenario",
 			flags: []string{
 				"case-id", "run-id", "scenario", "output", "runtime", "events",
-				"db", "transcript", "digest", "caseapi-addr", "external-role", "engine",
+				"db", "transcript", "digest", "report-model", "allow-assertion-failures",
+				"caseapi-addr", "external-role", "engine",
 			},
 			required: "--scenario is required",
 		},

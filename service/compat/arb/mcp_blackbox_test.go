@@ -1,4 +1,4 @@
-package main
+package compat
 
 import (
 	"bytes"
@@ -27,13 +27,13 @@ func TestBlackBoxMCPThroughService(t *testing.T) {
 	defer cancel()
 
 	svc := fx.startService(ctx, t)
-	defer svc.kill()
+	defer svc.kill(t)
 
 	mcp := fx.startMCP(ctx, t, svc)
-	defer mcp.kill()
+	defer mcp.kill(t)
 
 	caseID := "bb-mcp-service"
-	outDir := filepath.Join(fx.dir, "mcp-service-case")
+	outDir := svc.outputDir("mcp-service-case")
 	caseFile := filepath.Join(fx.dir, "case", "source.txt")
 	mustWriteFile(t, caseFile, "Initial case-packet source text for MCP evidence reading.\n")
 	createCase(ctx, t, svc.baseURL, map[string]any{
@@ -67,7 +67,7 @@ func TestBlackBoxMCPThroughService(t *testing.T) {
 	if !mcpHasTool(observerTools, "get_turn") || !mcpHasTool(observerTools, "get_case_result") {
 		t.Fatalf("observer MCP tools missing read tools: %#v", observerTools)
 	}
-	if mcpHasTool(observerTools, "submit_decision") || mcpHasTool(observerTools, "submit_council_answer") {
+	if mcpHasTool(observerTools, "submit_decision") || mcpHasTool(observerTools, "submit_council_vote") {
 		t.Fatalf("observer MCP tools include mutating tools: %#v", observerTools)
 	}
 	rejected := mcpCall(ctx, t, mcp, observer, "submit_decision", map[string]any{"kind": "pass"})
@@ -93,56 +93,45 @@ func TestBlackBoxMCPThroughService(t *testing.T) {
 	c2 := mcpInitialize(ctx, t, mcp, "case_id="+url.QueryEscape(caseID)+"&member_id=C2")
 	c3 := mcpInitialize(ctx, t, mcp, "case_id="+url.QueryEscape(caseID)+"&member_id=C3")
 	councilTools := mcpListTools(ctx, t, mcp, c1)
-	if !mcpHasTool(councilTools, "submit_council_answer") || mcpHasTool(councilTools, "submit_decision") {
+	if !mcpHasTool(councilTools, "submit_council_vote") || mcpHasTool(councilTools, "submit_decision") {
 		t.Fatalf("council MCP tools wrong: %#v", councilTools)
 	}
 	mcpWaitReady(ctx, t, mcp, c1)
 	mcpCallOK(ctx, t, mcp, c1, "list_evidence", map[string]any{})
 	mcpCallOK(ctx, t, mcp, c1, "read_evidence_range", map[string]any{"evidence_id": evidenceID, "offset": 0, "length": 24})
-	mcpCallOK(ctx, t, mcp, c1, "submit_council_answer", map[string]any{"answer": 72, "rationale": "The record supports the question."})
+	mcpCallOK(ctx, t, mcp, c1, "submit_council_vote", map[string]any{"vote": "demonstrated", "rationale": "The record supports the proposition."})
 	mcpWaitReady(ctx, t, mcp, c2)
-	mcpCallOK(ctx, t, mcp, c2, "submit_council_answer", map[string]any{"answer": 72, "rationale": "The record supports the question."})
+	mcpCallOK(ctx, t, mcp, c2, "submit_council_vote", map[string]any{"vote": "demonstrated", "rationale": "The record supports the proposition."})
 	mcpWaitReady(ctx, t, mcp, c3)
-	mcpCallOK(ctx, t, mcp, c3, "submit_council_answer", map[string]any{"answer": 72, "rationale": "The record supports the question."})
+	mcpCallOK(ctx, t, mcp, c3, "submit_council_vote", map[string]any{"vote": "demonstrated", "rationale": "The record supports the proposition."})
 
 	result := pollResultStatus(ctx, t, svc.baseURL, caseID, "done")
-	answers := mapAny(mapAny(result["result"])["answers"])
-	if intValue(answers["C1"]) != 72 || intValue(answers["C2"]) != 72 || intValue(answers["C3"]) != 72 {
-		t.Fatalf("answers = %#v, want all council answers", answers)
-	}
+	assertString(t, mapAny(result["result"]), "resolution", "demonstrated")
 
 	finalByMCP := mcpStructured(t, mcpCall(ctx, t, mcp, observer, "get_case_result", map[string]any{}))
 	assertString(t, finalByMCP, "status", "done")
-	finalAnswers := mapAny(mapAny(finalByMCP["result"])["answers"])
-	if intValue(finalAnswers["C1"]) != 72 || intValue(finalAnswers["C2"]) != 72 || intValue(finalAnswers["C3"]) != 72 {
-		t.Fatalf("final answers = %#v, want all council answers", finalAnswers)
-	}
+	assertString(t, mapAny(finalByMCP["result"]), "resolution", "demonstrated")
 
 	record := pollCaseRecordStatus(ctx, t, svc.baseURL, caseID, "completed")
 	assertServiceRecord(t, record, "completed", "ok")
 	run := readJSONFile(t, filepath.Join(outDir, "run.json"))
 	assertString(t, run, "status", "ok")
 	caseObj := mapAny(mapAny(run["final_state"])["case"])
-	if len(listOfMaps(caseObj["council_answers"])) < 2 {
-		t.Fatalf("final_state council_answers = %#v, want at least two answers", caseObj["council_answers"])
+	if len(listOfMaps(caseObj["council_votes"])) < 2 {
+		t.Fatalf("final_state council_votes = %#v, want at least two votes", caseObj["council_votes"])
 	}
 	workNotes := readTextFile(t, filepath.Join(outDir, "work-notes.ndjson"))
 	if !strings.Contains(workNotes, "MCP plaintiff work notes before opening.") {
 		t.Fatalf("work notes missing MCP note:\n%s", workNotes)
 	}
-	assertEventTypes(t, filepath.Join(outDir, "events.ndjson"), "evidence_read", "council_answer")
+	assertEventTypes(t, filepath.Join(outDir, "events.ndjson"), "evidence_read", "council_vote")
 }
 
 func (fx *blackBoxFixture) startMCP(ctx context.Context, t *testing.T, svc *serviceProcess) *mcpServiceProcess {
 	t.Helper()
-	aarBin := filepath.Join(fx.arbRoot, ".bin", "aard")
-	if _, err := os.Stat(aarBin); err != nil {
-		t.Skipf("%s is required; run make build in arbd first", aarBin)
-	}
 	listen := freeListenAddr(t)
 	token := "mcp-test-token"
-	cmd := exec.CommandContext(ctx, aarBin,
-		"mcp",
+	cmd := exec.CommandContext(ctx, fx.mcpBin,
 		"--listen", listen,
 		"--caseapi-base", svc.baseURL,
 		"--bearer-token", token,
@@ -166,16 +155,18 @@ func waitMCPHealth(ctx context.Context, t *testing.T, mcp *mcpServiceProcess) {
 		}
 		resp, err := http.DefaultClient.Do(req)
 		if err == nil {
-			_ = resp.Body.Close()
+			if err := resp.Body.Close(); err != nil {
+				t.Fatalf("close MCP health response: %v", err)
+			}
 			if resp.StatusCode == http.StatusNoContent {
 				return
 			}
 		}
 		select {
 		case err := <-mcp.done:
-			t.Fatalf("aard mcp exited before health check: %v\nstderr:\n%s\nstdout:\n%s", err, mcp.stderrString(), mcp.stdoutString())
+			t.Fatalf("aar mcp exited before health check: %v\nstderr:\n%s\nstdout:\n%s", err, mcp.stderrString(), mcp.stdoutString())
 		case <-ctx.Done():
-			t.Fatalf("timeout waiting for aard mcp health\nstderr:\n%s\nstdout:\n%s", mcp.stderrString(), mcp.stdoutString())
+			t.Fatalf("timeout waiting for aar mcp health\nstderr:\n%s\nstdout:\n%s", mcp.stderrString(), mcp.stdoutString())
 		case <-ticker.C:
 		}
 	}
@@ -304,7 +295,11 @@ func mcpPost(ctx context.Context, t *testing.T, mcp *mcpServiceProcess, path str
 	if err != nil {
 		t.Fatalf("POST %s: %v", endpoint, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("close MCP response body: %v", err)
+		}
+	}()
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatalf("read MCP response: %v", err)

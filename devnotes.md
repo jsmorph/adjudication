@@ -14,12 +14,12 @@ The service branch will own the multi-case Clerk services, web programs, MCP ada
 
 The ADC, ARB, and AARD multi-case packages now have service-owned paths at `service/adc`, `service/arb`, and `service/arbd`.  The `adc-service`, `aar-service`, and `aard-service` commands start those packages without importing a procedure implementation package.  ARB and AARD now keep their process defaults inside the service packages, removing the two remaining imports of their core proceeding packages.
 
-The existing service tests use fake core programs for process arguments, readiness, proxying, records, artifacts, evidence, attested execution, and failure handling.  An opt-in compatibility test uses `CARVE_BIN_DIR` to inspect fresh `adc`, `aar`, and `aard` binaries and verify the direct command flags and required-input failures consumed by service.  The corresponding carve removal remains pending until the service checkpoint has a commit ID and the carve commands no longer dispatch the moved packages.
+The existing service tests use fake core programs for process arguments, readiness, proxying, records, artifacts, evidence, attested execution, and failure handling.  An opt-in compatibility test uses `-carve-bin-dir` to inspect fresh `adc`, `aar`, and `aard` binaries and verify the direct command flags and required-input failures consumed by service.  The corresponding carve removal remains pending until the service checkpoint has a commit ID and the carve commands no longer dispatch the moved packages.
 
 ### Verification
 
 - [x] `go test -buildvcs=false ./service/... ./cmd/...`
-- [x] `CARVE_BIN_DIR=/tmp/carve-core-bins GOCACHE=/tmp/adjudication-service-go-cache go test -buildvcs=false -count=1 ./service/compat`
+- [x] `go test -buildvcs=false -count=1 ./service/compat -args -carve-bin-dir=/tmp/carve-core-bins`
 - [x] `go list -buildvcs=false -f '{{.ImportPath}}: {{join .Imports " "}}' ./service/... ./cmd/...`
 - [x] Import search found no `adjudication/adc/runtime`, `adjudication/arb/runtime`, or `adjudication/arbd/runtime` import in `service/` or `cmd/`.
 
@@ -74,3 +74,20 @@ The paired test starts the real `adc` binary and Lean engine from carve, waits f
 - [x] `go test -buildvcs=false -count=1 -run '^TestPairedCoreCaseAPI$' ./service/localrun/adc -args -carve-bin-dir=/tmp/carve-core-bins -carve-root=/media/hd2/src/adjudication-clones/adjudication-1`
 - [x] `go test -buildvcs=false -count=1 ./service/... ./cmd/...`
 - [x] Import search found no `adjudication/adc/runtime` import in `service/localrun/adc`, `service/adc`, `cmd/adc-run`, or `cmd/adc-service`.
+
+### Cross-branch service compatibility
+
+The ARB and AARD service cases from the combined core command black-box tests now live under `service/compat/arb` and `service/compat/arbd`.  They start the standalone service and MCP executables, and each service starts the selected `carve` core executable with explicit working-directory and engine paths.  The direct-core cases remain on `carve`, where they test procedure behavior without the Clerk or MCP layers.
+
+The service cases verify lawyer attempt exhaustion, lawyer deadlines, council-member attempt exhaustion, council-member deadlines, service status reconciliation, terminal result proxying, and recorded events.  The MCP cases complete the lawyer and council phases through the service-owned adapters, verify tool authority, read evidence, record work notes, and inspect terminal results.  ARB and AARD both pass these tests against the current `carve` executables and Lean engines.
+
+The compatibility packages accept `-service-bin-dir`, `-carve-bin-dir`, and `-carve-root`, allowing one `go test` command to run every package.  The test packages import only the Go standard library and communicate with service and core through processes and HTTP.  The tests report process cleanup, HTTP body closure, fake-provider I/O, and retained-fixture log errors.
+
+### Cross-branch verification
+
+- [x] `go build -buildvcs=false -o /tmp/service-bins/aar-service ./cmd/aar-service`
+- [x] `go build -buildvcs=false -o /tmp/service-bins/aard-service ./cmd/aard-service`
+- [x] `go build -buildvcs=false -o /tmp/service-bins/aar-mcp ./cmd/aar-mcp`
+- [x] `go build -buildvcs=false -o /tmp/service-bins/aard-mcp ./cmd/aard-mcp`
+- [x] `go test -buildvcs=false -count=1 ./service/compat/... -args -service-bin-dir=/tmp/service-bins -carve-bin-dir=/tmp/carve-core-bins -carve-root=/media/hd2/src/adjudication-clones/adjudication-1`
+- [x] `go list` found no core implementation import in the three compatibility packages.

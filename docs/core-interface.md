@@ -58,4 +58,6 @@ A service must treat an unreadable or missing `run.json` after process exit as a
 
 Service unit tests use fake core executables to verify argument construction, startup, failure, process cleanup, record reconciliation, proxying, and artifact access.  Paired tests use built core executables from a specified `carve` commit to verify command help, required flags, private API startup, one direct case per procedure, and terminal record consumption.  Release notes record the two full commit IDs and the compatibility test result.
 
+The `service/compat/arb` and `service/compat/arbd` packages start the standalone Clerk and MCP executables against selected core binaries.  They preserve the service-path cases formerly mixed into the combined core command tests, including participant failures, deadlines, complete MCP cases, terminal records, and service reconciliation.  The packages accept explicit service binary, core binary, and core checkout paths through test flags.
+
 Changes to command names, required flags, private routes, request or response fields used by service, exit behavior, or record names require coordinated edits.  Additive fields remain acceptable when existing meanings and required fields remain unchanged.  Removing or changing an interface element requires a new compatibility decision and a paired update.
