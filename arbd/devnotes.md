@@ -8,7 +8,7 @@ Reference: [Core and service branch plan](../plan.md)
 
 The `carve` branch retains AARD's Lean engine, proofs, one-case Go runtime, case-owned Lawyer and Council APIs, durable records, and certificate verification.  The `service` branch receives the multi-case Clerk service, MCP adapter, local OpenClaw and Pi launchers, agent templates, attested execution, Docker deployment, web programs, and their operational support.  The branches communicate through documented executable, HTTP, and artifact interfaces, with tested commit pairs recording compatibility.
 
-Service commits `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` and `6eaed038b468add7099b77edb766b987ba053dcd` contain the extracted AARD multi-case service and MCP adapter.  Service commit `25dac0e20c08ffa730a661eb4080677bd3bdfaa7` contains `aard-run`, the local-agent launcher, its templates, and the paired process-interface test.  The corresponding AARD operational source remains on carve until the remaining service-side command tests permit its removal.
+Service commits `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` and `6eaed038b468add7099b77edb766b987ba053dcd` contain the extracted AARD multi-case service and MCP adapter.  Service commit `25dac0e20c08ffa730a661eb4080677bd3bdfaa7` contains `aard-run`, the local-agent launcher, its templates, and the paired process-interface test.  Service commit `48d19263fde43f010312cb446cd4d6970a019c4f` retains the Clerk and MCP cases formerly mixed into the AARD command black-box tests and passes them against the real `carve` executable and Lean engine.  The direct one-case failure tests remain on `carve`, while the service and MCP variants can now leave the core command package.
 
 ## 2026-07-13
 

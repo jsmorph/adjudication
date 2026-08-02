@@ -8,7 +8,7 @@ Reference: [Core and service branch plan](../plan.md)
 
 The `carve` branch retains ARB's Lean engine, proofs, one-case Go runtime, case-owned Lawyer and Council APIs, durable records, and certificate verification.  The `service` branch receives the multi-case Clerk service, MCP adapter, local OpenClaw and Pi launchers, agent templates, attested execution, Docker deployment, web programs, and their operational support.  The branches communicate through documented executable, HTTP, and artifact interfaces, with tested commit pairs recording compatibility.
 
-Service commits `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` and `6eaed038b468add7099b77edb766b987ba053dcd` contain the extracted ARB multi-case service and MCP adapter.  Service commit `19b9254442e90c25c6cac21460d80eadb04ba7f3` contains `aar-run`, the local-agent launcher, its templates, and the paired process-interface test.  The corresponding ARB operational source remains on carve until the remaining service-side command tests permit its removal.
+Service commits `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` and `6eaed038b468add7099b77edb766b987ba053dcd` contain the extracted ARB multi-case service and MCP adapter.  Service commit `19b9254442e90c25c6cac21460d80eadb04ba7f3` contains `aar-run`, the local-agent launcher, its templates, and the paired process-interface test.  Service commit `48d19263fde43f010312cb446cd4d6970a019c4f` retains the Clerk and MCP cases formerly mixed into the ARB command black-box tests and passes them against the real `carve` executable and Lean engine.  The direct one-case failure tests remain on `carve`, while the service and MCP variants can now leave the core command package.
 
 ## 2026-07-13
 

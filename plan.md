@@ -99,7 +99,7 @@ Both branches should begin at the current common source commit, recorded by exac
 
 The recorded split base is `1f62a56f66da3a476a7f4064a86a580a2970fadc`.  Local branches `carve`, `main`, and `service` pointed to that commit when Stage 0 began.  Later compatibility records should use full commit IDs for both branches.
 
-The completed service checkpoints are `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` for the multi-case services, `6eaed038b468add7099b77edb766b987ba053dcd` for the MCP adapters, `19b9254442e90c25c6cac21460d80eadb04ba7f3` for the ARB launcher, `25dac0e20c08ffa730a661eb4080677bd3bdfaa7` for the AARD launcher, and `aaec158d94981e26e9979841b3f7f8ffca17e454` for the ADC launcher.  Their service-owned package tests pass, and all three launcher checkpoints pass paired private-API tests against core binaries built from `carve`.  Corresponding carve removals remain pending until the remaining combined command tests have service-owned replacements.
+The completed service checkpoints are `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` for the multi-case services, `6eaed038b468add7099b77edb766b987ba053dcd` for the MCP adapters, `19b9254442e90c25c6cac21460d80eadb04ba7f3` for the ARB launcher, `25dac0e20c08ffa730a661eb4080677bd3bdfaa7` for the AARD launcher, `aaec158d94981e26e9979841b3f7f8ffca17e454` for the ADC launcher, and `48d19263fde43f010312cb446cd4d6970a019c4f` for the ARB and AARD cross-branch service tests.  Their service-owned package tests pass, and all three launcher checkpoints pass paired private-API tests against core binaries built from `carve`.  The cross-branch tests run the standalone ARB and AARD Clerk and MCP programs against those core binaries, so the corresponding service cases can now leave `carve`.
 
 Every moved component should follow one order: preserve it on `service`, make it build there, add compatibility tests, and then remove it from `carve`.  Git history can recover deleted files, but a tested destination proves that the extracted component still works under its new ownership.  Each extraction commit on `service` should identify the corresponding removal commit on `carve` in its development notes.
 
@@ -131,9 +131,9 @@ Every moved component should follow one order: preserve it on `service`, make it
 
 - [x] On `service`, move the ADC, ARB, and AARD service packages into service-owned package paths that import no procedure implementation package.
 - [x] Add standalone `adc-service`, `aar-service`, and `aard-service` commands.
-- [ ] Preserve the remaining service variants from the core command black-box tests.  The moved service package tests already cover direct process, create, list, inspect, cancel, kill, proxy, artifact, evidence, reconciliation, and failure cases.
+- [x] Preserve the remaining service variants from the core command black-box tests.  Service commit `48d19263fde43f010312cb446cd4d6970a019c4f` retains the ARB and AARD service and MCP variants as cross-branch tests.
 - [x] Retain `web/` on `service`; its programs use the service HTTP APIs without importing service or procedure packages, and all web tests pass there.
-- [ ] Verify all service packages with fake core binaries and then with built `adc`, `aar`, and `aard` binaries from `carve`.
+- [ ] Verify all service packages with fake core binaries and then with built `adc`, `aar`, and `aard` binaries from `carve`.  The service package suite, all three paired launcher tests, and the ARB and AARD Clerk/MCP tests pass; a complete ADC Clerk/MCP case remains.
 - [ ] On `carve`, delete the three `runtime/service` packages and the three `service` subcommands only after the extracted commands pass.
 - [ ] Remove service variants from core black-box tests while preserving direct one-case tests for the same procedural failures and results.
 - [ ] Remove Clerk routes, process registries, service artifact routes, and service examples from the `carve` documentation.
@@ -151,7 +151,7 @@ This stage should preserve the private listener owned by one running case if D1 
 
 ### 4. Assign Participant Adapters and Local Launchers
 
-- [x] Move the three MCP adapter packages to service-owned paths and add standalone `adc-mcp`, `aar-mcp`, and `aard-mcp` commands; the paired real-core test remains pending.
+- [x] Move the three MCP adapter packages to service-owned paths and add standalone `adc-mcp`, `aar-mcp`, and `aard-mcp` commands.  The ARB and AARD adapters pass complete paired real-core cases; the corresponding ADC case remains pending.
 - [x] Move the ARB local-agent launcher and templates to service-owned paths, replace its proceeding import with `aar case`, and pass its fake-core and paired real-core tests.
 - [x] Move the AARD local-agent launcher and templates to service-owned paths, replace its proceeding import with `aard case`, and pass its fake-core and paired real-core tests.
 - [x] Move the ADC local-agent launcher and templates to service-owned paths, replace its runner import with `adc case` or `adc scenario`, and pass its fake-core and paired real-core tests.
