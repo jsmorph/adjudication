@@ -22,3 +22,13 @@ The existing service tests use fake core programs for process arguments, readine
 - [x] `CARVE_BIN_DIR=/tmp/carve-core-bins GOCACHE=/tmp/adjudication-service-go-cache go test -buildvcs=false -count=1 ./service/compat`
 - [x] `go list -buildvcs=false -f '{{.ImportPath}}: {{join .Imports " "}}' ./service/... ./cmd/...`
 - [x] Import search found no `adjudication/adc/runtime`, `adjudication/arb/runtime`, or `adjudication/arbd/runtime` import in `service/` or `cmd/`.
+
+### MCP adapter extraction
+
+The three MCP adapter packages now live at `service/mcp/adc`, `service/mcp/arb`, and `service/mcp/arbd`.  Standalone `adc-mcp`, `aar-mcp`, and `aard-mcp` commands preserve the existing adapter flags and pass cancellation from interrupt and termination signals.  The moved packages import only the Go standard library and communicate with a core case through its HTTP API.
+
+The adapter package tests pass in an environment that permits loopback listeners.  Those tests cover MCP initialization, sessions, authentication, origins, tool schemas, case API forwarding, wait behavior, errors, and session expiry.  Carve retains its MCP dispatch entries until a paired test runs the service-owned commands against real core case processes.
+
+### MCP verification
+
+- [x] `go test -buildvcs=false ./service/mcp/... ./cmd/adc-mcp ./cmd/aar-mcp ./cmd/aard-mcp`
