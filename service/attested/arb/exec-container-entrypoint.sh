@@ -324,8 +324,7 @@ case "$mode" in
         . "$secrets_dir/keys.sh"
         : "${OPENROUTER_API_KEY:?OPENROUTER_API_KEY is required}"
         export OPENROUTER_API_KEY
-        set -- /usr/local/bin/aar-entrypoint \
-            run \
+        set -- /usr/local/bin/aar-run-entrypoint \
             --out-dir "$aar_out" \
             --openclaw-auth codex \
             --openclaw-codex-auth "$secrets_dir/auth.json" \

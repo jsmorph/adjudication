@@ -98,3 +98,21 @@ Service commit `48d19263fde43f010312cb446cd4d6970a019c4f` passes the complete co
 - [x] `go test -buildvcs=false -count=1 ./service/compat/... -args -service-bin-dir=/tmp/service-bins -carve-bin-dir=/tmp/carve-core-bins -carve-root=/media/hd2/src/adjudication-clones/adjudication-1`
 - [x] `go test -buildvcs=false -count=1 ./service/compat/... -args -service-bin-dir=/tmp/service-bins -carve-bin-dir=/tmp/carve-core-only-bins -carve-root=/media/hd2/src/adjudication-clones/adjudication-1`
 - [x] `go list` found no core implementation import in the three compatibility packages.
+
+### ARB attested execution extraction
+
+The ARB attested image, exec entrypoint, local driver, exec scripts, and runbooks now live under `service/attested/arb`.  The base image fetches and verifies full `CORE_COMMIT` and `SERVICE_COMMIT` values, builds `aar` and `aarengine` from core, and builds `aar-run` from service.  Its runtime filesystem contains the installed programs and required core data rather than a complete source checkout.
+
+The local driver invokes the installed `aar case-packet` command for complaint-based runs.  `aar-service` passes its configured core executable path to that driver, and the driver records the path in `run.env`.  The exec workload starts the service-owned `aar-run` launcher with explicit paths to the installed core executable, engine, working directory, and common-data root.
+
+The example wrapper accepts a core example directory and calls the sibling service-owned driver.  The runbook specifies a repository-root Docker build context and full core and service commit IDs.  It retains the AMI, PCR, S3, secret, artifact, and verification procedures required to operate the attested service.
+
+### ARB attested verification
+
+- [x] `go test -buildvcs=false -count=1 ./service/arb ./cmd/aar-service`
+- [x] `python3 -m unittest service/attested/arb/run_arb_attested_test.py`
+- [x] `python3 -m py_compile service/attested/arb/run-arb-attested.py service/attested/arb/run_arb_attested_test.py`
+- [x] `sh -n` passed for the POSIX shell programs, and `bash -n` passed for `run-one-attested-arb.sh`.
+- [x] `go vet ./service/... ./cmd/... ./web/...`
+- [x] All retained packages passed during `go test -buildvcs=false -count=1 ./...`.  The command failed only while loading obsolete core dispatchers that still import the already-extracted service and MCP package paths; Stage 5 deletes those dispatchers from this branch.
+- [ ] Build the image from this exact service commit and a recorded core commit before deleting the ARB attested originals from `carve`.

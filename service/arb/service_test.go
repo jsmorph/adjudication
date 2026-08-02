@@ -1305,8 +1305,10 @@ verify=0
 allow_nonempty=0
 expected4=""
 expected7=""
+aar_bin=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --aar-bin) aar_bin="$2"; shift 2 ;;
     --case-id) case_id="$2"; shift 2 ;;
     --example) example="$2"; shift 2 ;;
     --complaint) complaint="$2"; shift 2 ;;
@@ -1324,7 +1326,7 @@ while [ "$#" -gt 0 ]; do
     *) shift ;;
   esac
 done
-if [ -z "$out_dir" ] || [ -z "$run_id" ] || [ -z "$input_prefix" ] || [ -z "$exec_ami" ]; then
+if [ -z "$out_dir" ] || [ -z "$run_id" ] || [ -z "$input_prefix" ] || [ -z "$exec_ami" ] || [ -z "$aar_bin" ]; then
   exit 64
 fi
 if [ -z "$example" ] && [ -z "$complaint" ]; then
@@ -1339,7 +1341,7 @@ if [ -n "$complaint" ]; then
 else
   input_mode="example"
 fi
-printf 'AAR_INPUT_MODE=%s\nINPUT_PREFIX=%s\nOUTPUT_PREFIX=%s\nEXEC_AMI=%s\nCOMPLAINT=%s\nFILES=%s\nCASE_ID=%s\n' "$input_mode" "$input_prefix" "$output_prefix" "$exec_ami" "$complaint" "$files" "$case_id" > "$out_dir/run.env"
+printf 'AAR_BIN=%s\nAAR_INPUT_MODE=%s\nINPUT_PREFIX=%s\nOUTPUT_PREFIX=%s\nEXEC_AMI=%s\nCOMPLAINT=%s\nFILES=%s\nCASE_ID=%s\n' "$aar_bin" "$input_mode" "$input_prefix" "$output_prefix" "$exec_ami" "$complaint" "$files" "$case_id" > "$out_dir/run.env"
 printf 'moving\n' > "$out_dir/progress.log"
 printf 'launch\n' > "$out_dir/launcher.log"
 printf '{"files":[]}\n' > "$out_dir/manifest.json"

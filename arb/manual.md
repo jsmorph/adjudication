@@ -696,7 +696,7 @@ Important flags:
 | `--engine` | Lean engine binary passed to child cases when requested. |
 | `--bearer-token` | Optional service bearer token. |
 | `--case-startup-timeout` | Startup wait for `/api/v1/cases` child Case API health. |
-| `--attested-driver` | Path to `arb/tools/run-arb-attested.py` for attested Clerk runs. |
+| `--attested-driver` | Path to `service/attested/arb/run-arb-attested.py` for attested Clerk runs. |
 | `--attested-uv` | Optional `uv` executable used as `uv run <attested-driver>`. |
 | `--attested-parser` | Optional attestation parser path passed to the attested driver. |
 | `--attested-input-prefix` | Default S3 input prefix for attested Clerk runs. |

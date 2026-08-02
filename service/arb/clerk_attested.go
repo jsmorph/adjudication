@@ -355,12 +355,13 @@ func validateAttestedNumbers(cfg AttestedClerkConfig) error {
 	return nil
 }
 
-func attestedClerkCommand(req ClerkCreateRequest, rec *ClerkRecord, outDir string) (string, []string, error) {
+func attestedClerkCommand(req ClerkCreateRequest, rec *ClerkRecord, outDir string, aarBin string) (string, []string, error) {
 	if rec.Execution == nil || rec.Execution.Resolved == nil {
 		return "", nil, fmt.Errorf("attested execution config is missing")
 	}
 	cfg := *rec.Execution.Resolved
 	args := []string{
+		"--aar-bin", aarBin,
 		"--input-prefix", cfg.InputPrefix,
 		"--exec-ami", cfg.ExecAMI,
 		"--case-id", rec.CaseID,

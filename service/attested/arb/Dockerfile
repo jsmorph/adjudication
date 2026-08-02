@@ -1,13 +1,15 @@
 # syntax=docker/dockerfile:1
 
-ARG ADJUDICATION_REPO=https://github.com/jsmorph/adjudication.git
-ARG ADJUDICATION_REF=arbattest
+ARG CORE_REPO=https://github.com/jsmorph/adjudication.git
+ARG SERVICE_REPO=https://github.com/jsmorph/adjudication.git
+ARG CORE_COMMIT
+ARG SERVICE_COMMIT
 ARG PI_CODING_AGENT_PACKAGE=@earendil-works/pi-coding-agent@0.78.0
 
-FROM golang:1.25-trixie AS build
+FROM golang:1.25-trixie AS core-build
 
-ARG ADJUDICATION_REPO
-ARG ADJUDICATION_REF
+ARG CORE_REPO
+ARG CORE_COMMIT
 
 ENV ELAN_HOME=/opt/elan
 ENV PATH=/opt/elan/bin:$PATH
@@ -28,11 +30,40 @@ RUN curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-ini
 
 WORKDIR /src
 
-RUN git clone --branch "$ADJUDICATION_REF" --depth 1 "$ADJUDICATION_REPO" adjudication
+RUN printf '%s\n' "$CORE_COMMIT" | grep -Eq '^[0-9a-f]{40}$' \
+    && git init core \
+    && cd core \
+    && git remote add origin "$CORE_REPO" \
+    && git fetch --depth 1 origin "$CORE_COMMIT" \
+    && git checkout --detach FETCH_HEAD \
+    && test "$(git rev-parse HEAD)" = "$CORE_COMMIT"
 
-WORKDIR /src/adjudication/arb
+WORKDIR /src/core/arb
 
 RUN make build
+
+FROM golang:1.25-trixie AS service-build
+
+ARG SERVICE_REPO
+ARG SERVICE_COMMIT
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+
+RUN printf '%s\n' "$SERVICE_COMMIT" | grep -Eq '^[0-9a-f]{40}$' \
+    && git init service \
+    && cd service \
+    && git remote add origin "$SERVICE_REPO" \
+    && git fetch --depth 1 origin "$SERVICE_COMMIT" \
+    && git checkout --detach FETCH_HEAD \
+    && test "$(git rev-parse HEAD)" = "$SERVICE_COMMIT"
+
+WORKDIR /src/service
+
+RUN CGO_ENABLED=0 go build -buildvcs=false -o /out/aar-run ./cmd/aar-run
 
 FROM debian:trixie-slim AS pi-rootfs
 
@@ -78,17 +109,25 @@ FROM debian:trixie-slim
 ENV DEBIAN_FRONTEND=noninteractive
 ENV AAR_PI_IMAGE=agentcourt-pi-sandbox:latest
 ENV AAR_PI_ROOTFS_TAR=/opt/images/agentcourt-pi-sandbox-rootfs.tar
+ENV PATH=/opt/core/arb/.bin:/usr/local/bin:$PATH
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
-COPY --from=build /src/adjudication /opt/adjudication
+COPY --from=core-build /src/core/arb/.bin /opt/core/arb/.bin
+COPY --from=core-build /src/core/arb/examples /opt/core/arb/examples
+COPY --from=core-build /src/core/arb/prompts /opt/core/arb/prompts
+COPY --from=core-build /src/core/arb/attorney-instructions /opt/core/arb/attorney-instructions
+COPY --from=core-build /src/core/arb/pool.jsonl /opt/core/arb/pool.jsonl
+COPY --from=core-build /src/core/common/data /opt/core/common/data
+COPY --from=core-build /src/core/common/etc /opt/core/common/etc
+COPY --from=service-build /out/aar-run /usr/local/bin/aar-run
 COPY --from=pi-export /tmp/agentcourt-pi-sandbox-rootfs.tar /opt/images/agentcourt-pi-sandbox-rootfs.tar
 
-RUN cat > /usr/local/bin/aar-entrypoint <<'EOF' \
-    && chmod 755 /usr/local/bin/aar-entrypoint
+RUN cat > /usr/local/bin/aar-run-entrypoint <<'EOF' \
+    && chmod 755 /usr/local/bin/aar-run-entrypoint /usr/local/bin/aar-run
 #!/bin/sh
 set -eu
 
@@ -103,10 +142,15 @@ if [ -S /var/run/docker.sock ]; then
     fi
 fi
 
-exec /opt/adjudication/arb/.bin/aar "$@"
+exec /usr/local/bin/aar-run \
+    --aar-bin /opt/core/arb/.bin/aar \
+    --aar-working-dir /opt/core/arb \
+    --engine /opt/core/arb/.bin/aarengine \
+    --common-root /opt/core/common \
+    "$@"
 EOF
 
-WORKDIR /opt/adjudication/arb
+WORKDIR /opt/core/arb
 
-ENTRYPOINT ["/usr/local/bin/aar-entrypoint"]
-CMD ["help"]
+ENTRYPOINT ["/usr/local/bin/aar-run-entrypoint"]
+CMD ["--help"]
