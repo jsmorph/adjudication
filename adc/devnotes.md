@@ -12,6 +12,8 @@ The `carve` branch retains ADC's Lean engine, proofs, one-case Go runtime, case-
 
 Service commit `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` contains the extracted ADC multi-case package and `adc-service` command.  Service commit `6eaed038b468add7099b77edb766b987ba053dcd` contains the extracted ADC MCP adapter and `adc-mcp` command.  ADC's local launcher remains on both branches until its service-owned command passes fake-core and paired real-core tests.
 
+The service-owned ADC launcher will start `adc case` for complaint input and `adc scenario` for prepared scenario input.  The scenario command now accepts `--report-model` so the launcher can preserve the selected digest model, and `--allow-assertion-failures` so recorded scenario assertions retain the existing `adc run` exit behavior.  Both flags preserve the previous `adc scenario` defaults when omitted.
+
 ## 2026-07-15: Judge Rule 60 eval
 
 ### References

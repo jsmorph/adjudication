@@ -50,6 +50,8 @@ func RunScenarioCase(args []string, stdout io.Writer, stderr io.Writer) error {
 	jsonSummary := fs.Bool("json-summary", true, "Emit JSON summary to stdout")
 	transcriptPath := fs.String("transcript", "", "Optional transcript markdown output path")
 	digestPath := fs.String("digest", "", "Optional digest/report markdown output path")
+	reportModel := fs.String("report-model", "", "Model for digest generation")
+	allowAssertionFailures := fs.Bool("allow-assertion-failures", false, "Return success after recording failed scenario assertions")
 	fs.Var(&externalRoles, "external-role", "Role to serve through the role API during opportunity turns; repeat as needed")
 	if err := fs.Parse(args); err != nil {
 		if err == flag.ErrHelp {
@@ -194,10 +196,10 @@ func RunScenarioCase(args []string, stdout io.Writer, stderr io.Writer) error {
 	if err := report.WriteTranscript(strings.TrimSpace(*transcriptPath), result); err != nil {
 		return err
 	}
-	if err := report.WriteDigestWithClient(strings.TrimSpace(*digestPath), result, "", client); err != nil {
+	if err := report.WriteDigestWithClient(strings.TrimSpace(*digestPath), result, strings.TrimSpace(*reportModel), client); err != nil {
 		return err
 	}
-	if failed > 0 {
+	if failed > 0 && !*allowAssertionFailures {
 		return fmt.Errorf("assertions failed: %d", failed)
 	}
 	return nil
