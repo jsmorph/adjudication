@@ -146,10 +146,12 @@ This stage should preserve the private listener owned by one running case if D1 
 
 - [ ] If D7 retains attested operation, move the attested Python and shell programs, Docker definitions, S3 configuration, AMI and PCR handling, service routes, tests, and runbooks to `service`.
 - [x] Keep deterministic case-packet construction in the core input interface.  Service invokes the installed `adc`, `aar`, or `aard` `case-packet` command so complaint and case-file selection continue to use the procedure implementation.
-- [ ] Change service container builds to consume explicit core source or prebuilt artifacts from a pinned `carve` revision.
-- [ ] Verify one local packet build, one container build, and one attested-driver test before deleting the original files from `carve`.
-- [ ] On `carve`, retain the core `case-packet` commands and delete Dockerfiles, `attest/`, attested tools, S3 settings, and attested runbooks after their service-owned replacements pass.
+- [ ] Change service container builds to consume explicit core source or prebuilt artifacts from a pinned `carve` revision.  ARB now consumes full `CORE_COMMIT` and `SERVICE_COMMIT` values; ADC and AARD remain.
+- [x] Verify one local packet build, one container build, and one attested-driver test before deleting the original files from `carve`.  ARB passed these checks at `service@dc7c61d61b478dd2bf24fdc7e1e4924d80b37443` against `carve@a4cc40d99899721d957c4f370040998306f771e9`.
+- [ ] On `carve`, retain the core `case-packet` commands and delete Dockerfiles, `attest/`, attested tools, S3 settings, and attested runbooks after their service-owned replacements pass.  ARB is complete; ADC and AARD remain.
 - [ ] Search both branches for stale source paths and implicit assumptions that service and core files share one checkout.
+
+ARB attested execution moved to `service/attested/arb` in service commit `dc7c61d61b478dd2bf24fdc7e1e4924d80b37443`.  Its base image fetches full core and service commit IDs, verifies both checkouts, builds the installed core programs and service launcher separately, and copies only their runtime assets.  Docker produced image `sha256:47642fe2e73df0ce1d8c3d15b4e9b0f91996dbf284a8e3e06724fb16626c5d9a`, whose service entrypoint and installed core complaint validation both passed.
 
 ### 4. Assign Participant Adapters and Local Launchers
 

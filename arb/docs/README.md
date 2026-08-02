@@ -10,19 +10,14 @@ These documents cover AAR rules, practice guidance, process specifications, evid
 | [Practice Manual](practice.md) | Lawyer and council practice. |
 | [Evidence Handling](evidence-handling.md) | Evidence custody, evidence APIs, upload rules, and inspection. |
 | [Councils](councils.md) | Council selection and deliberation notes. |
-| [Council Replay](council-replay.md) | Re-run one council member against a saved AAR output packet. |
 
 ## Specifications And Test Plans
 
 | Document | Use |
 | --- | --- |
-| [AAR Process And HTTP Specification](aar-spec.md) | Case process, service endpoints, role APIs, results, and failures. |
-| [AAR MCP Specification](aar-mcp-spec.md) | MCP transport, sessions, tools, and forwarding. |
-| [AAR MCP Test Plan](aar-mcp-test.md) | External MCP process test plan. |
+| [AAR Process And HTTP Specification](aar-spec.md) | Case process, role APIs, results, and failures. |
 | [AAR Case Failures](case-failures.md) | Case and council failure rules. |
 | [AAR Case Failure Test Plan](case-failures-testing.md) | Process and HTTP failure tests. |
-| [OpenClaw Codex Auth](openclaw-auth.md) | OpenClaw Codex `auth.json` path. |
-| [Attested AAR Dev Host](attested-dev-host.md) | `dev` host, AWS, S3, Docker, secret, and verification requirements for attested AAR runs. |
 
 ## Proof And Analysis References
 

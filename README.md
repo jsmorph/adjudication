@@ -24,7 +24,7 @@ The systems use different procedures for different goals.  [Agent District Court
 
 ## Example Usage
 
-Run a direct [Arbitration](arb/README.md) case when you want one local arbitration without the service API.  This builds the `aar` command, creates a small complaint, and starts a complete local proceeding.  With the default OpenClaw settings, the plaintiff and defendant litigators are OpenClaw agents running in Docker containers, using OpenAI `gpt-5.5` with `low` thinking.  The council agents come from a sampled Pi council pool and decide whether the proposition in the complaint has been demonstrated.
+Run a direct [Arbitration](arb/README.md) case to start the core procedure from the command line.  The command exposes case-owned Lawyer and Council HTTP APIs and waits for external lawyer clients.  Its default direct council backend samples `pool.jsonl` and calls the selected council models after the lawyers finish.
 
 ```bash
 cd arb
@@ -39,14 +39,13 @@ EOF
 
 export OPENROUTER_API_KEY=REPLACE_WITH_OPENROUTER_KEY
 
-.bin/aar run \
+.bin/aar case \
   --complaint work/example-arbitration/complaint.md \
-  --openclaw-auth codex \
-  --openclaw-codex-auth "$HOME/.codex/auth.json" \
-  --council-pool "$(pwd)/pool.jsonl"
+  --council-pool "$(pwd)/pool.jsonl" \
+  --out-dir out/example-arbitration
 ```
 
-Use `--openclaw-auth api-key` with `OPENAI_API_KEY` for API-key lawyer auth instead of Codex auth.  The completed run writes the transcript, event log, state, certificate, and summary files under its output directory.
+The command writes its listener address to stderr after checking the council pool.  Plaintiff and defendant clients use that address to read opportunities and submit filings through the Lawyer API.  The completed case writes the transcript, event log, state, certificate, and summary files under its output directory.
 
 ## Systems
 
@@ -97,7 +96,7 @@ The repository root has no top-level `Makefile`.  Shared packages build through 
 | Area | Primary documents |
 | --- | --- |
 | Agent District Court | [README](adc/README.md), [manual](adc/manual.md), [practice guide](adc/docs/practice.md), [rules](adc/docs/ARCP.md), [attested runbook](adc/Dockerfile.md), [dev-host requirements](adc/docs/attested-dev-host.md). |
-| Arbitration | [README](arb/README.md), [manual](arb/manual.md), [council and juror replay guide](arb/docs/council-replay.md), [practice guide](arb/docs/practice.md), [rules](arb/docs/ARAP.md), [attested runbook](arb/Dockerfile.md), [dev-host requirements](arb/docs/attested-dev-host.md). |
+| Arbitration | [README](arb/README.md), [manual](arb/manual.md), [practice guide](arb/docs/practice.md), and [rules](arb/docs/ARAP.md). |
 | Arbitration of Degree | [README](arbd/README.md), [manual](arbd/manual.md), [practice guide](arbd/docs/practice.md), [rules](arbd/docs/ARAP.md), [attested runbook](arbd/Dockerfile.md), [dev-host requirements](arbd/docs/attested-dev-host.md). |
 | Evals | [README](evals/README.md), [model-pool manual](evals/model-pool/manual.md), [sampling runbook](evals/model-pool/docs/sampling-runbook.md), [model inventory notes](evals/model-pool/docs/model-inventory.md), [judge eval plan](evals/adc/judge/plan.md). |
 | Proofs | [Proof work status](docs/proof-notes.md). |

@@ -44,6 +44,20 @@ Verification:
 
 Deterministic ARB case-packet construction remains on `carve` as part of the core input interface.  The builder uses the proceeding package's automatic and explicit case-file selection rules, preserving one implementation of input validation.  Attested service code will invoke the installed `aar case-packet` command without importing or copying that implementation.
 
+### Core and service split: attested execution
+
+Service commit `dc7c61d61b478dd2bf24fdc7e1e4924d80b37443` moved the ARB attested images, entrypoint, drivers, scripts, tests, and runbooks under `service/attested/arb`.  Its local driver invokes the installed core `aar case-packet` command, while its image builds core and service from full commit IDs.  The image built against `carve@a4cc40d99899721d957c4f370040998306f771e9`, displayed the service `aar-run` help, and validated the embedded `ex01` complaint through the installed core executable.
+
+The core branch retains `aar case-packet`, its deterministic proceeding builder, `aar case`, the case-owned Lawyer and Council APIs, durable records, and certificate verification.  The ARB Dockerfiles, exec entrypoint, attested Python and shell programs, and operational runbooks have left this branch.  The core README and documentation index no longer link to those removed files.
+
+Verification:
+
+- [x] `go test -buildvcs=false -count=1 ./arb/runtime/...`
+- [x] `go vet ./arb/runtime/...`
+- [x] `go build -buildvcs=false -o /tmp/carve-aar-attested-removal ./arb/runtime/cmd/aar`
+- [x] The freshly built command listed only `case`, `case-packet`, `complain`, `validate`, and `verify-certificate`.
+- [x] The freshly built `aar case-packet` created and listed a deterministic packet from `arb/examples/ex01/complaint.md`.
+
 ## 2026-07-13
 
 ### Runtime replay certificates

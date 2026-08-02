@@ -4,14 +4,11 @@ Agent Arbitration (AAR) decides one proposition through an adversarial record an
 
 ## Documentation
 
-The manual documents commands and HTTP APIs.  The attested runbook documents the Docker image, exec AMI, S3 artifact layout, and verification procedure.  A Clerk-managed attested run uses the manual's `aar service` and Clerk API sections with the attested Docker runbook and dev-host requirements.
+The manual documents the core commands, case-owned HTTP APIs, outputs, and certificate verification.  The practice guide covers lawyer and council work within a case.  The rules define the procedure implemented by the Go runtime and Lean engine.
 
 | Document | Use |
 | --- | --- |
-| [Agent Arbitration Manual](manual.md) | Commands and operating details for `aar case`, `aar run`, `aar council-replay`, `aar juror-replay`, `aar service`, `aar mcp`, Lawyer and Council APIs, Clerk routes, attested Clerk requests, `attestation/events`, output files, failure behavior, and troubleshooting. |
-| [AAR Docker Image Runbook](Dockerfile.md) | AAR base image, attested workload image, exec AMI launch path, S3 input and output prefixes, `events.ndjson`, attestation artifacts, local driver commands, and verification. |
-| [Attested AAR Dev Host Requirements](docs/attested-dev-host.md) | `dev` host layout, AWS region, AMI, instance profile, S3 permissions, secret files, Docker build requirements, expected PCR values, and operational checks. |
-| [Council and Juror Replay Guide](docs/council-replay.md) | Same-spec council replay, experimental juror replay, snapshot selection, model config creation, replay output files, and troubleshooting. |
+| [Agent Arbitration Manual](manual.md) | Core commands, case-owned APIs, outputs, failure behavior, and certificate verification. |
 | [Agent Arbitration Practice Guide](docs/practice.md) | Lawyer and council practice: phase work, evidence search, source preservation, technical reports, work notes, and council deliberation. |
 | [Agent Rules for Arbitration Procedure](docs/ARAP.md) | Governing AAR procedure. |
 
@@ -21,11 +18,7 @@ The manual documents commands and HTTP APIs.  The attested runbook documents the
 | --- | --- |
 | Go `1.25` | Builds the AAR runtime. |
 | Lean `4.27.0` and `lake` | Builds the Lean engine and proof tree. |
-| Docker | Runs OpenClaw lawyer containers in `aar run`. |
-| Podman | Runs Pi council containers in `aar run`. |
-| Codex `auth.json` or `OPENAI_API_KEY` | Authenticates OpenClaw lawyers. |
-| `OPENROUTER_API_KEY` | Authenticates current local Pi council pool entries that use OpenRouter. |
-| Attested AAR `dev` host | See [Attested AAR Dev Host Requirements](docs/attested-dev-host.md) for the remote Docker, S3, IAM, secret, and verification requirements. |
+| Model-provider key | Direct council calls require the environment variable named by the selected pool endpoints: `OPENAI_API_KEY` or `OPENROUTER_API_KEY`. |
 
 ## Build
 
@@ -41,47 +34,15 @@ make prove
 
 ## First Run
 
-Run an example with OpenClaw lawyers using Codex auth and Pi council agents sampled from `pool.jsonl`:
+Start one case process from `arb/`.  The command writes the private Lawyer and Council API address to stderr and waits for participants to act.  Its output directory contains the durable case record and replay certificate.
 
 ```bash
 export OPENROUTER_API_KEY=REPLACE_WITH_KEY
 
-.bin/aar run \
-  --openclaw-auth codex \
-  --openclaw-codex-auth PATH/TO/auth.json \
+.bin/aar case \
+  --complaint examples/ex01/complaint.md \
   --council-pool "$(pwd)/pool.jsonl" \
-  ex01
-```
-
-Start the Clerk service when cases should be created and managed through HTTP:
-
-```bash
-.bin/aar service \
-  --listen 127.0.0.1:19770 \
-  --out-root out/service \
-  --aar-bin .bin/aar
-```
-
-## Juror Replay
-
-`aar juror-replay` runs one fresh Pi council-member deliberation from an existing AAR output packet with a selected model config and persona.  Use it from `arb/` after building `.bin/aar`; it requires `OPENROUTER_API_KEY`, a runnable Pi image, and access to the configured container command.  The [Agent Arbitration Manual](manual.md#aar-juror-replay) gives the full command, model-config creation steps, output files, and troubleshooting notes.
-
-```bash
-source="out/local-direct-three-per-ex-only-20260629/ex13/run-03"
-member=C1
-
-jq --arg member "$member" '
-  .[] | select(.member_id == $member) | .request_spec
-' "$source/council.json" >"/tmp/aar-juror-replay-$member-model.json"
-
-.bin/aar juror-replay \
-  --source-output "$source" \
-  --member-id "$member" \
-  --model-config "/tmp/aar-juror-replay-$member-model.json" \
-  --persona "../evals/model-pool/personas/experiments/attorneys/Brandeis.txt" \
-  --out-dir "out/juror-replays/ex13-run-03-$member-brandeis" \
-  --podman docker \
-  --pi-image agentcourt-pi-sandbox:latest
+  --out-dir out/ex01
 ```
 
 ## Layout
@@ -89,18 +50,15 @@ jq --arg member "$member" '
 | Path | Purpose |
 | --- | --- |
 | [Agent Arbitration Manual](manual.md) | Commands, APIs, outputs, and troubleshooting. |
-| [AAR Docker Image Runbook](Dockerfile.md) | Attested Docker image and exec runbook. |
 | `docs/` | Rules, practice guide, API/process specs, evidence handling, policy notes, and proof references. |
 | `engine/` | Lean arbitration engine and proofs. |
-| `runtime/` | Go CLI, case runtime, HTTP APIs, MCP adapter, local run code, and service. |
-| `agent-instructions/` | Templates for OpenClaw lawyers, remote OpenClaw lawyers, and Pi council agents. |
+| `runtime/` | Go CLI, case runtime, and case-owned HTTP APIs. |
 | `examples/` | Example complaints and case packets. |
 | `prompts/` | Prompt templates used by the case runtime. |
-| `pool.jsonl` | Local council request-spec pool when present. |
 
 ## Output
 
-Run output contains `run.json`, `state.json`, `transcript.md`, `digest.md`, `events.ndjson`, `work-notes.ndjson`, `evidence-manifest.json`, `evidence-store/`, process logs, and local-run metadata.  Council turn snapshots live under `council-turns/` when the run records replayable deliberation inputs.  Attested runs add launcher logs, progress logs, manifests, attestation files, verification logs, and output archives described in the [AAR Docker Image Runbook](Dockerfile.md).
+Run output contains `run.json`, `state.json`, `transcript.md`, `digest.md`, `events.ndjson`, `work-notes.ndjson`, `evidence-manifest.json`, `evidence-store/`, and `certificate.json`.  Council turn snapshots live under `council-turns/` as deliberation begins.  Keep these files together as the durable record of one case.
 
 ## License
 
