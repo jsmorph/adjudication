@@ -1,5 +1,17 @@
 # Development Notes
 
+## 2026-08-02: Lean 4.32.0
+
+### Decision
+
+The service branch's temporary core copies and the three attested image build stages now select Lean 4.32.0.  The proof revisions match `carve@e887cc3e0379b5a3eb9892a4183b6e6259d75305`, including the explicit reductions required by Lean 4.32.0's default `do` elaborator.  Each image build stage installs the same Lean release selected by the core checkout it compiles.
+
+### Verification
+
+- [x] `lean --version` reports Lean 4.32.0 in the ADC, ARB, AARD, and VMCP projects.
+- [x] `lake build` completes all four project builds.
+- [x] Every active Lean toolchain and attested image build definition names Lean 4.32.0.
+
 ## 2026-08-02: Core and service branch split
 
 ### Split base

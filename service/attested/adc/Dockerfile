@@ -25,7 +25,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o /tmp/elan-init.sh \
-    && sh /tmp/elan-init.sh -y --default-toolchain leanprover/lean4:v4.27.0 \
+    && sh /tmp/elan-init.sh -y --default-toolchain leanprover/lean4:v4.32.0 \
     && rm /tmp/elan-init.sh
 
 WORKDIR /src
