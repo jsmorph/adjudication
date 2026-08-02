@@ -243,7 +243,7 @@ func (s *Server) startClerkCase(req ClerkCreateRequest) (ClerkRecord, error) {
 		Execution: execution,
 		done:      make(chan struct{}),
 	}
-	commandPath := s.cfg.AARBin
+	commandPath := s.cfg.AARRunBin
 	args := s.clerkRunArgs(req, caseID, runID, outDir, example)
 	if execution != nil && execution.Mode == clerkExecutionAttested {
 		var err error
@@ -304,7 +304,12 @@ func (s *Server) startClerkCase(req ClerkCreateRequest) (ClerkRecord, error) {
 }
 
 func (s *Server) clerkRunArgs(req ClerkCreateRequest, caseID string, runID string, outDir string, example string) []string {
-	args := []string{"run", "--case-id", caseID, "--run-id", runID, "--out-dir", outDir}
+	args := []string{
+		"--aar-bin", s.cfg.AARBin,
+		"--case-id", caseID,
+		"--run-id", runID,
+		"--out-dir", outDir,
+	}
 	addString := func(name string, value string) {
 		if strings.TrimSpace(value) != "" {
 			args = append(args, name, strings.TrimSpace(value))
@@ -333,6 +338,7 @@ func (s *Server) clerkRunArgs(req ClerkCreateRequest, caseID string, runID strin
 	addString("--attorney-arguments-prompt", req.AttorneyArgumentPromptPath)
 	addString("--attorney-rebuttals-prompt", req.AttorneyRebuttalPromptPath)
 	addString("--common-root", firstNonEmpty(req.CommonRoot, s.cfg.CommonRoot))
+	addString("--aar-working-dir", s.cfg.AARWorkingDir)
 	addString("--council-pool", req.CouncilPoolPath)
 	addString("--caseapi-addr", req.CaseAPIAddr)
 	addString("--mcp-listen", req.MCPListenAddr)

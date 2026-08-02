@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"adjudication/arb/runtime/proceeding"
 	"adjudication/common/modelrequest"
 )
 
@@ -52,7 +51,7 @@ func TestRenderInstructionsRejectsMissingTemplateKey(t *testing.T) {
 }
 
 func TestPiCouncilInstructionsUseProxyToolNames(t *testing.T) {
-	path := filepath.Join("..", "..", "agent-instructions", "pi-council.md.tmpl")
+	path := DefaultCouncilInstructionsPath()
 	got, err := renderInstructions(path, instructionData{
 		CaseID:    "case-1",
 		MemberID:  "C1",
@@ -121,7 +120,7 @@ func TestWaitForCaseOutcomeReturnsDelayedOutcome(t *testing.T) {
 	caseDone := make(chan caseOutcome, 1)
 	go func() {
 		time.Sleep(10 * time.Millisecond)
-		caseDone <- caseOutcome{result: proceeding.Result{Status: "ok", Resolution: "demonstrated"}}
+		caseDone <- caseOutcome{result: Result{Status: "ok", Resolution: "demonstrated"}}
 	}()
 	outcome, ok := waitForCaseOutcome(caseDone, time.Second)
 	if !ok {
@@ -139,8 +138,245 @@ func TestWaitForCaseOutcomeReturnsFalseOnTimeout(t *testing.T) {
 	}
 }
 
+func TestCoreCaseArgsUseProcessInterface(t *testing.T) {
+	args := coreCaseArgs(Options{
+		ComplaintPath:              "/case/complaint.md",
+		CaseFiles:                  []string{"/case/source-1", "/case/source-2"},
+		OutputDir:                  "/out",
+		PolicyPath:                 "/case/policy.json",
+		CouncilSize:                3,
+		EvidenceStandard:           "preponderance",
+		AttorneyInstructionsPath:   "/case/attorney.md",
+		PromptDir:                  "/case/prompts",
+		AttorneyCommonPromptPath:   "/case/common.md",
+		AttorneyArgumentPromptPath: "/case/arguments.md",
+		AttorneyRebuttalPromptPath: "/case/rebuttals.md",
+		CommonRoot:                 "/common",
+		CouncilPoolPath:            "/case/pool.jsonl",
+		CouncilTimeoutSeconds:      90,
+		LawyerTimeoutSeconds:       60,
+		MaxResponseBytes:           4096,
+		InvalidAttemptLimit:        2,
+		EnginePath:                 "/bin/aarengine",
+		RunID:                      "run-1",
+		CaseID:                     "case-1",
+	}, "127.0.0.1:9001")
+	joined := strings.Join(args, "\x00")
+	for _, want := range []string{
+		"case", "--complaint\x00/case/complaint.md", "--file\x00/case/source-1",
+		"--file\x00/case/source-2", "--out-dir\x00/out", "--case-id\x00case-1",
+		"--run-id\x00run-1", "--caseapi-addr\x00127.0.0.1:9001",
+		"--council-backend\x00councilapi", "--policy\x00/case/policy.json",
+		"--engine\x00/bin/aarengine",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("core args lack %q: %#v", want, args)
+		}
+	}
+}
+
+func TestStartCoreCaseReadsFreshResult(t *testing.T) {
+	dir := t.TempDir()
+	logDir := filepath.Join(dir, "logs")
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
+		t.Fatalf("mkdir logs: %v", err)
+	}
+	core := filepath.Join(dir, "aar-core")
+	script := `#!/bin/sh
+set -eu
+out_dir=
+case_id=
+run_id=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --out-dir) out_dir=$2; shift 2 ;;
+    --case-id) case_id=$2; shift 2 ;;
+    --run-id) run_id=$2; shift 2 ;;
+    *) shift ;;
+  esac
+done
+printf '{"case_id":"%s","run_id":"%s","status":"ok","resolution":"demonstrated","extra":"preserved"}\n' "$case_id" "$run_id" > "$out_dir/run.json"
+printf '{"status":"ok","result":"demonstrated"}\n'
+`
+	if err := os.WriteFile(core, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake core: %v", err)
+	}
+	done, err := startCoreCase(context.Background(), Options{
+		CoreCommand:   core,
+		ComplaintPath: filepath.Join(dir, "complaint.md"),
+		OutputDir:     dir,
+		CaseID:        "case-1",
+		RunID:         "run-1",
+	}, "127.0.0.1:9001", logDir)
+	if err != nil {
+		t.Fatalf("start core case: %v", err)
+	}
+	outcome := <-done
+	if outcome.err != nil {
+		t.Fatalf("core outcome: %v", outcome.err)
+	}
+	if outcome.result.Status != "ok" || outcome.result.Resolution != "demonstrated" {
+		t.Fatalf("result = %#v", outcome.result)
+	}
+	raw, err := json.Marshal(outcome.result)
+	if err != nil {
+		t.Fatalf("marshal result: %v", err)
+	}
+	if !strings.Contains(string(raw), `"extra":"preserved"`) {
+		t.Fatalf("marshaled result lost core fields: %s", raw)
+	}
+}
+
+func TestStartCoreCaseRejectsStaleResult(t *testing.T) {
+	dir := t.TempDir()
+	logDir := filepath.Join(dir, "logs")
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
+		t.Fatalf("mkdir logs: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "run.json"), []byte(`{"status":"stale"}`+"\n"), 0o644); err != nil {
+		t.Fatalf("write stale result: %v", err)
+	}
+	core := filepath.Join(dir, "aar-core")
+	if err := os.WriteFile(core, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write fake core: %v", err)
+	}
+	done, err := startCoreCase(context.Background(), Options{
+		CoreCommand:   core,
+		ComplaintPath: filepath.Join(dir, "complaint.md"),
+		OutputDir:     dir,
+		CaseID:        "case-1",
+	}, "127.0.0.1:9001", logDir)
+	if err != nil {
+		t.Fatalf("start core case: %v", err)
+	}
+	outcome := <-done
+	if outcome.err == nil || !strings.Contains(outcome.err.Error(), "did not replace existing result") {
+		t.Fatalf("outcome error = %v", outcome.err)
+	}
+}
+
+func TestPairedCoreCaseAPI(t *testing.T) {
+	binDir := strings.TrimSpace(os.Getenv("CARVE_BIN_DIR"))
+	carveRoot := strings.TrimSpace(os.Getenv("CARVE_ROOT"))
+	if binDir == "" || carveRoot == "" {
+		t.Skip("CARVE_BIN_DIR and CARVE_ROOT are not set")
+	}
+	coreCommand := filepath.Join(binDir, "aar")
+	enginePath := filepath.Join(carveRoot, "arb", "engine", ".lake", "build", "bin", "aarengine")
+	for _, path := range []string{coreCommand, enginePath} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("stat paired core path %s: %v", path, err)
+		}
+	}
+	dir := t.TempDir()
+	logDir := filepath.Join(dir, "logs")
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
+		t.Fatalf("mkdir logs: %v", err)
+	}
+	complaintPath := filepath.Join(dir, "complaint.md")
+	if err := os.WriteFile(complaintPath, []byte("# Proposition\n\nThe paired core API starts.\n"), 0o644); err != nil {
+		t.Fatalf("write complaint: %v", err)
+	}
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/responses" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]any{
+			"id": "paired-response", "object": "response", "status": "completed",
+			"model": "paired-council",
+			"output": []map[string]any{{
+				"id": "paired-message", "type": "message", "status": "completed", "role": "assistant",
+				"content": []map[string]any{{"type": "output_text", "text": "ready", "annotations": []any{}}},
+			}},
+			"usage": map[string]any{"input_tokens": 1, "output_tokens": 1, "total_tokens": 2},
+		}); err != nil {
+			t.Errorf("write paired provider response: %v", err)
+		}
+	}))
+	defer provider.Close()
+	t.Setenv("OPENAI_API_KEY", "paired-key")
+	t.Setenv("OPENAI_BASE_URL", provider.URL+"/v1")
+	policyPath := filepath.Join(dir, "policy.json")
+	if err := writeJSONFile(policyPath, map[string]any{
+		"council_size": 1, "required_votes_for_decision": 1, "max_deliberation_rounds": 1,
+		"max_opening_chars": 1000, "max_argument_chars": 1000, "max_rebuttal_chars": 1000,
+		"max_surrebuttal_chars": 1000, "max_closing_chars": 1000,
+	}); err != nil {
+		t.Fatalf("write policy: %v", err)
+	}
+	poolDir := filepath.Join(dir, "pool")
+	if err := os.MkdirAll(poolDir, 0o755); err != nil {
+		t.Fatalf("mkdir pool: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(poolDir, "c1.txt"), []byte("Paired council persona.\n"), 0o644); err != nil {
+		t.Fatalf("write persona: %v", err)
+	}
+	poolPath := filepath.Join(poolDir, "pool.jsonl")
+	if err := os.WriteFile(poolPath, []byte(`{"endpoint":"openai","model":"paired-council","persona":"c1.txt"}`+"\n"), 0o644); err != nil {
+		t.Fatalf("write pool: %v", err)
+	}
+	caseAPIAddr, err := resolveListenAddr("127.0.0.1:0", "127.0.0.1")
+	if err != nil {
+		t.Fatalf("resolve case API address: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	done, err := startCoreCase(ctx, Options{
+		CoreCommand:           coreCommand,
+		CoreWorkingDir:        filepath.Join(carveRoot, "arb"),
+		ComplaintPath:         complaintPath,
+		OutputDir:             dir,
+		PolicyPath:            policyPath,
+		CommonRoot:            filepath.Join(carveRoot, "common"),
+		CouncilPoolPath:       poolPath,
+		EnginePath:            enginePath,
+		CouncilTimeoutSeconds: 30,
+		LawyerTimeoutSeconds:  30,
+		RunID:                 "run-paired-arb",
+		CaseID:                "paired-arb",
+	}, caseAPIAddr, logDir)
+	if err != nil {
+		cancel()
+		t.Fatalf("start paired core: %v", err)
+	}
+	baseURL := "http://" + caseAPIAddr
+	if err := waitForHealth(ctx, baseURL+"/health", 20*time.Second); err != nil {
+		cancel()
+		outcome := <-done
+		t.Fatalf("wait for paired core API: %v; core outcome: %v", err, outcome.err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/lawyerapi/v1/status?case_id=paired-arb&role_id=plaintiff", nil)
+	if err != nil {
+		cancel()
+		t.Fatalf("build status request: %v", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		cancel()
+		t.Fatalf("read paired core status: %v", err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		cancel()
+		t.Fatalf("close paired core status: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		cancel()
+		t.Fatalf("paired core status HTTP = %d", resp.StatusCode)
+	}
+	cancel()
+	select {
+	case outcome := <-done:
+		if outcome.err == nil {
+			t.Fatalf("canceled paired core returned no process error")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatalf("paired core did not exit after cancellation")
+	}
+}
+
 func TestOpenClawLawyerInstructionsIncludeInvestigationAndJournal(t *testing.T) {
-	path := filepath.Join("..", "..", "agent-instructions", "openclaw-lawyer.md.tmpl")
+	path := DefaultLawyerInstructionsPath()
 	got, err := renderInstructions(path, instructionData{
 		CaseID:    "case-1",
 		RoleID:    "plaintiff",
@@ -158,7 +394,7 @@ func TestOpenClawLawyerInstructionsIncludeInvestigationAndJournal(t *testing.T) 
 }
 
 func TestRemoteLawyerSkillIncludesConnectionAndWorkLoop(t *testing.T) {
-	path := filepath.Join("..", "..", "agent-instructions", "openclaw-remote-lawyer-skill.md.tmpl")
+	path := DefaultRemoteLawyerSkillPath()
 	mcpJSON := `{"url":"http://aar.example:8001/mcp?case_id=case-1&role_id=plaintiff","transport":"streamable-http","headers":{"Authorization":"Bearer token-1"}}`
 	got, err := renderInstructions(path, instructionData{
 		CaseID:    "case-1",
@@ -250,7 +486,7 @@ func TestWritePiConfigAddsDefaultMaxTokens(t *testing.T) {
 	openrouter := providers["openrouter"].(map[string]any)
 	modelList := openrouter["models"].([]any)
 	modelEntry := modelList[0].(map[string]any)
-	want := float64(proceeding.DefaultRuntimeLimits().CouncilMaxOutputTokens)
+	want := float64(DefaultCouncilMaxOutputTokens)
 	if modelEntry["maxTokens"] != want {
 		t.Fatalf("model entry maxTokens = %#v, want %#v", modelEntry["maxTokens"], want)
 	}
@@ -1126,7 +1362,7 @@ func TestWriteRemoteLawyerSkill(t *testing.T) {
 
 func TestWriteRunSummaryIncludesOpenClawStartDelay(t *testing.T) {
 	dir := t.TempDir()
-	if err := writeRunSummary(dir, proceeding.Result{
+	if err := writeRunSummary(dir, Result{
 		CaseID: "case-1",
 		RunID:  "run-1",
 		Status: "ok",

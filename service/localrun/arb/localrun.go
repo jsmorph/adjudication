@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -21,9 +22,8 @@ import (
 	"text/template"
 	"time"
 
-	"adjudication/arb/runtime/mcp"
-	"adjudication/arb/runtime/proceeding"
 	"adjudication/common/modelrequest"
+	armcp "adjudication/service/mcp/arb"
 )
 
 const (
@@ -46,30 +46,46 @@ const (
 	councilFailureOutputLimit     = "agent_output_limit_exceeded"
 	openClawCodexContainerHome    = "/aar-codex"
 	agentStopWait                 = 30 * time.Second
+	defaultLawyerInstructions     = "embedded:arb/openclaw-lawyer"
+	defaultRemoteLawyerSkill      = "embedded:arb/openclaw-remote-lawyer-skill"
+	defaultCouncilInstructions    = "embedded:arb/pi-council"
 )
 
 const (
 	DefaultRunCouncilTimeoutSeconds = 15 * 60
 	DefaultRunLawyerTimeoutSeconds  = DefaultRunCouncilTimeoutSeconds
 	DefaultCouncilOutputLimitBytes  = 128 * 1024 * 1024
+	DefaultCouncilMaxOutputTokens   = 4096
 	DefaultAutoLawyers              = "both"
 	DefaultDockerCommand            = "docker"
 	DefaultPodmanCommand            = "podman"
+	DefaultCoreCommand              = "aar"
 )
 
 func DefaultLawyerInstructionsPath() string {
-	return filepath.Join("agent-instructions", "openclaw-lawyer.md.tmpl")
+	return defaultLawyerInstructions
 }
 
 func DefaultRemoteLawyerSkillPath() string {
-	return filepath.Join("agent-instructions", "openclaw-remote-lawyer-skill.md.tmpl")
+	return defaultRemoteLawyerSkill
 }
 
 func DefaultCouncilInstructionsPath() string {
-	return filepath.Join("agent-instructions", "pi-council.md.tmpl")
+	return defaultCouncilInstructions
 }
 
+//go:embed agent-instructions/openclaw-lawyer.md.tmpl
+var embeddedLawyerInstructions string
+
+//go:embed agent-instructions/openclaw-remote-lawyer-skill.md.tmpl
+var embeddedRemoteLawyerSkill string
+
+//go:embed agent-instructions/pi-council.md.tmpl
+var embeddedCouncilInstructions string
+
 type Options struct {
+	CoreCommand                string
+	CoreWorkingDir             string
 	ComplaintPath              string
 	CaseFiles                  []string
 	OutputDir                  string
@@ -114,6 +130,25 @@ type Options struct {
 	DockerMCPHost              string
 	PodmanMCPHost              string
 	Log                        io.Writer
+}
+
+type Result struct {
+	CaseID     string         `json:"case_id"`
+	RunID      string         `json:"run_id"`
+	Status     string         `json:"status"`
+	Resolution string         `json:"resolution"`
+	Error      string         `json:"error,omitempty"`
+	Failure    map[string]any `json:"failure,omitempty"`
+
+	raw json.RawMessage
+}
+
+func (r Result) MarshalJSON() ([]byte, error) {
+	if len(r.raw) > 0 {
+		return append([]byte(nil), r.raw...), nil
+	}
+	type resultAlias Result
+	return json.Marshal(resultAlias(r))
 }
 
 type instructionData struct {
@@ -249,20 +284,20 @@ type openClawAuthConfig struct {
 	CodexAuthPath string
 }
 
-func Run(ctx context.Context, opts Options) (result proceeding.Result, err error) {
+func Run(ctx context.Context, opts Options) (result Result, err error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	opts = applyDefaults(opts)
 	if err := validateOptions(opts); err != nil {
-		return proceeding.Result{}, err
+		return Result{}, err
 	}
 	openClawAuth, err := resolveOpenClawAuth(opts)
 	if err != nil {
-		return proceeding.Result{}, err
+		return Result{}, err
 	}
 	if err := os.MkdirAll(filepath.Join(opts.OutputDir, "logs"), 0o755); err != nil {
-		return proceeding.Result{}, fmt.Errorf("create output logs: %w", err)
+		return Result{}, fmt.Errorf("create output logs: %w", err)
 	}
 	state := &runState{
 		opts:          opts,
@@ -275,7 +310,7 @@ func Run(ctx context.Context, opts Options) (result proceeding.Result, err error
 	if state.token == "" {
 		token, err := randomToken()
 		if err != nil {
-			return proceeding.Result{}, err
+			return Result{}, err
 		}
 		state.token = token
 	}
@@ -287,59 +322,35 @@ func Run(ctx context.Context, opts Options) (result proceeding.Result, err error
 
 	caseAPIAddr, err := resolveListenAddr(opts.CaseAPIAddr, "127.0.0.1")
 	if err != nil {
-		return proceeding.Result{}, fmt.Errorf("resolve case API address: %w", err)
+		return Result{}, fmt.Errorf("resolve case API address: %w", err)
 	}
 	state.caseBase = "http://" + caseAPIAddr
 	mcpListenAddr, err := resolveListenAddr(opts.MCPListenAddr, "0.0.0.0")
 	if err != nil {
-		return proceeding.Result{}, fmt.Errorf("resolve MCP listen address: %w", err)
+		return Result{}, fmt.Errorf("resolve MCP listen address: %w", err)
 	}
 	state.mcpPublicBase, err = publicMCPBase(opts.MCPPublicBaseURL, mcpListenAddr)
 	if err != nil {
-		return proceeding.Result{}, err
+		return Result{}, err
 	}
 	if len(manualLawyerRoles(opts.AutoLawyers)) > 0 {
 		if err := validateManualLawyerAddress(opts.MCPPublicBaseURL, mcpListenAddr); err != nil {
-			return proceeding.Result{}, err
+			return Result{}, err
 		}
 	}
 	_, mcpPort, err := net.SplitHostPort(mcpListenAddr)
 	if err != nil {
-		return proceeding.Result{}, fmt.Errorf("parse MCP listen address %q: %w", mcpListenAddr, err)
+		return Result{}, fmt.Errorf("parse MCP listen address %q: %w", mcpListenAddr, err)
 	}
 	state.mcpBase = "http://" + net.JoinHostPort("127.0.0.1", mcpPort)
 
-	caseDone := make(chan caseOutcome, 1)
-	go func() {
-		result, err := proceeding.Run(runCtx, proceeding.Options{
-			ComplaintPath:              opts.ComplaintPath,
-			CaseFiles:                  opts.CaseFiles,
-			OutputDir:                  opts.OutputDir,
-			PolicyPath:                 opts.PolicyPath,
-			CouncilSize:                opts.CouncilSize,
-			EvidenceStandard:           opts.EvidenceStandard,
-			AttorneyInstructionsPath:   opts.AttorneyInstructionsPath,
-			PromptDir:                  opts.PromptDir,
-			AttorneyCommonPromptPath:   opts.AttorneyCommonPromptPath,
-			AttorneyArgumentPromptPath: opts.AttorneyArgumentPromptPath,
-			AttorneyRebuttalPromptPath: opts.AttorneyRebuttalPromptPath,
-			CommonRoot:                 opts.CommonRoot,
-			CouncilPoolPath:            opts.CouncilPoolPath,
-			CaseAPIAddr:                caseAPIAddr,
-			CouncilBackend:             "councilapi",
-			CouncilTimeoutSeconds:      opts.CouncilTimeoutSeconds,
-			LawyerTimeoutSeconds:       opts.LawyerTimeoutSeconds,
-			MaxResponseBytes:           opts.MaxResponseBytes,
-			InvalidAttemptLimit:        opts.InvalidAttemptLimit,
-			EnginePath:                 opts.EnginePath,
-			RunID:                      opts.RunID,
-			CaseID:                     opts.CaseID,
-		})
-		caseDone <- caseOutcome{result: result, err: err}
-	}()
+	caseDone, err := startCoreCase(runCtx, opts, caseAPIAddr, state.logDir)
+	if err != nil {
+		return Result{}, err
+	}
 	if err := state.waitForCaseAPI(runCtx, caseDone); err != nil {
 		cancel()
-		return proceeding.Result{}, err
+		return Result{}, err
 	}
 
 	mcpDone := make(chan error, 1)
@@ -350,7 +361,7 @@ func Run(ctx context.Context, opts Options) (result proceeding.Result, err error
 			return
 		}
 		defer logFile.Close()
-		mcpDone <- mcp.Run(runCtx, mcp.Options{
+		mcpDone <- armcp.Run(runCtx, armcp.Options{
 			ListenAddr:           mcpListenAddr,
 			CaseAPIBase:          state.caseBase,
 			BearerToken:          state.token,
@@ -361,20 +372,20 @@ func Run(ctx context.Context, opts Options) (result proceeding.Result, err error
 	}()
 	if err := state.waitForMCP(runCtx, caseDone, mcpDone); err != nil {
 		cancel()
-		return proceeding.Result{}, err
+		return Result{}, err
 	}
 
 	for _, role := range manualLawyerRoles(opts.AutoLawyers) {
 		if err := state.writeRemoteLawyerSkill(role); err != nil {
 			cancel()
-			return proceeding.Result{}, err
+			return Result{}, err
 		}
 	}
 	startedPlaintiff := false
 	if autoLawyerEnabled(opts.AutoLawyers, "plaintiff") {
 		if err := state.startOpenClawLawyer(runCtx, "plaintiff", mcpPort); err != nil {
 			cancel()
-			return proceeding.Result{}, err
+			return Result{}, err
 		}
 		startedPlaintiff = true
 	}
@@ -382,18 +393,18 @@ func Run(ctx context.Context, opts Options) (result proceeding.Result, err error
 		if startedPlaintiff {
 			if err := state.waitOpenClawStartDelay(runCtx); err != nil {
 				cancel()
-				return proceeding.Result{}, err
+				return Result{}, err
 			}
 		}
 		if err := state.startOpenClawLawyer(runCtx, "defendant", mcpPort); err != nil {
 			cancel()
-			return proceeding.Result{}, err
+			return Result{}, err
 		}
 	}
 	roster, err := state.waitForCouncilRoster(runCtx, caseDone, mcpDone)
 	if err != nil {
 		cancel()
-		return proceeding.Result{}, err
+		return Result{}, err
 	}
 	councilTicker := time.NewTicker(time.Second)
 	defer councilTicker.Stop()
@@ -412,9 +423,9 @@ func Run(ctx context.Context, opts Options) (result proceeding.Result, err error
 		case err := <-mcpDone:
 			cancel()
 			if err == nil {
-				return proceeding.Result{}, fmt.Errorf("MCP server exited before case completion")
+				return Result{}, fmt.Errorf("MCP server exited before case completion")
 			}
-			return proceeding.Result{}, fmt.Errorf("MCP server failed: %w", err)
+			return Result{}, fmt.Errorf("MCP server failed: %w", err)
 		case exit := <-state.agentErrs:
 			if outcome, ok := waitForCaseOutcome(caseDone, defaultAgentErrorCaseWait); ok {
 				cancel()
@@ -427,15 +438,15 @@ func Run(ctx context.Context, opts Options) (result proceeding.Result, err error
 				return outcome.result, outcome.err
 			}
 			cancel()
-			return proceeding.Result{}, exit
+			return Result{}, exit
 		case <-councilTicker.C:
 			if err := state.startReadyCouncil(runCtx, roster, mcpPort); err != nil {
 				cancel()
-				return proceeding.Result{}, err
+				return Result{}, err
 			}
 		case <-ctx.Done():
 			cancel()
-			return proceeding.Result{}, ctx.Err()
+			return Result{}, ctx.Err()
 		}
 	}
 }
@@ -460,8 +471,132 @@ func waitForCaseOutcome(caseDone <-chan caseOutcome, wait time.Duration) (caseOu
 }
 
 type caseOutcome struct {
-	result proceeding.Result
+	result Result
 	err    error
+}
+
+func startCoreCase(ctx context.Context, opts Options, caseAPIAddr string, logDir string) (<-chan caseOutcome, error) {
+	stdoutPath := filepath.Join(logDir, "aar.stdout")
+	stderrPath := filepath.Join(logDir, "aar.stderr")
+	stdout, err := os.Create(stdoutPath)
+	if err != nil {
+		return nil, fmt.Errorf("create core stdout log: %w", err)
+	}
+	stderr, err := os.Create(stderrPath)
+	if err != nil {
+		return nil, errors.Join(fmt.Errorf("create core stderr log: %w", err), stdout.Close())
+	}
+	runPath := filepath.Join(opts.OutputDir, "run.json")
+	previousRun, runExisted, err := readOptionalFile(runPath)
+	if err != nil {
+		return nil, errors.Join(fmt.Errorf("read existing core result: %w", err), stdout.Close(), stderr.Close())
+	}
+
+	cmd := exec.CommandContext(ctx, opts.CoreCommand, coreCaseArgs(opts, caseAPIAddr)...)
+	if strings.TrimSpace(opts.CoreWorkingDir) != "" {
+		cmd.Dir = strings.TrimSpace(opts.CoreWorkingDir)
+	}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	if err := cmd.Start(); err != nil {
+		return nil, errors.Join(fmt.Errorf("start core case: %w", err), stdout.Close(), stderr.Close())
+	}
+
+	done := make(chan caseOutcome, 1)
+	go func() {
+		waitErr := cmd.Wait()
+		closeErr := errors.Join(stdout.Close(), stderr.Close())
+		result, resultErr := readCoreResult(runPath, previousRun, runExisted)
+		done <- caseOutcome{
+			result: result,
+			err: errors.Join(
+				coreProcessError(waitErr, stderrPath),
+				closeErr,
+				resultErr,
+			),
+		}
+	}()
+	return done, nil
+}
+
+func coreCaseArgs(opts Options, caseAPIAddr string) []string {
+	args := []string{
+		"case",
+		"--complaint", opts.ComplaintPath,
+		"--out-dir", opts.OutputDir,
+		"--case-id", opts.CaseID,
+		"--caseapi-addr", caseAPIAddr,
+		"--council-backend", "councilapi",
+	}
+	addString := func(name string, value string) {
+		if strings.TrimSpace(value) != "" {
+			args = append(args, name, strings.TrimSpace(value))
+		}
+	}
+	addInt := func(name string, value int) {
+		if value > 0 {
+			args = append(args, name, fmt.Sprintf("%d", value))
+		}
+	}
+	for _, path := range opts.CaseFiles {
+		addString("--file", path)
+	}
+	addString("--run-id", opts.RunID)
+	addString("--policy", opts.PolicyPath)
+	addInt("--council-size", opts.CouncilSize)
+	addString("--evidence-standard", opts.EvidenceStandard)
+	addString("--attorney-instructions", opts.AttorneyInstructionsPath)
+	addString("--prompt-dir", opts.PromptDir)
+	addString("--attorney-common-prompt", opts.AttorneyCommonPromptPath)
+	addString("--attorney-arguments-prompt", opts.AttorneyArgumentPromptPath)
+	addString("--attorney-rebuttals-prompt", opts.AttorneyRebuttalPromptPath)
+	addString("--common-root", opts.CommonRoot)
+	addString("--council-pool", opts.CouncilPoolPath)
+	addInt("--timeout-seconds", opts.CouncilTimeoutSeconds)
+	addInt("--lawyer-timeout-seconds", opts.LawyerTimeoutSeconds)
+	addInt("--max-response-bytes", opts.MaxResponseBytes)
+	addInt("--invalid-attempt-limit", opts.InvalidAttemptLimit)
+	addString("--engine", opts.EnginePath)
+	return args
+}
+
+func readOptionalFile(path string) ([]byte, bool, error) {
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	return raw, true, nil
+}
+
+func readCoreResult(path string, previous []byte, existed bool) (Result, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return Result{}, fmt.Errorf("read core result %s: %w", path, err)
+	}
+	if existed && bytes.Equal(raw, previous) {
+		return Result{}, fmt.Errorf("core process did not replace existing result %s", path)
+	}
+	var result Result
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return Result{}, fmt.Errorf("decode core result %s: %w", path, err)
+	}
+	result.raw = append(json.RawMessage(nil), bytes.TrimSpace(raw)...)
+	return result, nil
+}
+
+func coreProcessError(waitErr error, stderrPath string) error {
+	if waitErr == nil {
+		return nil
+	}
+	raw, readErr := readFileTail(stderrPath, 64*1024)
+	message := strings.TrimSpace(string(raw))
+	if message == "" {
+		return errors.Join(fmt.Errorf("core case process: %w", waitErr), readErr)
+	}
+	return errors.Join(fmt.Errorf("core case process: %w: %s", waitErr, message), readErr)
 }
 
 type rosterOutcome struct {
@@ -470,6 +605,9 @@ type rosterOutcome struct {
 }
 
 func applyDefaults(opts Options) Options {
+	if strings.TrimSpace(opts.CoreCommand) == "" {
+		opts.CoreCommand = DefaultCoreCommand
+	}
 	if strings.TrimSpace(opts.DockerCommand) == "" {
 		opts.DockerCommand = DefaultDockerCommand
 	}
@@ -564,6 +702,9 @@ func validateOptions(opts Options) error {
 		return fmt.Errorf("invalid OpenClaw network %q; expected host or empty", opts.OpenClawNetwork)
 	}
 	for _, path := range []string{opts.LawyerInstructionsPath, opts.RemoteLawyerSkillPath, opts.CouncilInstructionsPath} {
+		if _, ok := embeddedInstruction(path); ok {
+			continue
+		}
 		if _, err := os.Stat(path); err != nil {
 			return fmt.Errorf("stat instruction template %s: %w", path, err)
 		}
@@ -1340,9 +1481,15 @@ func outputSubdir(outputDir string, name string) (string, error) {
 }
 
 func renderInstructions(path string, data instructionData) (string, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("read instruction template %s: %w", path, err)
+	raw := []byte(nil)
+	if embedded, ok := embeddedInstruction(path); ok {
+		raw = []byte(embedded)
+	} else {
+		var err error
+		raw, err = os.ReadFile(path)
+		if err != nil {
+			return "", fmt.Errorf("read instruction template %s: %w", path, err)
+		}
 	}
 	tmpl, err := template.New(filepath.Base(path)).Option("missingkey=error").Parse(string(raw))
 	if err != nil {
@@ -1353,6 +1500,19 @@ func renderInstructions(path string, data instructionData) (string, error) {
 		return "", fmt.Errorf("render instruction template %s: %w", path, err)
 	}
 	return out.String(), nil
+}
+
+func embeddedInstruction(path string) (string, bool) {
+	switch strings.TrimSpace(path) {
+	case defaultLawyerInstructions:
+		return embeddedLawyerInstructions, true
+	case defaultRemoteLawyerSkill:
+		return embeddedRemoteLawyerSkill, true
+	case defaultCouncilInstructions:
+		return embeddedCouncilInstructions, true
+	default:
+		return "", false
+	}
 }
 
 func writePiConfig(home string, entry councilRosterEntry, server string, mcpURL string, token string) (string, error) {
@@ -1390,7 +1550,7 @@ func writePiConfig(home string, entry councilRosterEntry, server string, mcpURL 
 		"id":   model,
 		"name": "AAR " + entry.MemberID + " " + model,
 	}
-	spec = spec.WithFallbackMaxOutputTokens(proceeding.DefaultRuntimeLimits().CouncilMaxOutputTokens)
+	spec = spec.WithFallbackMaxOutputTokens(DefaultCouncilMaxOutputTokens)
 	if maxTokens := spec.MaxOutputTokens(); maxTokens != nil {
 		modelEntry["maxTokens"] = *maxTokens
 	}
@@ -2007,7 +2167,7 @@ func (s *runState) cleanupSecrets() error {
 	return errors.Join(errs...)
 }
 
-func writeRunSummary(outDir string, result proceeding.Result, opts Options) error {
+func writeRunSummary(outDir string, result Result, opts Options) error {
 	return writeJSONFile(filepath.Join(outDir, "local-run.json"), map[string]any{
 		"case_id":                             result.CaseID,
 		"run_id":                              result.RunID,

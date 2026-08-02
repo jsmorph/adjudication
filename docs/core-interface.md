@@ -8,7 +8,7 @@ The initial interface version is tied to the split base `1f62a56f66da3a476a7f406
 
 ## Executables and Process Behavior
 
-Service invokes installed `adc`, `aar`, and `aard` executables.  Each invocation receives an explicit output directory and, for a live participant API, an explicit loopback listen address chosen by service.  Service captures standard output and standard error in the case output directory and supervises the process until exit.
+Service invokes installed `adc`, `aar`, and `aard` executables.  Each invocation receives an explicit output directory and, for a live participant API, an explicit loopback listen address chosen by service.  Service captures standard output and standard error in the case output directory, sets an explicit working directory when the core installation still resolves resource defaults there, and supervises the process until exit.
 
 A core process returns a nonzero exit status for startup, configuration, input, engine, storage, or other process failures.  A procedure that records an opportunity failure may return zero after writing a terminal failed case record.  The service parses the last nonempty JSON object on standard output as the process summary and reconciles the final status from `run.json`.
 
@@ -19,7 +19,7 @@ A core process returns a nonzero exit status for startup, configuration, input, 
 | ARB | `aar case` | `--case-id`, `--run-id`, `--complaint`, `--out-dir`, `--caseapi-addr`, `--council-backend`, and any requested policy or runtime override. |
 | AARD | `aard case` | `--case-id`, `--run-id`, `--complaint`, `--out-dir`, `--caseapi-addr`, `--council-backend`, and any requested policy or runtime override. |
 
-The extracted services still invoke `adc run`, `aar run`, and `aard run` for local-agent operation at the first service checkpoint.  Stage 4 moves those launchers to service-owned commands that start one of the direct core commands through this interface.  Carve cannot remove a `run` command until its corresponding service-owned launcher passes the paired test.
+ADC and AARD still invoke their core `run` commands for local-agent operation after the first launcher checkpoint.  ARB now uses the service-owned `aar-run` command, which starts `aar case` through this interface and uses the service-owned MCP adapter.  Carve cannot remove an ADC or AARD `run` command until its corresponding service-owned launcher passes the paired test.
 
 The core branch retains `validate` and `verify-certificate` for operator use.  Attested drivers will live on service and must identify the exact core source or artifacts placed in a workload image.  Case-packet construction remains subject to the Stage 3 ownership decision in the plan.
 

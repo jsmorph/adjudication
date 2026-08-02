@@ -32,3 +32,16 @@ The adapter package tests pass in an environment that permits loopback listeners
 ### MCP verification
 
 - [x] `go test -buildvcs=false ./service/mcp/... ./cmd/adc-mcp ./cmd/aar-mcp ./cmd/aard-mcp`
+
+### ARB local launcher extraction
+
+The ARB local-agent launcher now lives at `service/localrun/arb`, with `aar-run` as its standalone command.  It starts an installed `aar case` process, waits for the private case API, and uses the service-owned ARB MCP package.  The launcher imports no ARB implementation package and preserves the core `run.json` object when it writes its command result.
+
+The launcher embeds its three default agent templates while preserving file-path overrides.  It passes every core case input through explicit command flags, accepts an explicit core working directory, records core output under `logs/`, and rejects a stale `run.json` left in a reused output directory.  The ARB multi-case service now invokes `aar-run` for Clerk local-agent requests and reserves `aar` for direct core cases.
+
+The paired test starts the real `aar` binary and Lean engine from carve, performs council preflight against a local fake provider, waits for `/health`, and reads the Lawyer API status route.  Cancellation then stops the core child and verifies that the launcher observes its exit.  The paired test uses `CARVE_BIN_DIR` and `CARVE_ROOT` to identify the tested core checkout.
+
+### ARB launcher verification
+
+- [x] `CARVE_BIN_DIR=/tmp/carve-core-bins CARVE_ROOT=/media/hd2/src/adjudication-clones/adjudication-1 go test -buildvcs=false -count=1 ./service/arb ./service/localrun/arb ./cmd/aar-service ./cmd/aar-run`
+- [x] Import search found no `adjudication/arb/runtime` import in `service/localrun/arb` or `cmd/aar-run`.

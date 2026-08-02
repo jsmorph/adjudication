@@ -65,6 +65,44 @@ func TestCompletedCouncilWaitReturnsDoneFromArtifact(t *testing.T) {
 	}
 }
 
+func TestClerkRunArgsUseServiceLauncherInterface(t *testing.T) {
+	s := &Server{cfg: Config{
+		AARBin:        "/opt/carve/aar",
+		AARWorkingDir: "/opt/carve",
+	}}
+	args := s.clerkRunArgs(ClerkCreateRequest{}, "case-1", "run-1", "/tmp/case-1", "ex1")
+
+	wantPrefix := []string{
+		"--aar-bin", "/opt/carve/aar",
+		"--case-id", "case-1",
+		"--run-id", "run-1",
+		"--out-dir", "/tmp/case-1",
+	}
+	if len(args) < len(wantPrefix) {
+		t.Fatalf("args = %#v, want prefix %#v", args, wantPrefix)
+	}
+	for i := range wantPrefix {
+		if args[i] != wantPrefix[i] {
+			t.Fatalf("args[%d] = %q, want %q: %#v", i, args[i], wantPrefix[i], args)
+		}
+	}
+	for i, arg := range args {
+		if arg == "run" {
+			t.Fatalf("args[%d] = run: %#v", i, args)
+		}
+	}
+	wantTail := []string{"--aar-working-dir", "/opt/carve", "ex1"}
+	if len(args) < len(wantTail) {
+		t.Fatalf("args = %#v, want tail %#v", args, wantTail)
+	}
+	for i := range wantTail {
+		got := args[len(args)-len(wantTail)+i]
+		if got != wantTail[i] {
+			t.Fatalf("args tail = %#v, want %#v", args[len(args)-len(wantTail):], wantTail)
+		}
+	}
+}
+
 func TestCompletedLawyerReadsReturnFailedFromArtifact(t *testing.T) {
 	s, _ := testServerWithFailedCase(t)
 
@@ -145,8 +183,6 @@ func TestJoinBaseAndPathUsesSingleCaseAPIBase(t *testing.T) {
 func TestClerkCreateCompletesAndListsRecord(t *testing.T) {
 	root := t.TempDir()
 	aarBin := writeFakeAAR(t, `#!/bin/sh
-if [ "$1" != "run" ]; then exit 64; fi
-shift
 case_id=""
 run_id=""
 out_dir=""
@@ -709,7 +745,6 @@ func TestListedArtifactNameRequiresExactName(t *testing.T) {
 func TestClerkKillTerminatesActiveRun(t *testing.T) {
 	root := t.TempDir()
 	aarBin := writeFakeAAR(t, `#!/bin/sh
-if [ "$1" != "run" ]; then exit 64; fi
 trap 'exit 0' INT TERM
 while :; do sleep 1; done
 `)
@@ -1332,6 +1367,7 @@ func newClerkTestServer(t *testing.T, outputRoot string, aarBin string) *Server 
 		RegistryDir: filepath.Join(t.TempDir(), "registry"),
 		OutputRoot:  outputRoot,
 		AARBin:      aarBin,
+		AARRunBin:   aarBin,
 	})
 }
 
