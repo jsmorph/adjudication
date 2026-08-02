@@ -44,6 +44,20 @@ Verification:
 
 Deterministic AARD case-packet construction remains on `carve` as part of the core input interface.  The builder uses the proceeding package's automatic and explicit case-file selection rules, preserving one implementation of input validation.  Attested service code will invoke the installed `aard case-packet` command without importing or copying that implementation.
 
+### Core and service split: attested execution
+
+Service commit `6a4441006b1f81ae573e9754c76e3c3f185d9e34` moved the AARD attested images, entrypoint, drivers, scripts, tests, and runbooks under `service/attested/arbd`.  Service commit `5bf19d083ea670cdbf767ccf304c81ec712f90d4` corrected the image's council-data copy and built against `carve@489cd9ecdb46f41f036d825fc9f5221f68c13c1a`.  Image `sha256:a35e3e6bdd8090f890ab3cdf9d877fbcc758670cce1b72b5ad25c56243d83264` displayed the service `aard-run` help and validated the embedded `ex1` complaint through the installed core executable.
+
+The core branch retains `aard case-packet`, its deterministic proceeding builder, `aard case`, the case-owned Lawyer and Council APIs, durable records, and certificate verification.  The AARD Dockerfiles, exec entrypoint, attested Python and shell programs, and operational runbooks have left this branch.  The core README and documentation index no longer link to those removed files.
+
+Verification:
+
+- [x] `go test -buildvcs=false -count=1 ./arbd/runtime/...`
+- [x] `go vet ./arbd/runtime/...`
+- [x] `go build -buildvcs=false -o /tmp/carve-aard-attested-removal ./arbd/runtime/cmd/aard`
+- [x] The freshly built command lists only `case`, `case-packet`, `complain`, `validate`, and `verify-certificate`.
+- [x] Two fresh `aard case-packet` runs over `arbd/examples/ex1/complaint.md` produced byte-identical archives and manifests, and the archive listed the complaint, two sonnets, case arguments, and embedded manifest.
+
 ## 2026-07-13
 
 ### Replay certificates

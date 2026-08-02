@@ -68,7 +68,7 @@ func printRootUsage(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Subcommands:")
 	fmt.Fprintln(w, "  case       Initialize an arbitration case from a complaint")
-	fmt.Fprintln(w, "  case-packet  Build an attested-run case packet")
+	fmt.Fprintln(w, "  case-packet  Build a deterministic case packet")
 	fmt.Fprintln(w, "  complain   Draft complaint.md from a situation markdown file")
 	fmt.Fprintln(w, "  validate   Validate a complaint file")
 	fmt.Fprintln(w, "  verify-certificate  Verify certificate.json against state.json")
