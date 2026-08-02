@@ -14,6 +14,17 @@ Service commit `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` contains the extracted
 
 The service-owned ADC launcher starts `adc case` for complaint input and `adc scenario` for prepared scenario input.  The scenario command accepts `--report-model` so the launcher preserves the selected digest model, and `--allow-assertion-failures` so recorded scenario assertions retain the former `adc run` exit behavior.  Both flags preserve the previous `adc scenario` defaults when omitted.
 
+### Multi-case service removal
+
+The ADC multi-case service package and `adc service` dispatch entry have left `carve` after service commit `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` preserved the service-owned implementation and tests.  The ADC root help now lists the retained core and temporarily duplicated adapter commands without advertising the Clerk service.  The command package passes its tests and builds without an import of the removed service package.
+
+### Verification
+
+- [x] `go test -buildvcs=false -count=1 ./adc/runtime/cli`
+- [x] `go test -buildvcs=false -count=1 ./adc/runtime/...`
+- [x] `go vet -buildvcs=false ./adc/runtime/...`
+- [x] `go build -buildvcs=false -o /tmp/carve-service-removal-bins/adc ./adc/runtime/cmd/adc`
+
 ## 2026-07-15: Judge Rule 60 eval
 
 ### References

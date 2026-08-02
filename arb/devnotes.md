@@ -19,6 +19,17 @@ Verification:
 - [x] `go test -buildvcs=false -count=1 -run '^TestBlackBox' ./arb/runtime/cmd/aar`
 - [x] `go vet -buildvcs=false ./arb/runtime/cmd/aar`
 
+### Multi-case service removal
+
+The ARB multi-case service package and `aar service` dispatch entry have left `carve` after service commits `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` and `48d19263fde43f010312cb446cd4d6970a019c4f` preserved the service-owned implementation and cross-branch tests.  The ARB root help now lists the retained core and temporarily duplicated adapter commands without advertising the Clerk service.  The command package passes its tests and builds without an import of the removed service package.
+
+Verification:
+
+- [x] `go test -buildvcs=false -count=1 ./arb/runtime/cmd/aar`
+- [x] `go test -buildvcs=false -count=1 ./arb/runtime/...`
+- [x] `go vet -buildvcs=false ./arb/runtime/...`
+- [x] `go build -buildvcs=false -o /tmp/carve-service-removal-bins/aar ./arb/runtime/cmd/aar`
+
 ## 2026-07-13
 
 ### Runtime replay certificates

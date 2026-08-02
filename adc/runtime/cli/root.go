@@ -31,8 +31,6 @@ func Run(args []string, stdout io.Writer, stderr io.Writer) error {
 		return RunLocal(args[1:], stdout, stderr)
 	case "scenario":
 		return RunScenarioCase(args[1:], stdout, stderr)
-	case "service":
-		return RunService(args[1:], stdout, stderr)
 	case "pacer":
 		return RunPacer(args[1:], stdout, stderr)
 	case "validate":
@@ -65,8 +63,6 @@ func Run(args []string, stdout io.Writer, stderr io.Writer) error {
 			return RunLocal([]string{"-h"}, stdout, stderr)
 		case "scenario":
 			return RunScenarioCase([]string{"-h"}, stdout, stderr)
-		case "service":
-			return RunService([]string{"-h"}, stdout, stderr)
 		case "pacer":
 			return RunPacer([]string{"-h"}, stdout, stderr)
 		case "validate":
@@ -97,7 +93,6 @@ func printRootUsage(w io.Writer) {
 	fmt.Fprintln(w, "  pool       Sample an experimental juror pool from persona clusters")
 	fmt.Fprintln(w, "  run        Run a scenario with OpenClaw lawyers and Pi jurors")
 	fmt.Fprintln(w, "  scenario   Run an existing scenario JSON without starting agents")
-	fmt.Fprintln(w, "  service    Run the ADC clerk service")
 	fmt.Fprintln(w, "  pacer      List or fetch PACER-style documents from sqlite")
 	fmt.Fprintln(w, "  validate   Validate a scenario file for the Go runner")
 	fmt.Fprintln(w, "  verify-certificate  Verify certificate.json against state.json")

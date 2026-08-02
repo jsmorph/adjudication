@@ -19,6 +19,17 @@ Verification:
 - [x] `go test -buildvcs=false -count=1 -run '^TestBlackBox' ./arbd/runtime/cmd/aard`
 - [x] `go vet -buildvcs=false ./arbd/runtime/cmd/aard`
 
+### Multi-case service removal
+
+The AARD multi-case service package and `aard service` dispatch entry have left `carve` after service commits `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` and `48d19263fde43f010312cb446cd4d6970a019c4f` preserved the service-owned implementation and cross-branch tests.  The AARD root help now lists the retained core and temporarily duplicated adapter commands without advertising the Clerk service.  The command package passes its tests and builds without an import of the removed service package.
+
+Verification:
+
+- [x] `go test -buildvcs=false -count=1 ./arbd/runtime/cmd/aard`
+- [x] `go test -buildvcs=false -count=1 ./arbd/runtime/...`
+- [x] `go vet -buildvcs=false ./arbd/runtime/...`
+- [x] `go build -buildvcs=false -o /tmp/carve-service-removal-bins/aard ./arbd/runtime/cmd/aard`
+
 ## 2026-07-13
 
 ### Replay certificates

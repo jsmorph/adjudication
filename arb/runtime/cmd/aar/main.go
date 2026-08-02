@@ -39,8 +39,6 @@ func dispatch(ctx context.Context, args []string, stdout io.Writer, stderr io.Wr
 		return runMCP(ctx, args[1:], stdout, stderr)
 	case "run":
 		return runLocal(ctx, args[1:], stdout, stderr)
-	case "service":
-		return runService(ctx, args[1:], stdout, stderr)
 	case "complain":
 		return runComplain(args[1:], stdout, stderr)
 	case "validate":
@@ -65,8 +63,6 @@ func dispatch(ctx context.Context, args []string, stdout io.Writer, stderr io.Wr
 			return runMCP(ctx, []string{"-h"}, stdout, stderr)
 		case "run":
 			return runLocal(ctx, []string{"-h"}, stdout, stderr)
-		case "service":
-			return runService(ctx, []string{"-h"}, stdout, stderr)
 		case "complain":
 			return runComplain([]string{"-h"}, stdout, stderr)
 		case "validate":
@@ -93,7 +89,6 @@ func printRootUsage(w io.Writer) {
 	fmt.Fprintln(w, "  juror-replay  Run one fresh juror deliberation from saved AAR output")
 	fmt.Fprintln(w, "  mcp        Run the AAR MCP service")
 	fmt.Fprintln(w, "  run        Run one local case with OpenClaw lawyers and Pi council")
-	fmt.Fprintln(w, "  service    Run the multi-case AAR HTTP service")
 	fmt.Fprintln(w, "  complain   Draft complaint.md from a situation markdown file")
 	fmt.Fprintln(w, "  validate   Validate a complaint file")
 	fmt.Fprintln(w, "  verify-certificate  Verify certificate.json against state.json")
