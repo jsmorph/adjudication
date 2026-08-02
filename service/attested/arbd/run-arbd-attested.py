@@ -89,9 +89,7 @@ def stage_case_packet(args: argparse.Namespace, run_id: str, progress_log: Path)
     manifest_path = args.out_dir / CASE_PACKET_MANIFEST_OBJECT
     write_line(progress_log, f"{utc_stamp()} preparing case packet")
     cmd = [
-        args.go,
-        "run",
-        "./arbd/runtime/cmd/aard",
+        args.aard_bin,
         "case-packet",
         "--complaint",
         local_path_selector(args.complaint),
@@ -102,7 +100,7 @@ def stage_case_packet(args: argparse.Namespace, run_id: str, progress_log: Path)
     ]
     for case_file in args.files:
         cmd.extend(["--file", local_path_selector(case_file)])
-    run_command(cmd, log_path=progress_log, cwd=args.repo_root)
+    run_command(cmd, log_path=progress_log)
     args.case_packet = CASE_PACKET_OBJECT
     args.case_manifest = CASE_PACKET_MANIFEST_OBJECT
     args.case_packet_sha384 = sha384_file(packet_path)
@@ -467,8 +465,7 @@ def write_run_env(args: argparse.Namespace, out_dir: Path, run_id: str, output_p
         "INSTANCE_TYPE": args.instance_type,
         "IAM_INSTANCE_PROFILE": args.iam_instance_profile,
         "IMAGE_TAR_S3": args.image_tar_s3,
-        "GO": args.go,
-        "REPO_ROOT": str(args.repo_root),
+        "AARD_BIN": args.aard_bin,
     }
     with (out_dir / "run.env").open("w", encoding="utf-8") as f:
         for name, value in values.items():
@@ -516,10 +513,6 @@ def default_parser_path() -> Path:
     return candidates[0]
 
 
-def default_repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser_path = default_parser_path()
     p = argparse.ArgumentParser(description="Run an attested AARD through the exec AMI.")
@@ -546,8 +539,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--allow-nonempty-out-dir", action="store_true")
     p.add_argument("--verify", action="store_true")
     p.add_argument("--uv", default=os.environ.get("UV") or shutil.which("uv") or "uv")
-    p.add_argument("--go", default=os.environ.get("GO") or shutil.which("go") or "go")
-    p.add_argument("--repo-root", type=Path, default=Path(os.environ.get("REPO_ROOT", str(default_repo_root()))))
+    p.add_argument("--aard-bin", default=os.environ.get("AARD_BIN") or shutil.which("aard") or "aard")
     p.add_argument("--parser", default=os.environ.get("ATTESTATION_PARSER", str(parser_path)))
     p.add_argument("--expected-pcr4", default=os.environ.get("EXPECTED_PCR4", ""))
     p.add_argument("--expected-pcr7", default=os.environ.get("EXPECTED_PCR7", ""))

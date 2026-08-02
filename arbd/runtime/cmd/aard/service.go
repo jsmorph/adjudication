@@ -24,7 +24,7 @@ func runService(ctx context.Context, args []string, stdout io.Writer, stderr io.
 	enginePath := fs.String("engine", proceeding.DefaultEnginePath(), "Lean engine binary")
 	bearerToken := fs.String("bearer-token", "", "Optional bearer token required for service requests")
 	startupWait := fs.Duration("case-startup-timeout", service.DefaultCaseStartupWait, "Maximum time to wait for a child case API health response")
-	attestedDriver := fs.String("attested-driver", "", "Path to arbd/tools/run-arbd-attested.py")
+	attestedDriver := fs.String("attested-driver", "", "Path to service/attested/arbd/run-arbd-attested.py")
 	attestedUV := fs.String("attested-uv", "", "Optional uv executable used as: uv run <attested-driver>")
 	attestedParser := fs.String("attested-parser", "", "Optional attestation parser path")
 	attestedInputPrefix := fs.String("attested-input-prefix", "", "Default S3 input prefix for attested Clerk runs")

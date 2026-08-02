@@ -35,7 +35,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=nitro-tpm-tools /src/NitroTPM-Tools/target/release/nitro-tpm-attest /usr/local/bin/nitro-tpm-attest
-COPY attest/exec-container-entrypoint.sh /usr/local/bin/exec-container-entrypoint
+COPY service/attested/arbd/exec-container-entrypoint.sh /usr/local/bin/exec-container-entrypoint
 
 RUN chmod 755 /usr/local/bin/nitro-tpm-attest /usr/local/bin/exec-container-entrypoint
 

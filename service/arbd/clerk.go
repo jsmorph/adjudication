@@ -237,7 +237,7 @@ func (s *Server) startClerkCase(req ClerkCreateRequest) (ClerkRecord, error) {
 	}
 	if execution != nil && execution.Mode == clerkExecutionAttested {
 		var err error
-		commandPath, args, err = attestedClerkCommand(req, rec, outDir)
+		commandPath, args, err = attestedClerkCommand(req, rec, outDir, s.cfg.AardBin)
 		if err != nil {
 			s.unreserveClerkCase(caseID)
 			return ClerkRecord{}, err

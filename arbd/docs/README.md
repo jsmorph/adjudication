@@ -12,7 +12,7 @@ These documents cover AARD rules, practice guidance, process references, evidenc
 | [Councils](councils.md) | Council selection and answer notes. |
 | [Parameters](params.md) | Policy and runtime parameter notes. |
 | [OpenClaw Attorneys](openclaw-attorneys.md) | OpenClaw lawyer notes. |
-| [Attested AARD Dev Host Requirements](attested-dev-host.md) | `dev` host, S3, IAM, secret, Docker build, and verification requirements for attested AARD runs. |
+| [Attested AARD Dev Host Requirements](../../service/attested/arbd/attested-dev-host.md) | `dev` host, S3, IAM, secret, Docker build, and verification requirements for attested AARD runs. |
 
 ## Specifications
 

@@ -2,9 +2,11 @@
 
 ## Scope
 
-This runbook covers the AARD base image from `arbd/Dockerfile`, the AARD attested workload image from `arbd/Dockerfile.glue`, and the attested exec run launched by `tools/run-aard.sh`.  The base image contains the compiled `aard` and `aarengine` binaries, the `adjudication` source tree, the Docker CLI, and an embedded Pi council root filesystem.  The attested workload image adds AWS CLI, `nitro-tpm-attest`, the TSS runtime libraries, and `attest/exec-container-entrypoint.sh`.
+This runbook covers the AARD base image, attested workload image, and exec run under `service/attested/arbd`.  The base image combines the core `aard` and `aardengine` binaries with the service `aard-run` launcher, the required core data, the Docker CLI, and an embedded Pi council root filesystem.  The attested workload image adds AWS CLI, `nitro-tpm-attest`, the TSS runtime libraries, and the exec container entrypoint.
 
-The attested path supports two AARD input modes.  Example mode runs a checked-in directory under `arbd/examples/<name>` selected by `AARD_EXAMPLE`; when the variable is absent, both `run-aard.sh` and the exec container entrypoint use `ex1`.  Case-packet mode runs a local complaint and optional case files by packaging them into `case.tar.gz` and `case-packet.json`, uploading those objects under `INPUT_PREFIX`, and passing the extracted complaint path to `aard run`.
+The Clerk path uses the `aard-service` command and Clerk API.  Its request shape, service flags, monitoring route, artifact routes, and completion rule live in the [Agent Arbitration of Degree Manual](../../../arbd/manual.md#aard-service) and its [Clerk API](../../../arbd/manual.md#clerk-api) section.  This runbook covers the Docker image, exec AMI, S3 artifact flow, local driver, and verification procedure used by those service requests.
+
+The attested path supports two AARD input modes.  Example mode runs a checked-in core directory under `arbd/examples/<name>` selected by `AARD_EXAMPLE`; when the variable is absent, both `run-aard.sh` and the exec container entrypoint use `ex1`.  Case-packet mode runs a local complaint and optional case files by packaging them through `aard case-packet`, uploading `case.tar.gz` and `case-packet.json` under `INPUT_PREFIX`, and passing the extracted inputs to `aard-run`.
 
 The exec input schema always reads `auth.json` and `keys.sh` from `INPUT_PREFIX`.  Example mode adds only the `AARD_EXAMPLE` selector.  Case-packet mode adds `case.tar.gz`, `case-packet.json`, `AARD_CASE_PACKET_SHA384`, and `AARD_CASE_MANIFEST_SHA384`, so the manifest and verifier bind the exact arbitrary case packet used by the exec instance.
 
@@ -12,24 +14,24 @@ The exec input schema always reads `auth.json` and `keys.sh` from `INPUT_PREFIX`
 
 | Item | Location | Role |
 | --- | --- | --- |
-| AARD base image | `adjudication/arbd/Dockerfile` | Builds `aard`, `aarengine`, Docker CLI support, and the embedded Pi council root filesystem. |
-| Attested workload image | `adjudication/arbd/Dockerfile.glue` | Adds AWS CLI, `nitro-tpm-attest`, TSS libraries, and the S3 artifact flow. |
-| Exec container entrypoint | `adjudication/arbd/attest/exec-container-entrypoint.sh` | Runs the selected AARD input, archives output, writes the manifest, obtains the TPM attestation, and uploads artifacts to S3. |
+| AARD base image | `service/attested/arbd/Dockerfile` | Builds core at `CORE_COMMIT`, builds service at `SERVICE_COMMIT`, and assembles the AARD runtime image. |
+| Attested workload image | `service/attested/arbd/Dockerfile.glue` | Adds AWS CLI, `nitro-tpm-attest`, TSS libraries, and the S3 artifact flow. |
+| Exec container entrypoint | `service/attested/arbd/exec-container-entrypoint.sh` | Runs the selected AARD input, archives output, writes the manifest, obtains the TPM attestation, and uploads artifacts to S3. |
 | Exec launcher | `attest/exec.sh` | Starts the Docker-enabled exec AMI with user-data from a script. |
-| AARD exec script | `adjudication/arbd/tools/run-aard.sh` | Downloads the attested workload image tar on the exec AMI, loads it into Docker, and starts the exec workload container. |
-| Local AARD driver | `adjudication/arbd/tools/run-arbd-attested.py` | Starts `exec.sh` through `dev`, polls S3, downloads artifacts, extracts the AARD archive, and can verify the result. |
-| Container proof script | `adjudication/arbd/tools/run-container-poc.sh` | Runs the attested workload image in `attest-only` mode for the container attestation proof. |
+| AARD exec script | `service/attested/arbd/run-aard.sh` | Downloads the attested workload image tar on the exec AMI, loads it into Docker, and starts the exec workload container. |
+| Local AARD driver | `service/attested/arbd/run-arbd-attested.py` | Starts `exec.sh` through `dev`, polls S3, downloads artifacts, extracts the AARD archive, and can verify the result. |
+| Container proof script | `service/attested/arbd/run-container-poc.sh` | Runs the attested workload image in `attest-only` mode for the container attestation proof. |
 | Attestation parser | `attest/parse_attestation.py` | Verifies the attestation signature and certificate chain and prints user data and PCR values. |
 | Dev source checkout | `/home/ec2-user/adjudication-build-2361886` on `dev` | Source tree used for Docker builds on `dev`. |
 | Dev launcher directory | `/home/ec2-user/attest` on `dev` | Runtime directory for `exec.sh`, `run-aard.sh`, and helper scripts.  This directory is not the source-control checkout. |
 
-Use the `arbattest` branch in both `jsmorph/adjudication` and `jsmorph/attest`.  The current Docker-enabled exec AMI is `ami-011f957fe91cf7b81` in `us-east-2`.  Its expected PCR values are listed in the verification section and must be replaced when the exec AMI is rebuilt.
+Build from full 40-character core and service commit IDs.  The current Docker-enabled exec AMI is `ami-011f957fe91cf7b81` in `us-east-2`.  Its expected PCR values are listed in the verification section and must be replaced when the exec AMI is rebuilt.
 
 ## Dev Host And AWS Requirements
 
-The generic `dev` host requirements for the exec AMI launcher live in [Dev Host Requirements](../../attest/dev-host.md).  Read that document before building or launching through `attest/exec.sh`.  It covers the base x86_64 host, Nix daemon setup, AWS CLI, EC2 permissions, EBS direct snapshot permissions, role passing, default VPC assumptions, disk requirements, and verification commands.
+The generic `dev` host requirements for the exec AMI launcher live in [Dev Host Requirements](../../../attest/dev-host.md).  That document covers the base x86_64 host, Nix daemon setup, AWS CLI, EC2 permissions, EBS direct snapshot permissions, role passing, default VPC assumptions, disk requirements, and verification commands.  Review it before building or launching through `attest/exec.sh`.
 
-The AARD-specific requirements live in [Attested AARD Dev Host Requirements](docs/attested-dev-host.md).  That document adds the Docker build checkout, launcher directory, secret file locations, S3 prefixes, S3 permissions, `ec2-nix-builder` instance profile, expected PCR values, and operational checks for attested AARD runs.  The short form is that `dev` must build and upload `arbd-glue:poc`, stage `auth.json` and `keys.sh` under `s3://agentcourt-data/arbattest/aard-inputs/`, launch the exec AMI, poll `s3://agentcourt-data/arbattest/aard-runs/`, download terminal artifacts, and support verification.
+The AARD-specific requirements live in [Attested AARD Dev Host Requirements](attested-dev-host.md).  That document adds the Docker build checkout, launcher directory, secret file locations, S3 prefixes, S3 permissions, `ec2-nix-builder` instance profile, expected PCR values, and operational checks for attested AARD runs.  The `dev` host builds and uploads `arbd-glue:poc`, stages `auth.json` and `keys.sh`, launches the exec AMI, polls the output prefix, downloads terminal artifacts, and supports verification.
 
 ## Attestation Record
 
@@ -37,13 +39,13 @@ The attestation record lives in S3, not stdout.  Stdout from `exec.sh` is useful
 
 `events.ndjson` at the S3 prefix exists for live monitoring.  The verified event log remains the `events.ndjson` file inside `aard-output.tar.gz`, because the manifest binds the archive hash.  `manifest.sha384` contains the SHA-384 hash of `manifest.json`, and the exec container entrypoint passes that file to `nitro-tpm-attest --user-data`, so the attestation `User Data` field must equal the manifest hash.
 
-The manifest binds the input mode, selected example or case-packet hashes, input prefix, output prefix, exec AMI, instance ID, attested workload image ID, attested workload image tar hash, run log hash, and AARD archive hash.  If `aard run` exits nonzero, the attested workload image uploads `events.ndjson` if AARD created it, uploads `run.log` and `aard-partial.tar.gz`, then exits with the AARD status.  It does not create `manifest.json`, `manifest.sha384`, or `attestation.b64` for a failed AARD run, so no attestation verification exists for that run.
+The manifest binds the input mode, selected example or case-packet hashes, input prefix, output prefix, exec AMI, instance ID, attested workload image ID, attested workload image tar hash, run log hash, and AARD archive hash.  If `aard-run` exits nonzero, the attested workload image uploads `events.ndjson` if the run created it, uploads `run.log` and `aard-partial.tar.gz`, then exits with the launcher status.  A failed run has no `manifest.json`, `manifest.sha384`, or `attestation.b64`, so it has no attestation verification.
 
 ## Runtime Topology
 
 The exec AMI runs Docker on the host.  `run-aard.sh` downloads `s3://agentcourt-data/arbattest/images/arbd-glue-poc.tar`, computes its SHA-384 hash, loads `arbd-glue:poc`, records the Docker image ID, and starts the exec workload container.  The container receives `/var/run/docker.sock`, `/dev/tpm0`, `/dev/tpmrm0` when present, `INPUT_PREFIX`, `OUTPUT_PREFIX`, `RUN_ID`, `AARD_INPUT_MODE`, `AARD_EXAMPLE`, optional case-packet fields, and image identity fields.
 
-The exec workload container starts the parent `aard` process through `/usr/local/bin/aard-entrypoint`.  That parent process starts OpenClaw lawyer containers and Pi council containers through the host Docker daemon.  The parent container uses host networking, and the entrypoint AARD command passes `--openclaw-network host` so OpenClaw uses `127.0.0.1` for the AARD MCP server.
+The exec workload container starts `/usr/local/bin/aard-run-entrypoint`, which supplies the installed core executable, engine, working directory, and common-data root to `aard-run`.  The launcher starts OpenClaw lawyer containers and Pi council containers through the host Docker daemon.  It passes `--openclaw-network host` so OpenClaw uses `127.0.0.1` for the AARD MCP server.
 
 The parent and child containers share paths through the host Docker daemon, so AARD output must live under a path that the host Docker daemon can mount into child containers.  The exec path uses `ARB_EXEC_WORK_ROOT=/var/lib/arbattest-aard`, mounted into the exec workload container at the same absolute path.  The local direct-run command below follows the same rule by mounting the output root at the identical path inside the parent container.
 
@@ -53,19 +55,21 @@ The attested workload image reads secrets from S3 so the attested instance does 
 
 The verified instance profile for the first version is the same profile used on `dev`, passed to `exec.sh` as `IAM_INSTANCE_PROFILE=ec2-nix-builder`.  The verified instance type is `m5.4xlarge`, because the exec AMI root filesystem is RAM-backed and Docker extracts image layers into that RAM-backed filesystem.  The verified region is `us-east-2`, and the verified S3 bucket prefix is `s3://agentcourt-data/arbattest/`.
 
-Valid `AARD_EXAMPLE` values are checked-in example directory names accepted by `aard run`: nonempty, no slash, no dot prefix, and no `..`.  Current examples include `ex1`, `ex2`, and `ex3` under `arbd/examples`.  The exec container entrypoint records the chosen example in `manifest.json` as `aard_example`.
+Valid `AARD_EXAMPLE` values are core example directory names accepted by `aard-run`: nonempty, no slash, no dot prefix, and no `..`.  Current examples include `ex1`, `ex2`, and `ex3` under `arbd/examples`.  The exec container entrypoint records the chosen example in `manifest.json` as `aard_example`.
 
-Case-packet input uses `AARD_INPUT_MODE=case-packet`.  The local driver invokes `go run ./arbd/runtime/cmd/aard case-packet` from the repository root, then uploads `case.tar.gz` and `case-packet.json` through `dev` and passes their SHA-384 hashes to the exec AMI.  The packet builder lives in the Go proceeding package, so it uses the same automatic complaint-directory scan, explicit glob expansion, duplicate-basename rejection, and prohibited-extension checks as non-attested `aard run`.  If no `--file` arguments are present, the packet contains the complaint directory's ordinary immediate case files; if `--file` is present, the packet contains only the explicit file or glob matches and the entrypoint command passes repeated `--file` arguments after extraction.
+Case-packet input uses `AARD_INPUT_MODE=case-packet`.  The local driver invokes the installed `aard case-packet` command, then uploads `case.tar.gz` and `case-packet.json` through `dev` and passes their SHA-384 hashes to the exec AMI.  The core packet builder applies complaint-directory scanning, explicit glob expansion, duplicate-basename rejection, and prohibited-extension checks; absent `--file` arguments select ordinary immediate case files, while explicit selectors limit the packet to their matches.
 
 ## Build The Base Image Locally
 
-Run the base image build from `/media/hd2/src/arbattest`.  The Dockerfile clones the public repository named by `ADJUDICATION_REPO` and checks out `ADJUDICATION_REF`; it does not copy this local checkout into the image.  Use `--no-cache` after pushing branch changes, because a cached clone layer can retain an older branch tip.
+Run the base image build from the service repository root.  The Dockerfile clones `CORE_REPO` and `SERVICE_REPO`, fetches the commits named by `CORE_COMMIT` and `SERVICE_COMMIT`, and verifies both resulting `HEAD` values.  Both commit arguments must contain full 40-character lowercase commit IDs.
 
 ```bash
 docker build --no-cache \
+  --build-arg CORE_COMMIT="$CORE_COMMIT" \
+  --build-arg SERVICE_COMMIT="$SERVICE_COMMIT" \
   -t arbattest-aard:local \
-  -f adjudication/arbd/Dockerfile \
-  adjudication/arbd
+  -f service/attested/arbd/Dockerfile \
+  .
 ```
 
 Validate any checked-in example complaint with the selected image.  This command tests that the image contains the example and that the complaint parses.  Replace `ex1` with any checked-in example name.
@@ -73,6 +77,7 @@ Validate any checked-in example complaint with the selected image.  This command
 ```bash
 AARD_EXAMPLE=ex1
 docker run --rm \
+  --entrypoint /opt/core/arbd/.bin/aard \
   arbattest-aard:local \
   validate --complaint "examples/$AARD_EXAMPLE/complaint.md"
 ```
@@ -104,7 +109,6 @@ docker run --rm --network host \
   -v "$PWD/tmp/auth.json:/run/secrets/codex-auth.json:ro" \
   -e OPENROUTER_API_KEY \
   arbattest-aard:local \
-  run \
   --out-dir "$out" \
   --openclaw-auth codex \
   --openclaw-codex-auth /run/secrets/codex-auth.json \
@@ -118,7 +122,7 @@ printf '%s\n' "$out"
 printf '%s\n' "$log"
 ```
 
-Read the local result after the command exits.  A completed run writes `local-run.json` with `status` and `answers`.  The first completed local `ex1` run produced `status=ok` and the answer map in `run.json`.
+Read the local result after the command exits.  A completed run writes `local-run.json` with `status` and `answers`.  The first completed local `ex1` run produced `status=ok` and an answer map in `run.json`.
 
 ```bash
 python3 -m json.tool "$out/local-run.json"
@@ -134,21 +138,23 @@ find "$out" \
 
 ## Build And Upload The Attested Workload Image On `dev`
 
-Build the base and attested workload images on `dev` from the `arbattest` branch, then upload the Docker archive used by `run-aard.sh`.  Use the source checkout at `/home/ec2-user/adjudication-build-2361886`, not the launcher directory.  Record the printed SHA-384 hash because the entrypoint manifest records the image tar hash for each run.
+Build the base and attested workload images on `dev` from a service checkout, then upload the Docker archive used by `run-aard.sh`.  Set `CORE_COMMIT` and `SERVICE_COMMIT` to the reviewed full commit IDs before the build.  Record the printed SHA-384 hash because the entrypoint manifest records the image tar hash for each run.
 
 ```bash
 ssh dev 'set -eu
 cd /home/ec2-user/adjudication-build-2361886
-git pull --ff-only origin arbattest
-cd arbd
+CORE_COMMIT=REPLACE_WITH_40_CHARACTER_CORE_COMMIT
+SERVICE_COMMIT=REPLACE_WITH_40_CHARACTER_SERVICE_COMMIT
 sudo docker build --no-cache \
+  --build-arg CORE_COMMIT="$CORE_COMMIT" \
+  --build-arg SERVICE_COMMIT="$SERVICE_COMMIT" \
   -t arbattest-aard:dev \
-  -f Dockerfile \
+  -f service/attested/arbd/Dockerfile \
   .
 sudo docker build --no-cache \
   --build-arg AARD_IMAGE=arbattest-aard:dev \
   -t arbd-glue:poc \
-  -f Dockerfile.glue \
+  -f service/attested/arbd/Dockerfile.glue \
   .
 sudo docker save arbd-glue:poc -o /home/ec2-user/arbd-glue-poc.tar
 sudo chown ec2-user:ec2-user /home/ec2-user/arbd-glue-poc.tar
@@ -165,6 +171,7 @@ Validate the base image on `dev` after the build.  This command checks the selec
 ssh dev 'set -eu
 AARD_EXAMPLE="${AARD_EXAMPLE:-ex1}"
 sudo docker run --rm \
+  --entrypoint /opt/core/arbd/.bin/aard \
   arbattest-aard:dev \
   validate --complaint "examples/$AARD_EXAMPLE/complaint.md"
 '
@@ -172,15 +179,15 @@ sudo docker run --rm \
 
 ## Install The Exec Runner On `dev`
 
-`/home/ec2-user/attest` on `dev` is the runtime launcher directory used by the AMI runner.  It is not the `attest` source checkout.  Copy generic exec files from `attest` and AARD-specific files from `adjudication/arbd/tools`.  The current `run-aard.sh` accepts `AARD_EXAMPLE`, defaults to `ex1`, passes it to the exec workload container, and names default runs as `aard-$AARD_EXAMPLE-$STAMP`.
+`/home/ec2-user/attest` on `dev` is the runtime launcher directory used by the AMI runner.  Copy generic exec files from `attest` and the AARD exec script from `service/attested/arbd`.  The current `run-aard.sh` accepts `AARD_EXAMPLE`, defaults to `ex1`, passes it to the exec workload container, and names default runs as `aard-$AARD_EXAMPLE-$STAMP`.
 
 ```bash
 ssh dev 'mkdir -p /home/ec2-user/attest'
-scp attest/exec.sh attest/parse_attestation.py adjudication/arbd/tools/run-aard.sh dev:/home/ec2-user/attest/
+scp attest/exec.sh attest/parse_attestation.py service/attested/arbd/run-aard.sh dev:/home/ec2-user/attest/
 ssh dev 'chmod 755 /home/ec2-user/attest/exec.sh /home/ec2-user/attest/run-aard.sh /home/ec2-user/attest/parse_attestation.py'
 ```
 
-Keep the source branch checked in as well.  The runtime copy on `dev` is for execution, while `adjudication/arbd/tools/run-aard.sh` records the AARD-specific script.  Commit and push `adjudication/arbd` when AARD launcher behavior changes.
+The runtime copy on `dev` executes the service-owned script.  `service/attested/arbd/run-aard.sh` remains its reviewed source.  Record its service commit with the image build record.
 
 ## Prepare The S3 Input Prefix
 
@@ -206,16 +213,18 @@ The `keys.sh` file must define `OPENROUTER_API_KEY`.  The exec container entrypo
 
 ## Run The Attested AARD
 
-The preferred command for a normal checked-in example is `adjudication/arbd/tools/run-one-attested-arbd.sh`.  It takes one argument, an example directory such as `examples/ex3`.  It validates that the directory exists and contains `complaint.md`, stages `auth.json` and `keys.sh` into a fresh S3 input prefix, chooses timestamped input and output prefixes, starts the exec AMI through the local driver, downloads the S3 artifacts, extracts the AARD archive, and verifies the attestation.
+For Clerk-managed attested runs, start with the [Agent Arbitration of Degree Manual](../../../arbd/manual.md#aard-service).  The commands here run the lower-level driver directly.  They also expose the S3 and verification path used by the service.
+
+The example wrapper is `service/attested/arbd/run-one-attested-arbd.sh`.  It takes the path to an example directory from the selected core checkout and verifies that the directory contains `complaint.md`.  It stages `auth.json` and `keys.sh` into a fresh S3 input prefix, chooses timestamped input and output prefixes, starts the exec AMI, downloads the S3 artifacts, extracts the AARD archive, and verifies the attestation.
 
 ```bash
-adjudication/arbd/tools/run-one-attested-arbd.sh examples/ex3
+service/attested/arbd/run-one-attested-arbd.sh /path/to/core/arbd/examples/ex3
 ```
 
-The lower-level local driver is `adjudication/arbd/tools/run-arbd-attested.py`.  It starts the exec AMI through `dev`, polls the S3 output prefix, writes progress and launcher logs under the local output directory, downloads all S3 artifacts into that directory, extracts the AARD archive, and can run verification.  The driver treats `run.log`, `aard-output.tar.gz`, `manifest.json`, `manifest.sha384`, and `attestation.b64` as the successful terminal set; `events.ndjson` can appear before that set and continues to be downloaded with the final artifacts.
+The lower-level local driver is `service/attested/arbd/run-arbd-attested.py`.  It starts the exec AMI through `dev`, polls the S3 output prefix, writes progress and launcher logs under the local output directory, downloads all S3 artifacts into that directory, extracts the AARD archive, and can run verification.  The driver treats `run.log`, `aard-output.tar.gz`, `manifest.json`, `manifest.sha384`, and `attestation.b64` as the successful terminal set; `events.ndjson` can appear before that set and continues to be downloaded with the final artifacts.
 
 ```bash
-uv run adjudication/arbd/tools/run-arbd-attested.py \
+uv run service/attested/arbd/run-arbd-attested.py \
   --example ex1 \
   --input-prefix s3://agentcourt-data/arbattest/aard-inputs/ex1-REPLACE_WITH_STAMP \
   --exec-ami ami-011f957fe91cf7b81 \
@@ -225,10 +234,11 @@ uv run adjudication/arbd/tools/run-arbd-attested.py \
   --expected-pcr7 98441C7F7625D10058C47683AEC486CE311C633235EB555593A7EE791121E3578AE72D04ECEF661F272D59058B77AF35
 ```
 
-Run an arbitrary local case by replacing `--example` with `--complaint` and optional repeated `--file` flags.  The driver calls the Go `aard case-packet` command before launch, creates `case.tar.gz` and `case-packet.json`, uploads them through `dev` to `INPUT_PREFIX`, and sends `AARD_INPUT_MODE=case-packet` to the exec AMI.  The exec workload container verifies the packet hashes before extraction, then runs `aard run --complaint` against the extracted complaint; explicit files become repeated `--file` arguments, while absent files make AARD scan the extracted complaint directory.
+Run an arbitrary local case by replacing `--example` with `--complaint` and optional repeated `--file` flags.  The driver calls the installed core `aard case-packet` command before launch, creates `case.tar.gz` and `case-packet.json`, uploads them through `dev` to `INPUT_PREFIX`, and sends `AARD_INPUT_MODE=case-packet` to the exec AMI.  The exec workload container verifies the packet hashes before extraction, then starts `aard-run` with the extracted complaint and case files.
 
 ```bash
-uv run adjudication/arbd/tools/run-arbd-attested.py \
+uv run service/attested/arbd/run-arbd-attested.py \
+  --aard-bin /path/to/core/aard \
   --case-id arbd-custom-REPLACE_WITH_STAMP \
   --run-id aard-custom-REPLACE_WITH_STAMP \
   --complaint work/my-case/complaint.md \
@@ -369,7 +379,7 @@ print("manifest and archive checks passed")
 PY
 ```
 
-Inspect the AARD result inside the archive.  A completed run should report `status=ok`; the answer map depends on the case.  
+Inspect the AARD result inside the archive.  A completed run should report `status=ok`; the answers depend on the case.  The verified `ex1` run reported its answer map in `run.json`.
 
 ```bash
 tar -xOf aard-output.tar.gz ./local-run.json | python3 -m json.tool
@@ -421,9 +431,9 @@ The reference `ex1` run `aard-ex1-20260612T001855Z` verified with manifest SHA-3
 
 ## Run Any AARD
 
-Use example mode for cases that already live under `arbd/examples/<name>`.  Push the `adjudication` `arbattest` branch so the Docker build can clone it, then rebuild and upload the attested workload image tar from `dev`.  Install the current `adjudication/arbd/tools/run-aard.sh` in `/home/ec2-user/attest`, stage `auth.json` and `keys.sh` under a new S3 input prefix, run the exec AMI with `AARD_INPUT_MODE=example` and `AARD_EXAMPLE=<name>`, and run the verification commands above against the resulting output prefix.
+Use example mode for cases that live under `arbd/examples/<name>` at the selected core commit.  Rebuild the image with the selected core and service commit IDs, upload the attested workload image tar from `dev`, and install the corresponding `service/attested/arbd/run-aard.sh` in `/home/ec2-user/attest`.  Stage `auth.json` and `keys.sh` under a new S3 input prefix, run the exec AMI with `AARD_INPUT_MODE=example` and `AARD_EXAMPLE=<name>`, and verify the resulting output prefix.
 
-Use case-packet mode for a local case directory or an explicit complaint path outside the image.  Stage `auth.json` and `keys.sh` under a new S3 input prefix, then run `tools/run-arbd-attested.py --complaint PATH` with any repeated `--file` selectors.  The driver uploads the deterministic packet before launch, and the manifest records the S3 keys and SHA-384 hashes for both `case.tar.gz` and `case-packet.json`.
+Use case-packet mode for a local case directory or an explicit complaint path outside the image.  Stage `auth.json` and `keys.sh` under a new S3 input prefix, then run `service/attested/arbd/run-arbd-attested.py --aard-bin PATH --complaint PATH` with any repeated `--file` selectors.  The driver uploads the deterministic packet before launch, and the manifest records the S3 keys and SHA-384 hashes for both `case.tar.gz` and `case-packet.json`.
 
 Use a fresh `RUN_ID` and `OUTPUT_PREFIX` for every run.  The recommended naming form is `aard-$AARD_EXAMPLE-$STAMP` for examples and `aard-case-$STAMP` or a case-specific `aard-$NAME-$STAMP` for case packets, with `STAMP` from `date -u +%Y%m%dT%H%M%SZ`.  Timestamped prefixes keep failed, partial, and verified runs separate and make S3 cleanup decisions explicit.
 

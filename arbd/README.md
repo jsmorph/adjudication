@@ -9,8 +9,8 @@ The manual documents commands and HTTP APIs.  The attested runbook documents the
 | Document | Use |
 | --- | --- |
 | [Agent Arbitration Degree Manual](manual.md) | Commands and operating details for `aard case`, `aard run`, `aard service`, `aard mcp`, Lawyer and Council APIs, Clerk routes, attested Clerk requests, `attestation/events`, output files, failure behavior, and troubleshooting. |
-| [AARD Docker Image Runbook](Dockerfile.md) | AARD base image, attested workload image, exec AMI launch path, S3 input and output prefixes, `events.ndjson`, attestation artifacts, local driver commands, and verification. |
-| [Attested AARD Dev Host Requirements](docs/attested-dev-host.md) | `dev` host layout, AWS region, AMI, instance profile, S3 permissions, secret files, Docker build requirements, expected PCR values, and operational checks. |
+| [AARD Docker Image Runbook](../service/attested/arbd/Dockerfile.md) | AARD base image, attested workload image, exec AMI launch path, S3 input and output prefixes, `events.ndjson`, attestation artifacts, local driver commands, and verification. |
+| [Attested AARD Dev Host Requirements](../service/attested/arbd/attested-dev-host.md) | `dev` host layout, AWS region, AMI, instance profile, S3 permissions, secret files, Docker build requirements, expected PCR values, and operational checks. |
 | [Agent Arbitration Degree Practice Guide](docs/practice.md) | Lawyer and council practice for degree questions: phase work, evidence search, source preservation, technical reports, work notes, score advocacy, and council answer rationales. |
 | [Agent Rules for Arbitration Degree Procedure](docs/ARAP.md) | Governing AARD procedure. |
 
@@ -24,7 +24,7 @@ The manual documents commands and HTTP APIs.  The attested runbook documents the
 | Podman | Runs Pi council containers in `aard run`. |
 | Codex `auth.json` or `OPENAI_API_KEY` | Authenticates OpenClaw lawyers. |
 | `OPENROUTER_API_KEY` | Authenticates current local Pi council pool entries that use OpenRouter. |
-| Attested AARD `dev` host | See [Attested AARD Dev Host Requirements](docs/attested-dev-host.md) for the remote Docker, S3, IAM, secret, and verification requirements. |
+| Attested AARD `dev` host | See [Attested AARD Dev Host Requirements](../service/attested/arbd/attested-dev-host.md) for the remote Docker, S3, IAM, secret, and verification requirements. |
 
 ## Build
 
@@ -66,7 +66,7 @@ Start the Clerk service when cases should be created and managed through HTTP:
 | Path | Purpose |
 | --- | --- |
 | [Agent Arbitration Degree Manual](manual.md) | Commands, APIs, outputs, and troubleshooting. |
-| [AARD Docker Image Runbook](Dockerfile.md) | Attested Docker image and exec runbook. |
+| [AARD Docker Image Runbook](../service/attested/arbd/Dockerfile.md) | Attested Docker image and exec runbook. |
 | `docs/` | Rules, practice guide, evidence handling, policy notes, and council references. |
 | `engine/` | Lean degree-arbitration engine and proofs. |
 | `runtime/` | Go CLI, case runtime, HTTP APIs, MCP adapter, local run code, and service. |
@@ -77,7 +77,7 @@ Start the Clerk service when cases should be created and managed through HTTP:
 
 ## Output
 
-Run output contains `run.json`, `state.json`, `certificate.json`, `transcript.md`, `digest.md`, `events.ndjson`, `work-notes.ndjson`, `evidence-manifest.json`, `evidence-store/`, process logs, and local-run metadata.  Attested runs add launcher logs, progress logs, manifests, attestation files, verification logs, and output archives described in the [AARD Docker Image Runbook](Dockerfile.md).  The manual lists output files for ordinary, service-managed, and attested runs.
+Run output contains `run.json`, `state.json`, `certificate.json`, `transcript.md`, `digest.md`, `events.ndjson`, `work-notes.ndjson`, `evidence-manifest.json`, `evidence-store/`, process logs, and local-run metadata.  Attested runs add launcher logs, progress logs, manifests, attestation files, verification logs, and output archives described in the [AARD Docker Image Runbook](../service/attested/arbd/Dockerfile.md).  The manual lists output files for ordinary, service-managed, and attested runs.
 
 ## License
 

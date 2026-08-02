@@ -495,7 +495,7 @@ Important flags:
 | `--engine` | Lean engine binary passed to child cases when requested. |
 | `--bearer-token` | Optional service bearer token. |
 | `--case-startup-timeout` | Startup wait for `/api/v1/cases` child Case API health. |
-| `--attested-driver` | Path to `arbd/tools/run-arbd-attested.py` for attested Clerk runs. |
+| `--attested-driver` | Path to `service/attested/arbd/run-arbd-attested.py` for attested Clerk runs. |
 | `--attested-uv` | Optional `uv` executable used as `uv run <attested-driver>`. |
 | `--attested-parser` | Optional attestation parser path passed to the attested driver. |
 | `--attested-input-prefix` | Default S3 input prefix for attested Clerk runs. |
@@ -568,7 +568,7 @@ Create an attested example run:
   --listen 127.0.0.1:19790 \
   --out-root out/service \
   --aard-bin .bin/aard \
-  --attested-driver "$(pwd)/tools/run-arbd-attested.py" \
+  --attested-driver "$(pwd)/../service/attested/arbd/run-arbd-attested.py" \
   --attested-exec-ami ami-REPLACE \
   --attested-output-root s3://agentcourt-data/arbattest/aard-runs \
   --attested-expected-pcr4 PCR4_HEX \
@@ -622,7 +622,7 @@ The `execution` object is optional for existing local Clerk clients.  If it is p
 
 Attested mode verifies before completion.  The service passes `--verify` to the attested driver and rejects `verify: false`.  The Clerk record reaches `completed` only after the driver exits successfully, writes `verification.log`, extracts `aard-output/`, and leaves a readable `aard-output/run.json`.
 
-[AARD Docker Image Runbook](Dockerfile.md) and [Attested AARD Dev Host Requirements](docs/attested-dev-host.md) document the image build, S3 layout, dev-host requirements, artifact set, and verification checks for attested execution.  The manual describes the Clerk API shape and service behavior, while those runbooks describe the remote execution environment.  Keep the AMI id, expected PCR values, image tar S3 path, input prefixes, and output prefixes in those runbooks current when rebuilding the exec AMI or attested workload image.
+[AARD Docker Image Runbook](../service/attested/arbd/Dockerfile.md) and [Attested AARD Dev Host Requirements](../service/attested/arbd/attested-dev-host.md) document the image build, S3 layout, dev-host requirements, artifact set, and verification checks for attested execution.  The manual describes the Clerk API shape and service behavior, while those runbooks describe the remote execution environment.  Keep the AMI id, expected PCR values, image tar S3 path, input prefixes, and output prefixes in those runbooks current when rebuilding the exec AMI or attested workload image.
 
 The `out_dir` field, when present, must name an immediate child of the service output root.  If it is omitted, Clerk uses `<out-root>/<case_id>`.  Clerk refuses to start a run in a nonempty output directory.
 

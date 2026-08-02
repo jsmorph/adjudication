@@ -118,3 +118,20 @@ The base image build passed for `service@dc7c61d61b478dd2bf24fdc7e1e4924d80b3744
 - [x] `go vet ./service/... ./cmd/... ./web/...`
 - [x] All retained packages passed during `go test -buildvcs=false -count=1 ./...`.  The command failed only while loading obsolete core dispatchers that still import the already-extracted service and MCP package paths; Stage 5 deletes those dispatchers from this branch.
 - [x] Build the base image from exact service and core commits, inspect its entrypoint and working directory, display `aar-run --help`, and validate an embedded complaint through the installed core executable.
+
+### AARD attested execution extraction
+
+The AARD attested image, exec entrypoint, local driver, exec scripts, and runbooks now live under `service/attested/arbd`.  The base image fetches and verifies full `CORE_COMMIT` and `SERVICE_COMMIT` values, builds `aard` and `aardengine` from core, and builds `aard-run` from service.  Its runtime filesystem contains the installed programs and required core data.
+
+The local driver invokes the installed `aard case-packet` command for complaint-based runs.  `aard-service` passes its configured core executable path to that driver, and the driver records the path in `run.env`.  The exec workload starts the service-owned `aard-run` launcher with explicit paths to the installed core executable, engine, working directory, and common-data root.
+
+The example wrapper accepts a core example directory and calls the sibling service-owned driver.  The runbook specifies a repository-root Docker build context and full core and service commit IDs.  It retains the AMI, PCR, S3, secret, artifact, and verification procedures required to operate the attested service.
+
+### AARD attested verification
+
+- [x] `go test -buildvcs=false -count=1 ./service/arbd ./cmd/aard-service`
+- [x] `python3 -B -m unittest service/attested/arbd/run_arbd_attested_test.py`
+- [x] `sh -n` passed for the POSIX shell programs, and `bash -n` passed for `run-one-attested-arbd.sh`.
+- [x] `go vet ./service/arbd ./cmd/aard-service ./cmd/aard-run`
+- [x] `go build -buildvcs=false -o /tmp/service-aard-run ./cmd/aard-run`
+- [ ] Build the base image from exact service and core commits, inspect its entrypoint and working directory, display `aard-run --help`, and validate an embedded complaint through the installed core executable.
