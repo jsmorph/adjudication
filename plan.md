@@ -135,7 +135,7 @@ Every moved component should follow one order: preserve it on `service`, make it
 - [x] Retain `web/` on `service`; its programs use the service HTTP APIs without importing service or procedure packages, and all web tests pass there.
 - [ ] Verify all service packages with fake core binaries and then with built `adc`, `aar`, and `aard` binaries from `carve`.  The service package suite, all three paired launcher tests, and the ARB and AARD Clerk/MCP tests pass; a complete ADC Clerk/MCP case remains.
 - [ ] On `carve`, delete the three `runtime/service` packages and the three `service` subcommands only after the extracted commands pass.
-- [ ] Remove service variants from core black-box tests while preserving direct one-case tests for the same procedural failures and results.
+- [x] Remove service variants from core black-box tests while preserving direct one-case tests for lawyer attempt exhaustion, lawyer deadline expiration, and runtime failure exit behavior.
 - [ ] Remove Clerk routes, process registries, service artifact routes, and service examples from the `carve` documentation.
 
 This stage should preserve the private listener owned by one running case if D1 selects the one-case runtime.  That listener carries participant opportunities and belongs to the core case process, while the public service may proxy it.  Naming in both branches should distinguish the case-owned Role API from the multi-case Clerk service.
