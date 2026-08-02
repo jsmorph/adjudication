@@ -30,6 +30,8 @@ func run(ctx context.Context, args []string, stderr io.Writer) error {
 	registryDir := fs.String("registry-dir", "", "Case registry directory")
 	outputRoot := fs.String("out-root", "", "Case output root")
 	aardBin := fs.String("aard-bin", "aard", "Path to the core aard binary")
+	aardRunBin := fs.String("aard-run-bin", "aard-run", "Path to the service-owned aard-run binary")
+	aardWorkingDir := fs.String("aard-working-dir", "", "Optional working directory for core aard processes")
 	commonRoot := fs.String("common-root", "", "Optional common directory passed to core cases")
 	enginePath := fs.String("engine", "", "Optional Lean engine binary passed to core cases")
 	bearerToken := fs.String("bearer-token", "", "Optional bearer token required for service requests")
@@ -73,13 +75,15 @@ func run(ctx context.Context, args []string, stderr io.Writer) error {
 		regDir = filepath.Join(outRoot, "registry")
 	}
 	return aardservice.Run(ctx, aardservice.Config{
-		ListenAddr:  strings.TrimSpace(*listen),
-		RegistryDir: regDir,
-		OutputRoot:  outRoot,
-		AardBin:     strings.TrimSpace(*aardBin),
-		CommonRoot:  strings.TrimSpace(*commonRoot),
-		EnginePath:  strings.TrimSpace(*enginePath),
-		BearerToken: strings.TrimSpace(*bearerToken),
+		ListenAddr:     strings.TrimSpace(*listen),
+		RegistryDir:    regDir,
+		OutputRoot:     outRoot,
+		AardBin:        strings.TrimSpace(*aardBin),
+		AardRunBin:     strings.TrimSpace(*aardRunBin),
+		AardWorkingDir: strings.TrimSpace(*aardWorkingDir),
+		CommonRoot:     strings.TrimSpace(*commonRoot),
+		EnginePath:     strings.TrimSpace(*enginePath),
+		BearerToken:    strings.TrimSpace(*bearerToken),
 		Attested: aardservice.AttestedClerkConfig{
 			DriverPath:          strings.TrimSpace(*attestedDriver),
 			UV:                  strings.TrimSpace(*attestedUV),

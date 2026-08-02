@@ -28,21 +28,24 @@ const (
 
 	defaultCaseAPIAddr       = "127.0.0.1:0"
 	defaultCouncilBackend    = "direct"
+	defaultAardRunCommand    = "aard-run"
 	defaultMaxProxyBodyBytes = 32 << 20
 	detachedProcessMessage   = "service restarted and child process is not attached"
 )
 
 type Config struct {
-	ListenAddr  string
-	RegistryDir string
-	OutputRoot  string
-	AardBin     string
-	CommonRoot  string
-	EnginePath  string
-	BearerToken string
-	Attested    AttestedClerkConfig
-	StartupWait time.Duration
-	Log         io.Writer
+	ListenAddr     string
+	RegistryDir    string
+	OutputRoot     string
+	AardBin        string
+	AardRunBin     string
+	AardWorkingDir string
+	CommonRoot     string
+	EnginePath     string
+	BearerToken    string
+	Attested       AttestedClerkConfig
+	StartupWait    time.Duration
+	Log            io.Writer
 }
 
 type Server struct {
@@ -113,6 +116,9 @@ func New(cfg Config) (*Server, error) {
 	}
 	if strings.TrimSpace(cfg.AardBin) == "" {
 		return nil, fmt.Errorf("aard binary path is required")
+	}
+	if strings.TrimSpace(cfg.AardRunBin) == "" {
+		cfg.AardRunBin = defaultAardRunCommand
 	}
 	if cfg.StartupWait <= 0 {
 		cfg.StartupWait = DefaultCaseStartupWait
@@ -397,6 +403,9 @@ func (s *Server) startCase(ctx context.Context, req CaseCreateRequest) (CaseReco
 	}
 
 	cmd := exec.CommandContext(context.Background(), s.cfg.AardBin, args...)
+	if strings.TrimSpace(s.cfg.AardWorkingDir) != "" {
+		cmd.Dir = strings.TrimSpace(s.cfg.AardWorkingDir)
+	}
 	cmd.Stdout = stdoutFile
 	cmd.Stderr = stderrFile
 	closeLogs := func() error {

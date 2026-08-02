@@ -6,18 +6,48 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
-	"adjudication/arbd/runtime/localrun"
-	"adjudication/arbd/runtime/proceeding"
+	"adjudication/service/localrun/arbd"
 )
 
+type explicitFileList struct {
+	values []string
+}
+
+func (f *explicitFileList) String() string {
+	return strings.Join(f.values, ",")
+}
+
+func (f *explicitFileList) Set(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fmt.Errorf("--file must not be empty")
+	}
+	f.values = append(f.values, value)
+	return nil
+}
+
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if err := runLocal(ctx, os.Args[1:], os.Stdout, os.Stderr); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
 func runLocal(ctx context.Context, args []string, stdout io.Writer, stderr io.Writer) error {
-	fs := flag.NewFlagSet("run", flag.ContinueOnError)
+	fs := flag.NewFlagSet("aard-run", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var caseFiles explicitFileList
+	coreCommand := fs.String("aard-bin", localrun.DefaultCoreCommand, "Core aard executable")
+	coreWorkingDir := fs.String("aard-working-dir", "", "Optional working directory for the core aard process")
 	complaintPath := fs.String("complaint", "", "Complaint markdown file")
 	fs.Var(&caseFiles, "file", "Explicit case file path or glob. May be repeated")
 	outDir := fs.String("out-dir", "", "Output directory")
@@ -29,22 +59,22 @@ func runLocal(ctx context.Context, args []string, stdout io.Writer, stderr io.Wr
 	attorneyCommonPrompt := fs.String("attorney-common-prompt", "", "Attorney common prompt file override")
 	attorneyArgumentPrompt := fs.String("attorney-arguments-prompt", "", "Attorney arguments prompt file override")
 	attorneyRebuttalPrompt := fs.String("attorney-rebuttals-prompt", "", "Attorney rebuttals prompt file override")
-	commonRoot := fs.String("common-root", proceeding.DefaultCommonRoot(), "Path to sibling shared common directory")
+	commonRoot := fs.String("common-root", "", "Optional common directory passed to the core case")
 	councilPool := fs.String("council-pool", "", "Council JSONL request-spec pool file")
-	caseAPIAddr := fs.String("caseapi-addr", proceeding.DefaultCaseAPIAddr, "Private case API listen address")
+	caseAPIAddr := fs.String("caseapi-addr", "127.0.0.1:0", "Private case API listen address")
 	mcpListenAddr := fs.String("mcp-listen", "0.0.0.0:0", "MCP listen address")
 	mcpBearerToken := fs.String("mcp-bearer-token", "", "MCP bearer token. Default: generated")
 	councilTimeoutSeconds := fs.Int("council-timeout-seconds", localrun.DefaultRunCouncilTimeoutSeconds, "Council turn timeout seconds")
 	lawyerTimeoutSeconds := fs.Int("lawyer-timeout-seconds", localrun.DefaultRunLawyerTimeoutSeconds, "Lawyer turn timeout seconds")
 	maxResponseBytes := fs.Int("max-response-bytes", 0, "Override runtime max parsed response bytes")
 	invalidAttemptLimit := fs.Int("invalid-attempt-limit", 0, "Override runtime invalid-attempt limit")
-	enginePath := fs.String("engine", proceeding.DefaultEnginePath(), "Lean engine binary")
+	enginePath := fs.String("engine", "", "Optional Lean engine binary passed to the core case")
 	runID := fs.String("run-id", "", "Run ID override")
 	caseID := fs.String("case-id", "", "Case ID")
 	lawyerInstructions := fs.String("lawyer-instructions", localrun.DefaultLawyerInstructionsPath(), "OpenClaw lawyer instruction template")
 	remoteLawyerSkill := fs.String("remote-lawyer-skill", localrun.DefaultRemoteLawyerSkillPath(), "OpenClaw remote lawyer skill template")
 	councilInstructions := fs.String("council-instructions", localrun.DefaultCouncilInstructionsPath(), "Pi council instruction template")
-	autoLawyers := fs.String("auto-lawyers", localrun.DefaultAutoLawyers, "OpenClaw lawyers started by aard run: both, plaintiff, or defendant")
+	autoLawyers := fs.String("auto-lawyers", localrun.DefaultAutoLawyers, "OpenClaw lawyers started by aard-run: both, plaintiff, or defendant")
 	mcpPublicBaseURL := fs.String("mcp-public-base-url", "", "Public MCP base URL for remote lawyers, for example http://aard-host.example:8001")
 	dockerCommand := fs.String("docker", localrun.DefaultDockerCommand, "Docker command")
 	podmanCommand := fs.String("podman", localrun.DefaultPodmanCommand, "Podman command")
@@ -62,7 +92,7 @@ func runLocal(ctx context.Context, args []string, stdout io.Writer, stderr io.Wr
 	dockerMCPHost := fs.String("docker-mcp-host", "", "Host name used by Docker containers to reach MCP")
 	podmanMCPHost := fs.String("podman-mcp-host", "", "Host name used by Podman containers to reach MCP")
 	fs.Usage = func() {
-		fmt.Fprintf(stderr, "Usage: aard run [EXAMPLE] [options]\n\n")
+		fmt.Fprintf(stderr, "Usage: aard-run [EXAMPLE] [options]\n\n")
 		fs.PrintDefaults()
 	}
 	flagArgs, example, err := splitRunArgs(fs, args)
@@ -76,7 +106,7 @@ func runLocal(ctx context.Context, args []string, stdout io.Writer, stderr io.Wr
 		return err
 	}
 	if fs.NArg() != 0 {
-		return fmt.Errorf("aard run accepts at most one example name")
+		return fmt.Errorf("aard-run accepts at most one example name")
 	}
 	if example != "" {
 		if example == "" || strings.Contains(example, "/") || strings.HasPrefix(example, ".") || strings.Contains(example, "..") {
@@ -104,6 +134,8 @@ func runLocal(ctx context.Context, args []string, stdout io.Writer, stderr io.Wr
 		*outDir = filepath.Join("out", strings.TrimSpace(*caseID))
 	}
 	opts := localrun.Options{
+		CoreCommand:                strings.TrimSpace(*coreCommand),
+		CoreWorkingDir:             strings.TrimSpace(*coreWorkingDir),
 		ComplaintPath:              *complaintPath,
 		CaseFiles:                  caseFiles.values,
 		OutputDir:                  *outDir,
@@ -157,7 +189,9 @@ func runLocal(ctx context.Context, args []string, stdout io.Writer, stderr io.Wr
 	if err != nil {
 		return fmt.Errorf("marshal run result: %w", err)
 	}
-	fmt.Fprintln(stdout, string(raw))
+	if _, err := fmt.Fprintln(stdout, string(raw)); err != nil {
+		return fmt.Errorf("write run result: %w", err)
+	}
 	return nil
 }
 
@@ -173,7 +207,7 @@ func splitRunArgs(fs *flag.FlagSet, args []string) ([]string, string, error) {
 					continue
 				}
 				if example != "" {
-					return nil, "", fmt.Errorf("aard run accepts at most one example name")
+					return nil, "", fmt.Errorf("aard-run accepts at most one example name")
 				}
 				example = rest
 			}
@@ -198,7 +232,7 @@ func splitRunArgs(fs *flag.FlagSet, args []string) ([]string, string, error) {
 			continue
 		}
 		if example != "" {
-			return nil, "", fmt.Errorf("aard run accepts at most one example name")
+			return nil, "", fmt.Errorf("aard-run accepts at most one example name")
 		}
 		example = arg
 	}

@@ -47,7 +47,7 @@ A component can remain temporarily on both branches while its replacement and co
 | `aar council-replay` and `aar juror-replay` | Remove unless a selected service acceptance test requires a defined operational use. | Preserve procedure assertions as ordinary tests. |
 | `aard case` | Carve. | Preserve one-case execution, Lawyer and Council APIs, durable records, and JSON summary behavior. |
 | `aard validate` and `aard verify-certificate` | Carve. | Retain as command-line validation and replay tools. |
-| `aard run` | Service. | Move local OpenClaw, Pi, and MCP supervision to a service-owned command that starts `aard case`. |
+| `aard run` | Service. | Moved to `aard-run`, which starts `aard case` and uses the service-owned MCP adapter. |
 | `aard mcp` and `aard service` | Service. | Add standalone service-owned commands before removing these dispatch entries from carve. |
 | `aard case-packet` | Review in Stage 3. | Apply the shared packet ownership decision. |
 | `aard complain` | Review on carve. | Retain only if complaint preparation belongs to the distilled core command path. |

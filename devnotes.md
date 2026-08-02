@@ -45,3 +45,17 @@ The paired test starts the real `aar` binary and Lean engine from carve, perform
 
 - [x] `CARVE_BIN_DIR=/tmp/carve-core-bins CARVE_ROOT=/media/hd2/src/adjudication-clones/adjudication-1 go test -buildvcs=false -count=1 ./service/arb ./service/localrun/arb ./cmd/aar-service ./cmd/aar-run`
 - [x] Import search found no `adjudication/arb/runtime` import in `service/localrun/arb` or `cmd/aar-run`.
+
+### AARD local launcher extraction
+
+The AARD local-agent launcher now lives at `service/localrun/arbd`, with `aard-run` as its standalone command.  It starts an installed `aard case` process, waits for the private case API, and uses the service-owned AARD MCP package.  The launcher imports no AARD implementation package and preserves the complete core `run.json` object in its command result.
+
+The launcher embeds its three default agent templates while preserving file-path overrides.  It passes the judgment standard and every other core case input through explicit command flags, accepts an explicit core working directory, records core output under `logs/`, and rejects a stale `run.json`.  The AARD multi-case service now invokes `aard-run` for Clerk local-agent requests and reserves `aard` for direct core cases.
+
+The paired test starts the real `aard` binary and Lean engine from carve, performs council preflight against a local fake provider, waits for `/health`, and reads the Lawyer API status route.  Cancellation stops the core child and verifies that the launcher observes its exit.  Test flags identify the paired executable directory and carve checkout while retaining the reusable `go test` command prefix.
+
+### AARD launcher verification
+
+- [x] `go test -buildvcs=false -count=1 ./service/arbd ./service/localrun/arbd ./cmd/aard-service ./cmd/aard-run`
+- [x] `go test -buildvcs=false -count=1 -run '^TestPairedCoreCaseAPI$' ./service/localrun/arbd -args -carve-bin-dir=/tmp/carve-core-bins -carve-root=/media/hd2/src/adjudication-clones/adjudication-1`
+- [x] Import search found no `adjudication/arbd/runtime` import in `service/localrun/arbd` or `cmd/aard-run`.
