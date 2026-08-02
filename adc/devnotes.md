@@ -1,5 +1,17 @@
 # Development Notes
 
+## 2026-08-02: Core and service branch split
+
+### References
+
+- [Core and service branch plan](../plan.md)
+
+### Decisions
+
+The `carve` branch retains ADC's Lean engine, proofs, one-case Go runtime, case-owned Role API, durable records, certificate verification, and procedural `clerk` actor.  The `service` branch receives the multi-case Clerk service, MCP adapter, local OpenClaw and Pi launchers, agent templates, attested execution, Docker deployment, web programs, and their operational support.  The branches communicate through documented executable, HTTP, and artifact interfaces, with tested commit pairs recording compatibility.
+
+Service commit `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` contains the extracted ADC multi-case package and `adc-service` command.  Service commit `6eaed038b468add7099b77edb766b987ba053dcd` contains the extracted ADC MCP adapter and `adc-mcp` command.  ADC's local launcher remains on both branches until its service-owned command passes fake-core and paired real-core tests.
+
 ## 2026-07-15: Judge Rule 60 eval
 
 ### References
