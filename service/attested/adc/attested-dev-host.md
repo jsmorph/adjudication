@@ -12,13 +12,13 @@ The `dev` host performs three ADC jobs.  It builds Docker images from a source c
 
 | Path on `dev` | Required contents | Purpose |
 | --- | --- | --- |
-| `/home/ec2-user/adjudication-build-2361886` | `jsmorph/adjudication` checkout on the `arbattest` branch | Docker build source for `arbattest-adc:dev` and `adc-glue:poc`. |
+| `/home/ec2-user/adjudication-build-2361886` | Service checkout containing `service/attested/adc` | Docker build context for `arbattest-adc:dev` and `adc-glue:poc`. |
 | `/home/ec2-user/attest` | `exec.sh`, `parse_attestation.py`, and `run-adc.sh` | Runtime launcher directory used by `run-adc-attested.py` and manual `exec.sh` commands. |
 | `/home/ec2-user/arbattest-secrets/auth.json` | Codex auth JSON | Staged to S3 as the OpenClaw Codex auth file. |
 | `/home/ec2-user/arbattest-secrets/keys.sh` | Shell assignments for provider keys | Staged to S3; must define `OPENROUTER_API_KEY` for Pi jurors. |
 | `/home/ec2-user/adc-glue-poc.tar` | Docker archive produced by `docker save adc-glue:poc` | Uploaded to S3 for the exec AMI to download. |
 
-`/home/ec2-user/attest` is a runtime directory.  It is not the source-control checkout for ADC.  Changes to `run-adc.sh` belong in `adjudication/adc/tools/run-adc.sh`, then the file should be copied to the runtime directory.
+`/home/ec2-user/attest` is the runtime directory used by the exec launcher.  Changes to `run-adc.sh` belong in `service/attested/adc/run-adc.sh`.  Copy the reviewed service version to the runtime directory before use.
 
 ## Host Software
 
@@ -137,4 +137,4 @@ rm -f /tmp/arbattest-s3-probe.txt
 
 ## References
 
-The generic host and AMI requirements live in [Dev Host Requirements](../../../attest/dev-host.md).  The ADC image build, local driver run, Clerk service run, verification checks, and troubleshooting table live in [ADC Docker Image Runbook](../Dockerfile.md).  The one-complaint helper is `adc/tools/run-one-attested-adc.sh`; it stages `auth.json` and `keys.sh` before invoking the lower-level `adc/tools/run-adc-attested.py` driver and `adc/tools/run-adc.sh` exec workload script.
+The generic host and AMI requirements live in [Dev Host Requirements](../../../attest/dev-host.md).  The ADC image build, local driver run, Clerk service run, verification checks, and troubleshooting table live in [ADC Docker Image Runbook](Dockerfile.md).  The one-complaint helper is `service/attested/adc/run-one-attested-adc.sh`; it stages `auth.json` and `keys.sh` before invoking the lower-level driver and exec workload script in the same directory.

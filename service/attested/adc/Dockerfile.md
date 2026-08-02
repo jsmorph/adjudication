@@ -2,30 +2,30 @@
 
 ## Scope
 
-This runbook covers the ADC base image from `adc/Dockerfile`, the ADC attested workload image from `adc/Dockerfile.glue`, and the exec run launched by `adc/tools/run-adc.sh`.  The base image contains the compiled ADC runtime, the Lean engine, the `adjudication` source tree, the Docker CLI, and an embedded Pi juror root filesystem.  The attested workload image adds AWS CLI, `nitro-tpm-attest`, TSS runtime libraries, and `adc/attest/exec-container-entrypoint.sh`.
+This runbook covers the ADC base image, attested workload image, and exec run under `service/attested/adc`.  The base image combines the core `adc` and `adcengine` binaries with the service `adc-run` launcher, the required core court and shared data, the Docker CLI, and an embedded Pi juror root filesystem.  The attested workload image adds AWS CLI, `nitro-tpm-attest`, TSS runtime libraries, and the exec container entrypoint.
 
-The current ADC attested path supports complaint input only.  The local driver packages a local `complaint_path` and its linked local Markdown files into `case.tar.gz` and `case-packet.json`, uploads those objects under `INPUT_PREFIX`, and passes the extracted complaint path to `adc run`.  Scenario input, examples, and local runtime overrides are local-service features until the attested path has explicit support for them.
+The current ADC attested path supports complaint input only.  The local driver packages a local `complaint_path` and its linked local Markdown files into `case.tar.gz` and `case-packet.json`, uploads those objects under `INPUT_PREFIX`, and passes the extracted complaint path to `adc-run`.  Scenario input, examples, and local runtime overrides are local-service features until the attested path has explicit support for them.
 
-## Files
+## Files And Branches
 
 | Item | Location | Role |
 | --- | --- | --- |
-| ADC base image | `adc/Dockerfile` | Builds ADC, the Lean engine, Docker CLI support, and the embedded Pi root filesystem. |
-| Attested workload image | `adc/Dockerfile.glue` | Adds AWS CLI, `nitro-tpm-attest`, TSS libraries, and the S3 artifact flow. |
-| Exec container entrypoint | `adc/attest/exec-container-entrypoint.sh` | Runs ADC, uploads live events, archives output, writes the manifest, obtains the TPM attestation, and uploads artifacts to S3. |
-| Exec script | `adc/tools/run-adc.sh` | Loads `adc-glue:poc` on the exec AMI and starts the attested workload container. |
-| Local driver | `adc/tools/run-adc-attested.py` | Builds the complaint packet, starts `exec.sh` through `dev`, polls S3, downloads artifacts, extracts ADC output, and verifies the attestation. |
-| One-run helper | `adc/tools/run-one-attested-adc.sh` | Stages `auth.json` and `keys.sh`, chooses run-specific S3 prefixes, and invokes the local driver for one complaint. |
-| Container proof script | `adc/tools/run-container-poc.sh` | Runs the attested workload image in attestation-only mode. |
-| Clerk service | `adc runtime service` | Starts attested ADC through the same `/clerk/v1/cases` API used for local ADC cases. |
+| ADC base image | `service/attested/adc/Dockerfile` | Builds core at `CORE_COMMIT`, builds service at `SERVICE_COMMIT`, and assembles the ADC runtime image. |
+| Attested workload image | `service/attested/adc/Dockerfile.glue` | Adds AWS CLI, `nitro-tpm-attest`, TSS libraries, and the S3 artifact flow. |
+| Exec container entrypoint | `service/attested/adc/exec-container-entrypoint.sh` | Runs `adc-run`, uploads live events, archives output, writes the manifest, obtains the TPM attestation, and uploads artifacts to S3. |
+| Exec script | `service/attested/adc/run-adc.sh` | Loads `adc-glue:poc` on the exec AMI and starts the attested workload container. |
+| Local driver | `service/attested/adc/run-adc-attested.py` | Uses the installed core `adc` command to build the complaint packet, starts `exec.sh` through `dev`, downloads artifacts, and verifies the attestation. |
+| One-run helper | `service/attested/adc/run-one-attested-adc.sh` | Stages `auth.json` and `keys.sh`, chooses run-specific S3 prefixes, and invokes the local driver for one complaint. |
+| Container proof script | `service/attested/adc/run-container-poc.sh` | Runs the attested workload image in attestation-only mode. |
+| Clerk service | `adc-service` | Starts local or attested ADC cases through `/clerk/v1/cases`. |
 
-The generic exec AMI launcher lives in the `attest` repository.  The launcher directory on `dev` is `/home/ec2-user/attest`, and that directory must contain `exec.sh`, `parse_attestation.py`, and `run-adc.sh`.  The source checkout used to build ADC images must be separate from the launcher directory.
+The generic exec AMI launcher lives under `attest`.  The launcher directory on `dev` is `/home/ec2-user/attest`, and that directory must contain `exec.sh`, `parse_attestation.py`, and `run-adc.sh`.  Build each image from full 40-character core and service commit IDs so the image records the reviewed pair.
 
 ## Dev Host And AWS Requirements
 
-The generic `dev` host requirements for the exec AMI launcher live in [Dev Host Requirements](../../attest/dev-host.md).  Read that document before building or launching through `attest/exec.sh`.  It covers the base x86_64 host, Nix daemon setup, AWS CLI, EC2 permissions, EBS direct snapshot permissions, role passing, default VPC assumptions, disk requirements, and verification commands.
+The generic `dev` host requirements for the exec AMI launcher live in [Dev Host Requirements](../../../attest/dev-host.md).  Read that document before building or launching through `attest/exec.sh`.  It covers the base x86_64 host, Nix daemon setup, AWS CLI, EC2 permissions, EBS direct snapshot permissions, role passing, default VPC assumptions, disk requirements, and verification commands.
 
-ADC-specific requirements live in [Attested ADC Dev Host Requirements](docs/attested-dev-host.md).  The ADC document adds Docker image build requirements, S3 prefixes, secret file locations, instance profile requirements, expected PCR values, and operational checks.  The verified first path uses `us-east-2`, `m5.4xlarge`, `ec2-nix-builder`, `s3://agentcourt-data/arbattest/images/adc-glue-poc.tar`, `s3://agentcourt-data/arbattest/adc-inputs/`, and `s3://agentcourt-data/arbattest/adc-runs/`.
+ADC-specific requirements live in [Attested ADC Dev Host Requirements](attested-dev-host.md).  The ADC document adds Docker image build requirements, S3 prefixes, secret file locations, instance profile requirements, expected PCR values, and operational checks.  The verified first path uses `us-east-2`, `m5.4xlarge`, `ec2-nix-builder`, `s3://agentcourt-data/arbattest/images/adc-glue-poc.tar`, `s3://agentcourt-data/arbattest/adc-inputs/`, and `s3://agentcourt-data/arbattest/adc-runs/`.
 
 ## Attestation Record
 
@@ -33,17 +33,19 @@ The attestation record lives in S3.  The local driver uses stdout from `exec.sh`
 
 The live `events.ndjson` object supports monitoring while ADC is running.  The verified event log remains the copy inside `adc-output.tar.gz`, because the manifest binds the archive hash.  `manifest.sha384` contains the SHA-384 hash of `manifest.json`, and the exec container passes that file to `nitro-tpm-attest --user-data`, so the attestation user data must equal the manifest hash.
 
-The manifest binds the input mode, case-packet object hashes, input prefix, output prefix, exec AMI, instance ID, workload image ID, workload image tar hash, run log hash, and ADC output archive hash.  If ADC exits nonzero, the container uploads `run.log`, `adc-partial.tar.gz`, and any available live events, then exits with failure.  A failed ADC run does not produce a verified completion record through the current driver path.
+The manifest binds the input mode, case-packet object hashes, input prefix, output prefix, exec AMI, instance ID, workload image ID, workload image tar hash, run log hash, and ADC output archive hash.  If `adc-run` exits nonzero, the container uploads `run.log`, `adc-partial.tar.gz`, and any available live events, then exits with failure.  A failed ADC run does not produce a verified completion record through the current driver path.
 
 ## Build Locally
 
-Run the base image build from `/media/hd2/src/arbattest`.  The Dockerfile clones the repository named by `ADJUDICATION_REPO` and checks out `ADJUDICATION_REF`; it does not copy the current local checkout into the image.  Use `--no-cache` after pushing branch changes, because Docker can otherwise keep an older cloned source layer.
+Run the base image build from the service repository root.  The Dockerfile clones `CORE_REPO` and `SERVICE_REPO`, fetches the commits named by `CORE_COMMIT` and `SERVICE_COMMIT`, and verifies both resulting `HEAD` values.  Both commit arguments must contain full 40-character lowercase commit IDs.
 
 ```bash
 docker build --no-cache \
+  --build-arg CORE_COMMIT="$CORE_COMMIT" \
+  --build-arg SERVICE_COMMIT="$SERVICE_COMMIT" \
   -t arbattest-adc:local \
-  -f adjudication/adc/Dockerfile \
-  adjudication/adc
+  -f service/attested/adc/Dockerfile \
+  .
 ```
 
 Build the attested workload image from the same directory.  The glue build uses the ADC base image as its parent and adds the attestation entrypoint.  The image name used by the exec script is `adc-glue:poc`.
@@ -52,35 +54,40 @@ Build the attested workload image from the same directory.  The glue build uses 
 docker build --no-cache \
   --build-arg ADC_IMAGE=arbattest-adc:local \
   -t adc-glue:poc \
-  -f adjudication/adc/Dockerfile.glue \
-  adjudication/adc
+  -f service/attested/adc/Dockerfile.glue \
+  .
 ```
 
 Validate the base image before a long run.  This command checks that the image can parse an existing complaint and invoke the ADC CLI.  It does not start OpenClaw, Pi, Docker-in-Docker, or the exec AMI.
 
 ```bash
+CORE_ROOT=/path/to/carve
 docker run --rm \
+  -v "$CORE_ROOT/adc/examples/ex1:/case:ro" \
+  --entrypoint /opt/core/adc/.bin/adc \
   arbattest-adc:local \
-  validate --scenario examples/ex1/scenario.json
+  validate --complaint /case/complaint.md
 ```
 
 ## Build And Upload On `dev`
 
-Build on `dev` from the source checkout, not from `/home/ec2-user/attest`.  Save the glue image as a Docker archive and upload it to S3.  Record the SHA-384 hash because the exec entrypoint records that value in each manifest.
+Build on `dev` from the service checkout.  Set `CORE_COMMIT` and `SERVICE_COMMIT` to the reviewed full commit IDs, then save the glue image as a Docker archive and upload it to S3.  Record the SHA-384 hash because the exec entrypoint records that value in each manifest.
 
 ```bash
 ssh dev 'set -eu
 cd /home/ec2-user/adjudication-build-2361886
-git pull --ff-only origin arbattest
-cd adc
+CORE_COMMIT=REPLACE_WITH_40_CHARACTER_CORE_COMMIT
+SERVICE_COMMIT=REPLACE_WITH_40_CHARACTER_SERVICE_COMMIT
 sudo docker build --no-cache \
+  --build-arg CORE_COMMIT="$CORE_COMMIT" \
+  --build-arg SERVICE_COMMIT="$SERVICE_COMMIT" \
   -t arbattest-adc:dev \
-  -f Dockerfile \
+  -f service/attested/adc/Dockerfile \
   .
 sudo docker build --no-cache \
   --build-arg ADC_IMAGE=arbattest-adc:dev \
   -t adc-glue:poc \
-  -f Dockerfile.glue \
+  -f service/attested/adc/Dockerfile.glue \
   .
 sudo docker save adc-glue:poc -o /home/ec2-user/adc-glue-poc.tar
 sudo chown ec2-user:ec2-user /home/ec2-user/adc-glue-poc.tar
@@ -91,11 +98,11 @@ AWS_DEFAULT_REGION=us-east-2 \
 '
 ```
 
-Install the runner file into the launcher directory.  This directory is the runtime directory used by `exec.sh`, while the checked-in source remains under `adjudication/adc/tools`.  Keep the runtime copy current whenever `run-adc.sh` changes.
+Install the runner file into the launcher directory.  This directory is the runtime directory used by `exec.sh`, while the reviewed source remains under `service/attested/adc`.  Copy the reviewed service version whenever `run-adc.sh` changes.
 
 ```bash
 ssh dev 'mkdir -p /home/ec2-user/attest'
-scp attest/exec.sh attest/parse_attestation.py adjudication/adc/tools/run-adc.sh dev:/home/ec2-user/attest/
+scp attest/exec.sh attest/parse_attestation.py service/attested/adc/run-adc.sh dev:/home/ec2-user/attest/
 ssh dev 'chmod 755 /home/ec2-user/attest/exec.sh /home/ec2-user/attest/run-adc.sh /home/ec2-user/attest/parse_attestation.py'
 ```
 
@@ -124,15 +131,19 @@ The complaint packet is deterministic for the same complaint and linked files.  
 The local driver is the normal operator path.  It builds the complaint packet locally, uploads packet objects through `dev`, starts the exec AMI, polls the output prefix, downloads terminal artifacts, extracts `adc-output.tar.gz`, and verifies the attestation when `--verify` is set.  Use the helper for ordinary one-complaint runs because it stages the two required secret objects before calling the driver.  Use fresh input and output prefixes for each run.
 
 ```bash
-adjudication/adc/tools/run-one-attested-adc.sh \
+CORE_ROOT=/path/to/carve
+ADC_BIN="$CORE_ROOT/adc/.bin/adc" \
+service/attested/adc/run-one-attested-adc.sh \
   PATH/TO/complaint.md
 ```
 
 ```bash
-uv run adjudication/adc/tools/run-adc-attested.py \
+CORE_ROOT=/path/to/carve
+uv run service/attested/adc/run-adc-attested.py \
+  --adc-bin "$CORE_ROOT/adc/.bin/adc" \
   --case-id adc-custom-REPLACE_WITH_STAMP \
   --run-id adc-custom-REPLACE_WITH_STAMP \
-  --complaint adjudication/adc/examples/ex1/complaint.md \
+  --complaint "$CORE_ROOT/adc/examples/ex1/complaint.md" \
   --input-prefix s3://agentcourt-data/arbattest/adc-inputs/adc-REPLACE_WITH_STAMP \
   --exec-ami ami-011f957fe91cf7b81 \
   --out-dir /tmp/adc-custom-REPLACE_WITH_STAMP \
@@ -145,12 +156,19 @@ The output directory receives `run.env`, `progress.log`, `launcher.log`, `case.t
 
 ## Clerk Service End-To-End
 
-The clerk service can start the same attested path with `execution.mode = "attested"`.  The service runs the local driver as a child process, stores the driver output in the case output directory, exposes live attestation events through HTTP, and marks the case `completed` only after verification succeeds.  Run this sequence from `adjudication/adc` after building `.bin/adc` and `.bin/adcengine`.
+The clerk service can start the same attested path with `execution.mode = "attested"`.  The service runs the local driver as a child process, stores the driver output in the case output directory, exposes live attestation events through HTTP, and marks the case `completed` only after verification succeeds.  This sequence uses separate core and service checkouts and passes every executable and working directory explicitly.
 
 Prepare one run by choosing a case id, run id, local service output root, and S3 input prefix.  The input prefix must contain the secret files before the create request is posted, because the service driver writes only `case.tar.gz` and `case-packet.json` into that prefix.  The same prefix is recorded in `manifest.json`, so use a fresh prefix for each run.
 
 ```bash
-cd /media/hd2/src/arbattest/adjudication/adc
+CORE_ROOT=/path/to/carve
+SERVICE_ROOT=/path/to/service
+cd "$SERVICE_ROOT"
+
+make -C "$CORE_ROOT/adc" build
+mkdir -p .bin
+go build -buildvcs=false -o .bin/adc-service ./cmd/adc-service
+go build -buildvcs=false -o .bin/adc-run ./cmd/adc-run
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 case_id="adc-attested-ex1-$stamp"
@@ -170,12 +188,14 @@ AWS_DEFAULT_REGION=us-east-2 aws s3 ls '$input_prefix/'"
 Start the service with attestation defaults.  Leave `--attested-exec-poll-attempts` unset unless a run has a specific reason to override it; the driver derives the exec console polling limit from `--attested-timeout-seconds` with ten minutes of headroom.  The service output root is local and separate from the S3 output root.
 
 ```bash
-.bin/adc service \
+.bin/adc-service \
   --listen 127.0.0.1:19870 \
   --output-root "$service_root" \
-  --adc-bin .bin/adc \
-  --engine .bin/adcengine \
-  --attested-driver "$(pwd)/tools/run-adc-attested.py" \
+  --adc-bin "$CORE_ROOT/adc/.bin/adc" \
+  --adc-run-bin "$SERVICE_ROOT/.bin/adc-run" \
+  --adc-working-dir "$CORE_ROOT/adc" \
+  --engine "$CORE_ROOT/adc/.bin/adcengine" \
+  --attested-driver "$SERVICE_ROOT/service/attested/adc/run-adc-attested.py" \
   --attested-uv uv \
   --attested-input-prefix "$input_prefix" \
   --attested-output-root "$output_root" \
@@ -206,7 +226,7 @@ cat > "$service_root/create.json" <<EOF
   "mode": "run",
   "case_id": "$case_id",
   "run_id": "$run_id",
-  "complaint_path": "examples/ex1/complaint.md",
+  "complaint_path": "$CORE_ROOT/adc/examples/ex1/complaint.md",
   "execution": {
     "mode": "attested",
     "attestation": {
@@ -344,7 +364,7 @@ Use the first concrete failing line as the diagnostic start.  The service record
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| The readiness check cannot fetch `/clerk/v1/cases`. | The service did not start, the port is already occupied, or `.bin/adc` cannot find its required runtime files. | Read `$service_root/service.log`, check `ss -ltnp` for `127.0.0.1:19870`, and rebuild `.bin/adc` and `.bin/adcengine` from `adjudication/adc` if the binary paths are stale. |
+| The readiness check cannot fetch `/clerk/v1/cases`. | The service did not start, the port is already occupied, or a configured executable path is stale. | Read `$service_root/service.log`, check `ss -ltnp` for `127.0.0.1:19870`, and rebuild the core `adc` and `adcengine` binaries and the service `adc-service` and `adc-run` binaries. |
 | `attested execution requires input_prefix`, `exec_ami`, `expected_pcr4`, or `expected_pcr7` appears in the create response. | The service was started without a required `--attested-*` default, and the request did not provide the value. | Restart the service with the required defaults or provide those fields in `execution.attestation`. |
 | The exec entrypoint reports that `auth.json`, `keys.sh`, or `OPENROUTER_API_KEY` is missing. | The selected S3 input prefix was fresh and contained only the case packet, or `keys.sh` did not assign or export the provider key. | Stage `/home/ec2-user/arbattest-secrets/auth.json` and `/home/ec2-user/arbattest-secrets/keys.sh` to the exact `--attested-input-prefix` before posting the create request, then confirm with `aws s3 ls`. |
 | OpenClaw cannot read `/adc-codex/auth.json` or fails while importing the Codex token. | ADC could not stage a container-readable Codex home from the downloaded `auth.json`, or the auth file no longer contains a valid token. | Inspect the lawyer stderr log in the extracted ADC output and verify that the source `auth.json` on `dev` is current.  The staged Codex home should be mode `0777`, and `auth.json` should be mode `0666` in this private exec-image path. |

@@ -484,8 +484,8 @@ The runner now writes `evidence-manifest.json` when it initializes and after cas
 ### References
 
 - ADC manual: [`manual.md`](manual.md)
-- ADC Docker runbook: [`Dockerfile.md`](Dockerfile.md)
-- ADC attested dev-host requirements: [`docs/attested-dev-host.md`](docs/attested-dev-host.md)
+- ADC Docker runbook: [`service/attested/adc/Dockerfile.md`](../service/attested/adc/Dockerfile.md)
+- ADC attested dev-host requirements: [`service/attested/adc/attested-dev-host.md`](../service/attested/adc/attested-dev-host.md)
 
 ### Decisions
 
@@ -501,11 +501,11 @@ The README uses the same documentation table as AAR, AARD, and evals.  It links 
 
 ### References
 
-- ADC Docker runbook: [`Dockerfile.md`](Dockerfile.md)
-- ADC dev-host requirements: [`docs/attested-dev-host.md`](docs/attested-dev-host.md)
-- Attested ADC driver: [`tools/run-adc-attested.py`](tools/run-adc-attested.py)
-- Exec workload script: [`tools/run-adc.sh`](tools/run-adc.sh)
-- Exec container entrypoint: [`attest/exec-container-entrypoint.sh`](attest/exec-container-entrypoint.sh)
+- ADC Docker runbook: [`service/attested/adc/Dockerfile.md`](../service/attested/adc/Dockerfile.md)
+- ADC dev-host requirements: [`service/attested/adc/attested-dev-host.md`](../service/attested/adc/attested-dev-host.md)
+- Attested ADC driver: [`service/attested/adc/run-adc-attested.py`](../service/attested/adc/run-adc-attested.py)
+- Exec workload script: [`service/attested/adc/run-adc.sh`](../service/attested/adc/run-adc.sh)
+- Exec container entrypoint: [`service/attested/adc/exec-container-entrypoint.sh`](../service/attested/adc/exec-container-entrypoint.sh)
 - Clerk service attestation support: [`runtime/service/attested.go`](runtime/service/attested.go)
 - Complaint packet builder: [`runtime/casepacket/case_packet.go`](runtime/casepacket/case_packet.go)
 

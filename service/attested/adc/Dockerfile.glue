@@ -34,8 +34,8 @@ RUN apt-get update \
         libtss2-tctildr0t64 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY attest/exec-container-entrypoint.sh /usr/local/bin/exec-container-entrypoint
 COPY --from=nitro-tpm-tools /src/NitroTPM-Tools/target/release/nitro-tpm-attest /usr/local/bin/nitro-tpm-attest
+COPY service/attested/adc/exec-container-entrypoint.sh /usr/local/bin/exec-container-entrypoint
 
 RUN chmod 755 /usr/local/bin/nitro-tpm-attest /usr/local/bin/exec-container-entrypoint
 

@@ -591,7 +591,7 @@ func TestCreateAttestedComplaintCompletesAfterVerification(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read run.env: %v", err)
 	}
-	if !strings.Contains(string(runEnv), "ADC_INPUT_MODE=case-packet\n") || strings.Contains(string(runEnv), "ADC_EXAMPLE=") {
+	if !strings.Contains(string(runEnv), "ADC_INPUT_MODE=case-packet\n") || !strings.Contains(string(runEnv), "ADC_BIN=/bin/false\n") || strings.Contains(string(runEnv), "ADC_EXAMPLE=") {
 		t.Fatalf("run.env = %s", string(runEnv))
 	}
 	rawStatus, body := serviceRawGet(t, s, "/clerk/v1/cases/attested-1/artifacts/digest.md")
@@ -727,6 +727,7 @@ func writeFakeAttestedADCDriver(t *testing.T, exitCode int) string {
 	}
 	script := strings.ReplaceAll(`#!/bin/sh
 out_dir=""
+adc_bin=""
 case_id=""
 run_id=""
 complaint=""
@@ -739,6 +740,7 @@ expected4=""
 expected7=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --adc-bin) adc_bin="$2"; shift 2 ;;
     --case-id) case_id="$2"; shift 2 ;;
     --complaint) complaint="$2"; shift 2 ;;
     --example) exit 66 ;;
@@ -755,14 +757,14 @@ while [ "$#" -gt 0 ]; do
     *) shift ;;
   esac
 done
-if [ -z "$out_dir" ] || [ -z "$run_id" ] || [ -z "$input_prefix" ] || [ -z "$exec_ami" ] || [ -z "$complaint" ]; then
+if [ "$adc_bin" != "/bin/false" ] || [ -z "$out_dir" ] || [ -z "$run_id" ] || [ -z "$input_prefix" ] || [ -z "$exec_ami" ] || [ -z "$complaint" ]; then
   exit 64
 fi
 if [ "$verify" != "1" ] || [ "$allow_nonempty" != "1" ] || [ -z "$expected4" ] || [ -z "$expected7" ]; then
   exit 65
 fi
 mkdir -p "$out_dir"
-printf 'ADC_INPUT_MODE=case-packet\nINPUT_PREFIX=%s\nOUTPUT_PREFIX=%s\nEXEC_AMI=%s\nADC_COMPLAINT=%s\nADC_CASE_ID=%s\n' "$input_prefix" "$output_prefix" "$exec_ami" "$complaint" "$case_id" > "$out_dir/run.env"
+printf 'ADC_INPUT_MODE=case-packet\nADC_BIN=%s\nINPUT_PREFIX=%s\nOUTPUT_PREFIX=%s\nEXEC_AMI=%s\nADC_COMPLAINT=%s\nADC_CASE_ID=%s\n' "$adc_bin" "$input_prefix" "$output_prefix" "$exec_ami" "$complaint" "$case_id" > "$out_dir/run.env"
 printf 'moving\n' > "$out_dir/progress.log"
 printf 'launch\n' > "$out_dir/launcher.log"
 printf '{"files":[]}\n' > "$out_dir/manifest.json"

@@ -418,12 +418,13 @@ func validateAttestedNumbers(cfg AttestedClerkConfig) error {
 	return nil
 }
 
-func attestedCaseCommand(req CaseCreateRequest, rec *CaseRecord, outDir string) (string, []string, error) {
+func attestedCaseCommand(req CaseCreateRequest, rec *CaseRecord, outDir string, adcBin string) (string, []string, error) {
 	if rec.Execution == nil || rec.Execution.Resolved == nil {
 		return "", nil, fmt.Errorf("attested execution config is missing")
 	}
 	cfg := *rec.Execution.Resolved
 	args := []string{
+		"--adc-bin", adcBin,
 		"--input-prefix", cfg.InputPrefix,
 		"--exec-ami", cfg.ExecAMI,
 		"--case-id", rec.CaseID,

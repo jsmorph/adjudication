@@ -11,8 +11,7 @@ if [ "$#" -ne 1 ]; then
 fi
 
 script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-adc_dir="$(CDPATH= cd -- "$script_dir/.." && pwd)"
-workspace="$(CDPATH= cd -- "$adc_dir/../.." && pwd)"
+service_root="$(CDPATH= cd -- "$script_dir/../../.." && pwd)"
 
 complaint_arg="$1"
 if [ ! -f "$complaint_arg" ]; then
@@ -37,7 +36,7 @@ aws_region="${AWS_REGION:-us-east-2}"
 exec_ami="${EXEC_AMI:-ami-011f957fe91cf7b81}"
 input_root="${INPUT_ROOT:-s3://agentcourt-data/arbattest/adc-inputs}"
 output_root="${OUTPUT_ROOT:-s3://agentcourt-data/arbattest/adc-runs}"
-out_root="${OUT_ROOT:-$workspace/adc-attested}"
+out_root="${OUT_ROOT:-$service_root/out/adc-attested}"
 expected_pcr4="${EXPECTED_PCR4:-83AC49DFAA5D76939970E1568472FF463FBE90C4038D000D31F6C0520F583D1DD51CE0C103CEB26E4B773AAD99A4B3B4}"
 expected_pcr7="${EXPECTED_PCR7:-98441C7F7625D10058C47683AEC486CE311C633235EB555593A7EE791121E3578AE72D04ECEF661F272D59058B77AF35}"
 
@@ -62,7 +61,7 @@ AWS_DEFAULT_REGION='$aws_region' aws s3 cp /home/ec2-user/arbattest-secrets/auth
 AWS_DEFAULT_REGION='$aws_region' aws s3 cp /home/ec2-user/arbattest-secrets/keys.sh '$input_prefix/keys.sh' --no-progress
 AWS_DEFAULT_REGION='$aws_region' aws s3 ls '$input_prefix/'"
 
-uv run "$adc_dir/tools/run-adc-attested.py" \
+uv run "$script_dir/run-adc-attested.py" \
   --complaint "$complaint_path" \
   --case-id "$case_id" \
   --run-id "$run_id" \

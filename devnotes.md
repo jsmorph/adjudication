@@ -139,3 +139,20 @@ The example wrapper accepts a core example directory and calls the sibling servi
 The first exact-commit image build found an obsolete `arbd/pool.jsonl` copy in the extracted Dockerfile.  The selected core commit stores the default council pool at `common/data/personas/pool.jsonl`, and the image already copies the complete `common/data` and `common/etc` trees.  Removing the nonexistent source path preserves the runtime lookup under the explicit `/opt/core/common` root.
 
 The corrected base image build passed for `service@5bf19d083ea670cdbf767ccf304c81ec712f90d4` and `carve@489cd9ecdb46f41f036d825fc9f5221f68c13c1a`.  Docker produced image `sha256:a35e3e6bdd8090f890ab3cdf9d877fbcc758670cce1b72b5ad25c56243d83264` with entrypoint `/usr/local/bin/aard-run-entrypoint` and working directory `/opt/core/arbd`.  The image displayed `aard-run` help and validated `examples/ex1/complaint.md` through `/opt/core/arbd/.bin/aard`.
+
+### ADC attested execution extraction
+
+The ADC attested image, exec entrypoint, local driver, exec scripts, and runbooks now live under `service/attested/adc`.  The base image fetches and verifies full `CORE_COMMIT` and `SERVICE_COMMIT` values, builds `adc` and `adcengine` from core, and builds `adc-run` from service.  Its runtime filesystem contains the installed programs, ADC court profiles, shared core data, the Docker CLI, and the embedded Pi juror root filesystem.
+
+The local driver invokes the installed `adc case-packet` command for complaint-based runs.  `adc-service` passes its configured core executable path to that driver, and the driver records the path in `run.env`.  The exec workload starts the service-owned `adc-run` launcher with explicit paths to the installed core executable, engine, and working directory.
+
+The one-complaint helper calls the sibling service-owned driver and stores output under the service checkout.  The runbook specifies a repository-root Docker build context and full core and service commit IDs.  It retains the AMI, PCR, S3, secret, artifact, and verification procedures required to operate the attested service.
+
+### ADC attested verification
+
+- [x] `go test -buildvcs=false -count=1 ./service/adc ./cmd/adc-service ./cmd/adc-run`
+- [x] `python3 -B -m unittest service/attested/adc/run_adc_attested_test.py`
+- [x] `sh -n` passed for the POSIX shell programs, and `bash -n` passed for `run-one-attested-adc.sh`.
+- [x] `go vet ./service/adc ./cmd/adc-service ./cmd/adc-run`
+- [x] `go build -buildvcs=false -o /tmp/service-adc-run ./cmd/adc-run`
+- [ ] Build the base image from exact service and core commits, inspect its entrypoint and working directory, display `adc-run --help`, and validate a mounted complaint through the installed core executable.

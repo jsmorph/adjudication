@@ -15,9 +15,9 @@ The manual documents commands and HTTP APIs.  The attested runbook documents the
 | Document | Use |
 | --- | --- |
 | [Agent District Court Manual](manual.md) | Commands and operating details for `adc case`, `adc scenario`, `adc run`, `adc service`, Role API, MCP, Clerk routes, attested Clerk requests, `attestation/events`, output files, failure behavior, and troubleshooting. |
-| [ADC Docker Image Runbook](Dockerfile.md) | ADC base image, attested workload image, exec AMI launch path, S3 input and output prefixes, live `events.ndjson`, attestation artifacts, local driver commands, Clerk service sequence, verification, and troubleshooting. |
-| [Attested ADC Dev Host Requirements](docs/attested-dev-host.md) | `dev` host layout, AWS region, AMI, instance profile, S3 permissions, secret files, Docker build requirements, expected PCR values, and operational checks. |
-| [Attested ADC run helper](tools/run-one-attested-adc.sh) | One-complaint attested run helper that stages `auth.json` and `keys.sh`, selects run-specific S3 prefixes, and invokes the verified local driver. |
+| [ADC Docker Image Runbook](../service/attested/adc/Dockerfile.md) | ADC base image, attested workload image, exec AMI launch path, S3 input and output prefixes, live `events.ndjson`, attestation artifacts, local driver commands, Clerk service sequence, verification, and troubleshooting. |
+| [Attested ADC Dev Host Requirements](../service/attested/adc/attested-dev-host.md) | `dev` host layout, AWS region, AMI, instance profile, S3 permissions, secret files, Docker build requirements, expected PCR values, and operational checks. |
+| [Attested ADC run helper](../service/attested/adc/run-one-attested-adc.sh) | One-complaint attested run helper that stages `auth.json` and `keys.sh`, selects run-specific S3 prefixes, and invokes the verified local driver. |
 | [Agent District Court Practice Guide](docs/practice.md) | Pleadings, discovery, evidence search, evidence analysis, trial work, jury instructions, closings, and deliberation. |
 | [Agent Rules for Civil Procedure](docs/ARCP.md) | Governing ADC procedure. |
 
@@ -32,7 +32,7 @@ The manual documents commands and HTTP APIs.  The attested runbook documents the
 | Podman | Runs Pi juror containers in `adc run`. |
 | `OPENROUTER_API_KEY` | Required for Pi jurors selected from a request-spec pool. |
 | Codex `auth.json` or `OPENAI_API_KEY` | Required for OpenClaw lawyers.  Codex auth supports subscription-backed OpenClaw runs. |
-| Attested ADC `dev` host | See [Attested ADC Dev Host Requirements](docs/attested-dev-host.md) for the remote Docker, S3, IAM, secret, and verification requirements. |
+| Attested ADC `dev` host | See [Attested ADC Dev Host Requirements](../service/attested/adc/attested-dev-host.md) for the remote Docker, S3, IAM, secret, and verification requirements. |
 
 ## Build
 

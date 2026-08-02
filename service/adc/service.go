@@ -460,7 +460,7 @@ func (s *Server) startCase(ctx context.Context, req CaseCreateRequest) (CaseReco
 		Execution:     execution,
 	}
 	if isAttested {
-		commandPath, args, err = attestedCaseCommand(req, rec, outDir)
+		commandPath, args, err = attestedCaseCommand(req, rec, outDir, s.cfg.ADCBin)
 		if err != nil {
 			return CaseRecord{}, errors.Join(err, closeLogFiles())
 		}
