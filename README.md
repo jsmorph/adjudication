@@ -74,7 +74,7 @@ The manuals document commands, services, HTTP APIs, MCP adapters, attested execu
 | Requirement | Purpose |
 | --- | --- |
 | Go `1.25` | Builds the Go runtimes. |
-| Lean `4.27.0` and `lake` | Build the Lean engines and proof trees. |
+| Lean `4.32.0` and `lake` | Build the Lean engines and proof trees. |
 | `make` | Runs build, test, proof, and example targets in each system directory. |
 | Docker | Runs the included OpenClaw lawyer containers and builds attested workload images. |
 | Podman | Runs Pi juror and council containers for local-agent runs. |

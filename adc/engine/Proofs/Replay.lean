@@ -41,7 +41,8 @@ theorem replayTransitions_concat_ok
           cases hReplay
       | ok next =>
           rw [hFirst] at hReplay
-          simpa using ih next hReplay
+          change replayTransitions next (rest ++ [transition]) = .ok target
+          simpa only [List.concat_eq_append] using ih next hReplay
 
 theorem replayTransitions_success_reachableFrom_of_base
     (base current target : CourtState)
@@ -101,7 +102,9 @@ theorem replayCertificate_success_components
       cases hReplay
   | ok start =>
       have hTransitions : replayTransitions start transitions = .ok target := by
-        simpa [hInitial] using hReplay
+        rw [hInitial] at hReplay
+        change replayTransitions start transitions = .ok target at hReplay
+        exact hReplay
       exact ⟨start, rfl, hTransitions⟩
 
 theorem replayCertificate_success_reachableFrom

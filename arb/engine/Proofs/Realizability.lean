@@ -586,7 +586,7 @@ theorem submitCouncilVote_success
       recordCouncilVote s member.member_id "demonstrated" "" = .ok t := by
     unfold recordCouncilVote
     simp [hStatus, hPhase, hKnown, hSeated, trimString_demonstrated, trimString_empty,
-      hAlready, Bind.bind, Except.bind, Pure.pure, Except.pure]
+      hAlready]
     simpa [c1, hStatus, hPhase, List.concat_eq_append] using hCont
   have hStepCore :
       stepCore

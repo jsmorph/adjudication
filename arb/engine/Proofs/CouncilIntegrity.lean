@@ -150,7 +150,7 @@ theorem initializeCase_establishes_councilIdsUnique
                   simp [hPolicy, hProposition, hEvidence, hEmpty, hLength, hInvalid,
                     hDuplicate, stateWithCase] at hInit
                   cases hInit
-                  simpa [councilIdsUnique, councilMemberIds] using hNoDupIds
+                  simpa [councilIdsUnique, councilMemberIds, Function.comp_def] using hNoDupIds
 
 theorem currentRoundVoteIntegrity_empty (c : ArbitrationCase) :
     councilVoteIntegrity { c with council_votes := [] } := by
@@ -178,6 +178,28 @@ theorem councilVoteIntegrity_congr
     seatedCouncilMembers councilMemberIds at *
   simpa [hVotes, hMembers, hRound] using hIntegrity
 
+theorem currentRoundVotes_congr
+    {c d : ArbitrationCase}
+    (hVotes : d.council_votes = c.council_votes)
+    (hRound : d.deliberation_round = c.deliberation_round) :
+    currentRoundVotes d = currentRoundVotes c := by
+  unfold currentRoundVotes
+  rw [hVotes, hRound]
+
+theorem seatedCouncilMemberCount_congr
+    {c d : ArbitrationCase}
+    (hMembers : d.council_members = c.council_members) :
+    seatedCouncilMemberCount d = seatedCouncilMemberCount c := by
+  unfold seatedCouncilMemberCount seatedCouncilMembers
+  rw [hMembers]
+
+theorem setPhase_preserves_councilVoteIntegrity
+    (c : ArbitrationCase)
+    (phase : String)
+    (hIntegrity : councilVoteIntegrity c) :
+    councilVoteIntegrity { c with phase := phase } := by
+  exact councilVoteIntegrity_congr rfl rfl rfl hIntegrity
+
 /--
 Advancing from one merits phase to the next does not disturb deliberation data.
 
@@ -190,15 +212,18 @@ theorem advanceAfterMerits_preserves_councilVoteIntegrity
     councilVoteIntegrity (advanceAfterMerits c) := by
   unfold advanceAfterMerits
   by_cases hOpen : c.openings.length >= 2 && c.phase = "openings"
-  · simpa [hOpen] using hIntegrity
+  · simpa [hOpen] using setPhase_preserves_councilVoteIntegrity c "arguments" hIntegrity
   · by_cases hArg : c.arguments.length >= 2 && c.phase = "arguments"
-    · simpa [hOpen, hArg] using hIntegrity
+    · simpa [hOpen, hArg] using setPhase_preserves_councilVoteIntegrity c "rebuttals" hIntegrity
     · by_cases hRebuttal : c.rebuttals.length >= 1 && c.phase = "rebuttals"
-      · simpa [hOpen, hArg, hRebuttal] using hIntegrity
+      · simpa [hOpen, hArg, hRebuttal] using
+          setPhase_preserves_councilVoteIntegrity c "surrebuttals" hIntegrity
       · by_cases hSurrebuttal : c.surrebuttals.length >= 1 && c.phase = "surrebuttals"
-        · simpa [hOpen, hArg, hRebuttal, hSurrebuttal] using hIntegrity
+        · simpa [hOpen, hArg, hRebuttal, hSurrebuttal] using
+            setPhase_preserves_councilVoteIntegrity c "closings" hIntegrity
         · by_cases hClosing : c.closings.length >= 2 && c.phase = "closings"
-          · simpa [hOpen, hArg, hRebuttal, hSurrebuttal, hClosing] using hIntegrity
+          · simpa [hOpen, hArg, hRebuttal, hSurrebuttal, hClosing] using
+              setPhase_preserves_councilVoteIntegrity c "deliberation" hIntegrity
           · simpa [hOpen, hArg, hRebuttal, hSurrebuttal, hClosing] using hIntegrity
 
 /--
@@ -227,7 +252,11 @@ theorem appendSupplementalMaterials_preserves_councilVoteIntegrity
     (reports : List TechnicalReport)
     (hIntegrity : councilVoteIntegrity c) :
     councilVoteIntegrity (appendSupplementalMaterials c offered reports) := by
-  simpa [appendSupplementalMaterials] using hIntegrity
+  apply councilVoteIntegrity_congr (c := c)
+  · rfl
+  · rfl
+  · rfl
+  · exact hIntegrity
 
 /--
 Appending a fresh current-round vote preserves deliberation-record integrity.
@@ -272,7 +301,8 @@ theorem appendCurrentRoundVote_preserves_councilVoteIntegrity
         currentVote ∈ currentRoundVotes c ++ [newVote] := by
       simpa [currentRoundVotes, newVote, List.concat_eq_append] using hVote
     rcases List.mem_append.mp hVote' with hOld | hNew
-    · simpa [seatedCouncilMemberIds] using hIntegrity.2.1 currentVote hOld
+    · simpa [seatedCouncilMemberIds, seatedCouncilMembers, councilMemberIds] using
+        hIntegrity.2.1 currentVote hOld
     · simp [newVote, seatedCouncilMemberIds] at hNew ⊢
       rcases hNew with rfl
       exact hSeated
@@ -627,22 +657,38 @@ theorem continueDeliberation_preserves_councilVoteIntegrity_for
     | some resolution =>
         simp [hRoundComplete, hResolution] at hCont
         cases hCont
-        simpa using hIntegrity
+        apply councilVoteIntegrity_congr (c := c)
+        · rfl
+        · rfl
+        · rfl
+        · exact hIntegrity
     | none =>
         by_cases hTooFew : seatedCouncilMemberCount c < s.policy.required_votes_for_decision
         · simp [hRoundComplete, hResolution, hTooFew] at hCont
           cases hCont
-          simpa using hIntegrity
+          apply councilVoteIntegrity_congr (c := c)
+          · rfl
+          · rfl
+          · rfl
+          · exact hIntegrity
         · by_cases hLastRound : c.deliberation_round >= s.policy.max_deliberation_rounds
           · simp [hRoundComplete, hResolution, hTooFew, hLastRound] at hCont
             cases hCont
-            simpa using hIntegrity
+            apply councilVoteIntegrity_congr (c := c)
+            · rfl
+            · rfl
+            · rfl
+            · exact hIntegrity
           · simp [hRoundComplete, hResolution, hTooFew, hLastRound] at hCont
             cases hCont
             exact advanceDeliberationRound_preserves_councilVoteIntegrity c hIntegrity
   · simp [hRoundComplete] at hCont
     cases hCont
-    simpa using hIntegrity
+    apply councilVoteIntegrity_congr (c := c)
+    · rfl
+    · rfl
+    · rfl
+    · exact hIntegrity
 
 /--
 The merits-submission helper preserves deliberation-record integrity when
@@ -827,7 +873,11 @@ theorem step_pass_phase_opportunity_preserves_councilVoteIntegrity
         | true =>
             simp [hEmpty] at hPass
             cases hPass
-            simpa using hIntegrity
+            apply councilVoteIntegrity_congr (c := s.case)
+            · rfl
+            · rfl
+            · rfl
+            · exact hIntegrity
   · by_cases hSurrebuttals : s.case.phase = "surrebuttals"
     · have hPass :
           (do
@@ -850,7 +900,11 @@ theorem step_pass_phase_opportunity_preserves_councilVoteIntegrity
           | true =>
               simp [hEmpty] at hPass
               cases hPass
-              simpa using hIntegrity
+              apply councilVoteIntegrity_congr (c := s.case)
+              · rfl
+              · rfl
+              · rfl
+              · exact hIntegrity
     · simp [stepCore, hType, hRebuttals, hSurrebuttals] at hStep
 
 /--
@@ -867,7 +921,11 @@ theorem step_submit_evidence_preserves_councilVoteIntegrity
   have hSubmit : submitEvidence s action.actor_role action.payload = .ok t := by
     simpa [stepCore, hType] using hStep
   rcases submitEvidence_result s t action.actor_role action.payload hSubmit with ⟨evidence, rfl⟩
-  simpa [stateWithCase, appendSubmittedEvidence] using hIntegrity
+  apply councilVoteIntegrity_congr (c := s.case)
+  · rfl
+  · rfl
+  · rfl
+  · exact hIntegrity
 
 /--
 A successful council vote preserves deliberation-record integrity.
@@ -935,7 +993,11 @@ theorem failOpportunity_preserves_councilVoteIntegrity
     exact continueDeliberation_preserves_councilVoteIntegrity_for s t c1 hIntegrity1 hCont
   · rcases hParty with ⟨_failure, rfl, _hNotClosed, _hNotDeliberation,
       _hFailureType, _hFailureRole, _hFailurePhase⟩
-    simpa [stateWithCase] using hIntegrity
+    apply councilVoteIntegrity_congr (c := s.case)
+    · rfl
+    · rfl
+    · rfl
+    · exact hIntegrity
 
 theorem step_fail_opportunity_preserves_councilVoteIntegrity
     (s t : ArbitrationState)

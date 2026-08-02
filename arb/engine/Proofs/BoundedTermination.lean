@@ -35,6 +35,21 @@ def remainingDeliberationSteps (s : ArbitrationState) : Nat :=
   (s.policy.max_deliberation_rounds - s.case.deliberation_round) * s.policy.council_size +
     (seatedCouncilMemberCount s.case - (currentRoundVotes s.case).length)
 
+theorem remainingDeliberationSteps_congr
+    (s t : ArbitrationState)
+    (hMaxRounds : s.policy.max_deliberation_rounds = t.policy.max_deliberation_rounds)
+    (hCouncilSize : s.policy.council_size = t.policy.council_size)
+    (hRound : s.case.deliberation_round = t.case.deliberation_round)
+    (hMembers : s.case.council_members = t.case.council_members)
+    (hVotes : s.case.council_votes = t.case.council_votes) :
+    remainingDeliberationSteps s = remainingDeliberationSteps t := by
+  have hCurrentVotes : currentRoundVotes s.case = currentRoundVotes t.case :=
+    currentRoundVotes_congr hVotes hRound
+  have hSeated : seatedCouncilMemberCount s.case = seatedCouncilMemberCount t.case :=
+    seatedCouncilMemberCount_congr hMembers
+  unfold remainingDeliberationSteps
+  rw [hMaxRounds, hCouncilSize, hRound, hCurrentVotes, hSeated]
+
 def remainingSubmittedEvidenceSteps (s : ArbitrationState) : Nat :=
   (s.policy.max_submitted_evidence_per_side -
       submittedEvidenceCountForRole s.case.submitted_evidence "plaintiff") +
@@ -135,11 +150,15 @@ theorem remainingDeliberationSteps_addFiling
     (phase role text : String) :
     remainingDeliberationSteps (stateWithCase s (addFiling s.case phase role text)) =
       remainingDeliberationSteps s := by
-  have hRound := addFiling_preserves_deliberation_round s.case phase role text
-  have hMembers := addFiling_preserves_council_members s.case phase role text
-  have hVotes := addFiling_preserves_council_votes s.case phase role text
-  unfold remainingDeliberationSteps seatedCouncilMemberCount seatedCouncilMembers currentRoundVotes
-  simp [stateWithCase, hRound, hMembers, hVotes]
+  apply remainingDeliberationSteps_congr
+  · rfl
+  · rfl
+  · simpa [stateWithCase] using
+      addFiling_preserves_deliberation_round s.case phase role text
+  · simpa [stateWithCase] using
+      addFiling_preserves_council_members s.case phase role text
+  · simpa [stateWithCase] using
+      addFiling_preserves_council_votes s.case phase role text
 
 theorem remainingDeliberationSteps_appendSupplementalMaterials
     (s : ArbitrationState)
@@ -148,8 +167,29 @@ theorem remainingDeliberationSteps_appendSupplementalMaterials
     remainingDeliberationSteps
         (stateWithCase s (appendSupplementalMaterials s.case offered reports)) =
       remainingDeliberationSteps s := by
-  unfold remainingDeliberationSteps seatedCouncilMemberCount seatedCouncilMembers currentRoundVotes
-  simp [stateWithCase, appendSupplementalMaterials]
+  apply remainingDeliberationSteps_congr <;> rfl
+
+theorem remainingDeliberationSteps_appendSupplementalMaterials_addFiling
+    (s : ArbitrationState)
+    (phase role text : String)
+    (offered : List OfferedEvidence)
+    (reports : List TechnicalReport) :
+    remainingDeliberationSteps
+        (stateWithCase s
+          (appendSupplementalMaterials
+            (addFiling s.case phase role text)
+            offered
+            reports)) =
+      remainingDeliberationSteps s := by
+  apply remainingDeliberationSteps_congr
+  · rfl
+  · rfl
+  · simpa [stateWithCase, appendSupplementalMaterials] using
+      addFiling_preserves_deliberation_round s.case phase role text
+  · simpa [stateWithCase, appendSupplementalMaterials] using
+      addFiling_preserves_council_members s.case phase role text
+  · simpa [stateWithCase, appendSupplementalMaterials] using
+      addFiling_preserves_council_votes s.case phase role text
 
 theorem remainingDeliberationSteps_appendSubmittedEvidence
     (s : ArbitrationState)
@@ -157,16 +197,14 @@ theorem remainingDeliberationSteps_appendSubmittedEvidence
     remainingDeliberationSteps
         (stateWithCase s (appendSubmittedEvidence s.case evidence)) =
       remainingDeliberationSteps s := by
-  unfold remainingDeliberationSteps seatedCouncilMemberCount seatedCouncilMembers currentRoundVotes
-  simp [stateWithCase, appendSubmittedEvidence]
+  apply remainingDeliberationSteps_congr <;> rfl
 
 theorem remainingDeliberationSteps_phase_update
     (s : ArbitrationState)
     (phase : String) :
     remainingDeliberationSteps (stateWithCase s { s.case with phase := phase }) =
       remainingDeliberationSteps s := by
-  unfold remainingDeliberationSteps seatedCouncilMemberCount seatedCouncilMembers currentRoundVotes
-  simp [stateWithCase]
+  apply remainingDeliberationSteps_congr <;> rfl
 
 /--
 Away from `closed`, the step budget splits into its merits and deliberation
@@ -693,7 +731,7 @@ theorem step_record_opening_statement_decreases_remainingStepBudget
   rw [remainingStepBudget_of_phase_ne_closed s (by simp [hPhase]) hSourceNotFailed]
   rw [hDelib]
   rw [hEvidenceBudget]
-  simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
+  simpa [stateWithCase, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
     congrArg (fun n => remainingSubmittedEvidenceSteps s + n + remainingDeliberationSteps s) hMerits
 
 theorem step_submit_argument_decreases_remainingStepBudget
@@ -793,7 +831,8 @@ theorem step_submit_argument_decreases_remainingStepBudget
   rw [remainingStepBudget_of_phase_ne_closed s (by simp [hPhase]) hSourceNotFailed]
   rw [hDelib]
   rw [hEvidenceBudget]
-  simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
+  simpa [stateWithCase, appendSupplementalMaterials, remainingMeritsSteps,
+    Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
     congrArg (fun n => remainingSubmittedEvidenceSteps s + n + remainingDeliberationSteps s) hMerits
 
 theorem step_submit_rebuttal_decreases_remainingStepBudget
@@ -838,16 +877,6 @@ theorem step_submit_rebuttal_decreases_remainingStepBudget
       (trimString rawText)
       hShape
       hPhase
-  have hDelib1 :
-      remainingDeliberationSteps
-          (stateWithCase s
-            (addFiling s.case "rebuttals" "plaintiff" (trimString rawText))) =
-        remainingDeliberationSteps s := by
-    exact remainingDeliberationSteps_addFiling
-      s
-      "rebuttals"
-      "plaintiff"
-      (trimString rawText)
   have hDelib :
       remainingDeliberationSteps
           (stateWithCase s
@@ -856,8 +885,8 @@ theorem step_submit_rebuttal_decreases_remainingStepBudget
               offered
               reports)) =
         remainingDeliberationSteps s := by
-    unfold remainingDeliberationSteps seatedCouncilMemberCount seatedCouncilMembers currentRoundVotes at *
-    simpa [stateWithCase, appendSupplementalMaterials] using hDelib1
+    exact remainingDeliberationSteps_appendSupplementalMaterials_addFiling
+      s "rebuttals" "plaintiff" (trimString rawText) offered reports
   have hTarget :
       (stateWithCase s
         (appendSupplementalMaterials
@@ -881,7 +910,8 @@ theorem step_submit_rebuttal_decreases_remainingStepBudget
   rw [remainingStepBudget_of_phase_ne_closed s (by simp [hPhase]) hSourceNotFailed]
   rw [hDelib]
   rw [hEvidenceBudget]
-  simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
+  simpa [stateWithCase, appendSupplementalMaterials, remainingMeritsSteps,
+    Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
     congrArg (fun n => remainingSubmittedEvidenceSteps s + n + remainingDeliberationSteps s) hMerits
 
 theorem step_submit_surrebuttal_decreases_remainingStepBudget
@@ -933,18 +963,8 @@ theorem step_submit_surrebuttal_decreases_remainingStepBudget
               offered
               reports)) =
         remainingDeliberationSteps s := by
-    have hDelib1 :
-        remainingDeliberationSteps
-            (stateWithCase s
-              (addFiling s.case "surrebuttals" "defendant" (trimString rawText))) =
-          remainingDeliberationSteps s := by
-      exact remainingDeliberationSteps_addFiling
-        s
-        "surrebuttals"
-        "defendant"
-        (trimString rawText)
-    unfold remainingDeliberationSteps seatedCouncilMemberCount seatedCouncilMembers currentRoundVotes at *
-    simpa [stateWithCase, appendSupplementalMaterials] using hDelib1
+    exact remainingDeliberationSteps_appendSupplementalMaterials_addFiling
+      s "surrebuttals" "defendant" (trimString rawText) offered reports
   have hTarget :
       (stateWithCase s
         (appendSupplementalMaterials
@@ -968,7 +988,8 @@ theorem step_submit_surrebuttal_decreases_remainingStepBudget
   rw [remainingStepBudget_of_phase_ne_closed s (by simp [hPhase]) hSourceNotFailed]
   rw [hDelib]
   rw [hEvidenceBudget]
-  simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
+  simpa [stateWithCase, appendSupplementalMaterials, remainingMeritsSteps,
+    Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
     congrArg (fun n => remainingSubmittedEvidenceSteps s + n + remainingDeliberationSteps s) hMerits
 
 theorem step_deliver_closing_statement_decreases_remainingStepBudget
@@ -1034,7 +1055,7 @@ theorem step_deliver_closing_statement_decreases_remainingStepBudget
   rw [remainingStepBudget_of_phase_ne_closed s (by simp [hPhase]) hSourceNotFailed]
   rw [hDelib]
   rw [hEvidenceBudget]
-  simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
+  simpa [stateWithCase, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
     congrArg (fun n => remainingSubmittedEvidenceSteps s + n + remainingDeliberationSteps s) hMerits
 
 /--
@@ -1096,7 +1117,7 @@ theorem step_pass_phase_opportunity_decreases_remainingStepBudget
             rw [remainingStepBudget_of_phase_ne_closed s (by simp [hRebuttals]) hSourceNotFailed]
             rw [hDelib]
             rw [hEvidenceBudget]
-            simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
+            simpa [stateWithCase, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
               congrArg (fun n => remainingSubmittedEvidenceSteps s + n + remainingDeliberationSteps s) hMerits
   · by_cases hSurrebuttals : s.case.phase = "surrebuttals"
     · have hPass :
@@ -1138,7 +1159,7 @@ theorem step_pass_phase_opportunity_decreases_remainingStepBudget
               rw [remainingStepBudget_of_phase_ne_closed s (by simp [hSurrebuttals]) hSourceNotFailed]
               rw [hDelib]
               rw [hEvidenceBudget]
-              simpa [Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
+              simpa [stateWithCase, Nat.add_assoc, Nat.add_left_comm, Nat.add_comm] using
                 congrArg (fun n => remainingSubmittedEvidenceSteps s + n + remainingDeliberationSteps s) hMerits
     · simp [stepCore, hType, hRebuttals, hSurrebuttals] at hStepCore
 
@@ -1866,7 +1887,10 @@ theorem step_submit_council_vote_decreases_remainingStepBudget
     exact remainingDeliberationSteps_appendCurrentRoundVote
       s memberId vote rationale hUnique hIntegrity hSeated hFresh
   have hSeatedBound : seatedCouncilMemberCount c1 ≤ s.policy.council_size := by
-    simpa [c1] using reachable_seatedCouncilMemberCount_le_councilSize s hs
+    have hSeated : seatedCouncilMemberCount c1 = seatedCouncilMemberCount s.case :=
+      seatedCouncilMemberCount_congr (by rfl)
+    rw [hSeated]
+    exact reachable_seatedCouncilMemberCount_le_councilSize s hs
   have hContBudget :
       remainingStepBudget t ≤ remainingStepBudget (stateWithCase s c1) := by
     exact continueDeliberation_does_not_increase_remainingStepBudget

@@ -438,7 +438,16 @@ theorem continueDeliberation_closed_demonstrated_sound
       hCont.symm.trans hExact
     simpa using hOk
   subst t
-  simpa [demonstratedOutcomeSound, stateWithCase] using hSound
+  unfold demonstratedOutcomeSound
+  change voteCountFor
+    (currentRoundVotes { c with status := "closed", phase := "closed", resolution := "demonstrated" })
+      "demonstrated" ≥ s.policy.required_votes_for_decision
+  have hVotes :
+      currentRoundVotes { c with status := "closed", phase := "closed", resolution := "demonstrated" } =
+        currentRoundVotes c := by
+    rfl
+  rw [hVotes]
+  exact hSound
 
 /--
 If deliberation closes a case as `not_demonstrated`, the closed state records
@@ -484,7 +493,16 @@ theorem continueDeliberation_closed_not_demonstrated_sound
       hCont.symm.trans hExact
     simpa using hOk
   subst t
-  simpa [notDemonstratedOutcomeSound, stateWithCase] using hSound
+  unfold notDemonstratedOutcomeSound
+  change voteCountFor
+    (currentRoundVotes { c with status := "closed", phase := "closed", resolution := "not_demonstrated" })
+      "not_demonstrated" ≥ s.policy.required_votes_for_decision
+  have hVotes :
+      currentRoundVotes { c with status := "closed", phase := "closed", resolution := "not_demonstrated" } =
+        currentRoundVotes c := by
+    rfl
+  rw [hVotes]
+  exact hSound
 
 /--
 If deliberation closes a case as `no_majority`, neither side reached the vote
@@ -527,8 +545,22 @@ theorem continueDeliberation_closed_no_majority_sound
       hCont.symm.trans hExact
     simpa using hOk
   subst t
-  simpa [noMajorityOutcomeSound, stateWithCase, DeliberationSummary.noMajoritySound,
-    DeliberationSummary.noMajorityClosureReason, deliberationSummaryForCase] using hSummarySound
+  unfold noMajorityOutcomeSound
+  let closedCase := { c with status := "closed", phase := "closed", resolution := "no_majority" }
+  change voteCountFor (currentRoundVotes closedCase) "demonstrated" <
+      s.policy.required_votes_for_decision ∧
+    voteCountFor (currentRoundVotes closedCase) "not_demonstrated" <
+        s.policy.required_votes_for_decision ∧
+      (seatedCouncilMemberCount closedCase < s.policy.required_votes_for_decision ∨
+        (currentRoundVotes closedCase).length = seatedCouncilMemberCount closedCase ∧
+          closedCase.deliberation_round ≥ s.policy.max_deliberation_rounds)
+  have hVotes : currentRoundVotes closedCase = currentRoundVotes c := by
+    rfl
+  have hSeated : seatedCouncilMemberCount closedCase = seatedCouncilMemberCount c := by
+    rfl
+  rw [hVotes, hSeated]
+  simpa [DeliberationSummary.noMajoritySound,
+    DeliberationSummary.noMajorityClosureReason, d, deliberationSummaryForCase] using hSummarySound
 
 /--
 An opening-statement step never closes the case.
@@ -767,63 +799,16 @@ theorem step_submit_evidence_phase_ne_closed
           rcases submitEvidence_result s t action.actor_role action.payload hSubmit with ⟨evidence, rfl⟩
           simp [stateWithCase, appendSubmittedEvidence, hRebuttals]
       | false =>
-          have hClosed :
-              (do
-                let expectedRole ← (throw "rebuttal evidence is closed" : Except String String)
-                requireRole action.actor_role expectedRole
-                let evidence ← parseSubmittedEvidence action.payload s.case.phase expectedRole
-                if s.case.submitted_evidence.any (fun item => item.evidence_id = evidence.evidence_id) then
-                  throw s!"duplicate submitted evidence_id: {evidence.evidence_id}"
-                else if evidence.size_bytes > s.policy.max_submitted_evidence_bytes then
-                  throw s!"submitted evidence exceeds byte limit of {s.policy.max_submitted_evidence_bytes}"
-                else
-                  let total := submittedEvidenceCountForRole s.case.submitted_evidence expectedRole + 1
-                  requireCountWithinLimit "submitted_evidence for this side" total s.policy.max_submitted_evidence_per_side
-                  pure <| stateWithCase s (appendSubmittedEvidence s.case evidence)) = .ok t := by
-            simpa [submitEvidence, hArgs, hRebuttals, hEmpty] using hSubmit
-          change Except.error "rebuttal evidence is closed" = .ok t at hClosed
-          cases hClosed
+          simp [submitEvidence, hRebuttals, hEmpty, Bind.bind, Except.bind] at hSubmit
     · by_cases hSurrebuttals : s.case.phase = "surrebuttals"
       · cases hEmpty : s.case.surrebuttals.isEmpty with
         | true =>
             rcases submitEvidence_result s t action.actor_role action.payload hSubmit with ⟨evidence, rfl⟩
             simp [stateWithCase, appendSubmittedEvidence, hSurrebuttals]
         | false =>
-            have hClosed :
-                (do
-                  let expectedRole ← (throw "surrebuttal evidence is closed" : Except String String)
-                  requireRole action.actor_role expectedRole
-                  let evidence ← parseSubmittedEvidence action.payload s.case.phase expectedRole
-                  if s.case.submitted_evidence.any (fun item => item.evidence_id = evidence.evidence_id) then
-                    throw s!"duplicate submitted evidence_id: {evidence.evidence_id}"
-                  else if evidence.size_bytes > s.policy.max_submitted_evidence_bytes then
-                    throw s!"submitted evidence exceeds byte limit of {s.policy.max_submitted_evidence_bytes}"
-                  else
-                    let total := submittedEvidenceCountForRole s.case.submitted_evidence expectedRole + 1
-                    requireCountWithinLimit "submitted_evidence for this side" total s.policy.max_submitted_evidence_per_side
-                    pure <| stateWithCase s (appendSubmittedEvidence s.case evidence)) = .ok t := by
-              simpa [submitEvidence, hArgs, hRebuttals, hSurrebuttals, hEmpty] using hSubmit
-            change Except.error "surrebuttal evidence is closed" = .ok t at hClosed
-            cases hClosed
-      · have hClosed :
-            (do
-              let expectedRole ←
-                (throw "submitted evidence is allowed only in arguments, rebuttals, and surrebuttals" :
-                  Except String String)
-              requireRole action.actor_role expectedRole
-              let evidence ← parseSubmittedEvidence action.payload s.case.phase expectedRole
-              if s.case.submitted_evidence.any (fun item => item.evidence_id = evidence.evidence_id) then
-                throw s!"duplicate submitted evidence_id: {evidence.evidence_id}"
-              else if evidence.size_bytes > s.policy.max_submitted_evidence_bytes then
-                throw s!"submitted evidence exceeds byte limit of {s.policy.max_submitted_evidence_bytes}"
-              else
-                let total := submittedEvidenceCountForRole s.case.submitted_evidence expectedRole + 1
-                requireCountWithinLimit "submitted_evidence for this side" total s.policy.max_submitted_evidence_per_side
-                pure <| stateWithCase s (appendSubmittedEvidence s.case evidence)) = .ok t := by
-            simpa [submitEvidence, hArgs, hRebuttals, hSurrebuttals] using hSubmit
-        change Except.error
-          "submitted evidence is allowed only in arguments, rebuttals, and surrebuttals" = .ok t at hClosed
-        cases hClosed
+            simp [submitEvidence, hSurrebuttals, hEmpty,
+              Bind.bind, Except.bind] at hSubmit
+      · simp [submitEvidence, Bind.bind, Except.bind] at hSubmit
 
 theorem step_fail_opportunity_result
     (s t : ArbitrationState)

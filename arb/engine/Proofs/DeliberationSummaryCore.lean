@@ -181,7 +181,7 @@ theorem list_length_lt_of_nodup_subset_and_fresh
       (List.nodup_cons.mpr ⟨hFresh, hxs⟩)
       hys
       hConsSub
-  simpa using hConsLen
+  exact Nat.lt_of_add_one_le hConsLen
 
 /--
 Current-round vote identifiers are always a subset of the seated council-member
@@ -340,7 +340,7 @@ theorem voteCountFor_cons
     voteCountFor (vote :: votes) value =
       (if trimString vote.vote = value then 1 else 0) + voteCountFor votes value := by
   unfold voteCountFor
-  simpa using voteCountFor_foldl_acc votes value
+  simpa only [voteCountFor, List.foldl] using voteCountFor_foldl_acc votes value
     (if trimString vote.vote = value then 1 else 0)
 
 theorem substantive_vote_counts_le_length

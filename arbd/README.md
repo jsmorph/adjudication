@@ -19,7 +19,7 @@ The manual documents commands and HTTP APIs.  The attested runbook documents the
 | Requirement | Purpose |
 | --- | --- |
 | Go `1.25` | Builds the AARD runtime. |
-| Lean `4.27.0` and `lake` | Builds the Lean engine and proof tree. |
+| Lean `4.32.0` and `lake` | Builds the Lean engine and proof tree. |
 | Docker | Runs OpenClaw lawyer containers in `aard run`. |
 | Podman | Runs Pi council containers in `aard run`. |
 | Codex `auth.json` or `OPENAI_API_KEY` | Authenticates OpenClaw lawyers. |

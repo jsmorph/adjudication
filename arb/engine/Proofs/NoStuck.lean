@@ -1473,6 +1473,7 @@ theorem reachable_deliberation_has_nextCouncilMember
                             u.case memberId status hIntegrityU hFresh
                         have hUnique1 : councilIdsUnique c1 := by
                           unfold councilIdsUnique
+                          unfold councilIdsUnique at hUniqueU
                           simpa [c1, councilMemberIds_status_update] using hUniqueU
                         exact continueDeliberation_live_has_nextCouncilMember
                           u t c1 hPositive hUnique1 hIntegrity1
@@ -1497,6 +1498,7 @@ theorem reachable_deliberation_has_nextCouncilMember
                             have hUnique1 : councilIdsUnique c1 := by
                               rw [hC1]
                               unfold councilIdsUnique
+                              unfold councilIdsUnique at hUniqueU
                               simpa [councilMemberIds_failure_update] using hUniqueU
                             exact continueDeliberation_live_has_nextCouncilMember
                               u t c1 hPositive hUnique1 hIntegrity1 hCont hPhase hStatus

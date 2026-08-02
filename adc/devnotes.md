@@ -1,5 +1,20 @@
 # Development Notes
 
+## 2026-08-02: Lean 4.32.0
+
+### Reference
+
+- [Lean 4.32.0 release notes](https://lean-lang.org/doc/reference/latest/releases/v4.32.0/)
+
+### Decision
+
+The ADC Lean engine now selects Lean 4.32.0.  Lean 4.32.0 makes the new `do` elaborator the default, which changes the reductions exposed to the replay proof.  The revised proof reduces the monadic operations explicitly and applies `List.concat_eq_append` when comparing replayed action lists.
+
+### Verification
+
+- [x] `lean --version` reports Lean 4.32.0.
+- [x] `lake build` completes all 21 ADC engine and proof jobs.
+
 ## 2026-07-15: Judge Rule 60 eval
 
 ### References

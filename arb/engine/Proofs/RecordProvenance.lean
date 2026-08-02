@@ -93,7 +93,7 @@ theorem parseOfferedEvidenceEntry_phase
                   role := role
                   evidence_id := trimString rawFileId
                   label := getOptionalString entry "label" }) = .ok item := by
-        simpa [Except.bind] using hParse
+        simpa [Bind.bind, Except.bind] using hParse
       by_cases hEmpty : trimString rawFileId = ""
       · have : False := by
           have hBad :
@@ -196,7 +196,7 @@ theorem parseTechnicalReportEntry_phase
                       role := role
                       title := trimString rawTitle
                       summary := trimString rawSummary }) = .ok item := by
-            simpa [Except.bind] using hParse
+            simpa [Bind.bind, Except.bind] using hParse
           by_cases hTitleEmpty : trimString rawTitle = ""
           · have : False := by
               have hBad :

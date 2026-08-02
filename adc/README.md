@@ -26,7 +26,7 @@ The manual documents commands and HTTP APIs.  The attested runbook documents the
 | Requirement | Purpose |
 | --- | --- |
 | Go `1.25` | Builds the ADC runtime. |
-| Lean `4.27.0` and `lake` | Builds the Lean engine and proof tree. |
+| Lean `4.32.0` and `lake` | Builds the Lean engine and proof tree. |
 | `make` | Runs build, test, proof, and example targets. |
 | Docker | Runs OpenClaw lawyer containers in `adc run`. |
 | Podman | Runs Pi juror containers in `adc run`. |
