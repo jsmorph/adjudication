@@ -26,20 +26,23 @@ const (
 	DefaultListenAddr      = "127.0.0.1:19870"
 	DefaultCaseStartupWait = 30 * time.Second
 
+	defaultADCRunCommand     = "adc-run"
 	defaultMaxProxyBodyBytes = 32 << 20
 	detachedProcessMessage   = "service restarted and child process is not attached"
 )
 
 type Config struct {
-	ListenAddr  string
-	OutputRoot  string
-	ADCBin      string
-	CommonRoot  string
-	EnginePath  string
-	BearerToken string
-	Attested    AttestedClerkConfig
-	StartupWait time.Duration
-	Log         io.Writer
+	ListenAddr    string
+	OutputRoot    string
+	ADCBin        string
+	ADCRunBin     string
+	ADCWorkingDir string
+	CommonRoot    string
+	EnginePath    string
+	BearerToken   string
+	Attested      AttestedClerkConfig
+	StartupWait   time.Duration
+	Log           io.Writer
 }
 
 type Server struct {
@@ -143,6 +146,9 @@ func New(cfg Config) (*Server, error) {
 	}
 	if strings.TrimSpace(cfg.ADCBin) == "" {
 		return nil, fmt.Errorf("adc binary path is required")
+	}
+	if strings.TrimSpace(cfg.ADCRunBin) == "" {
+		cfg.ADCRunBin = defaultADCRunCommand
 	}
 	if cfg.StartupWait <= 0 {
 		cfg.StartupWait = DefaultCaseStartupWait
@@ -417,7 +423,11 @@ func (s *Server) startCase(ctx context.Context, req CaseCreateRequest) (CaseReco
 		}
 		caseAPIBase = "http://" + caseAPIAddr
 		args = s.caseProcessArgs(mode, req, caseID, runID, outDir, caseAPIAddr, complaintPath, scenarioPath)
-		commandPath = s.cfg.ADCBin
+		if mode == "run" {
+			commandPath = s.cfg.ADCRunBin
+		} else {
+			commandPath = s.cfg.ADCBin
+		}
 	}
 
 	stdoutPath := filepath.Join(logDir, "adc.stdout")
@@ -456,6 +466,9 @@ func (s *Server) startCase(ctx context.Context, req CaseCreateRequest) (CaseReco
 		}
 	}
 	cmd := exec.CommandContext(context.Background(), commandPath, args...)
+	if !isAttested && mode == "direct" && strings.TrimSpace(s.cfg.ADCWorkingDir) != "" {
+		cmd.Dir = strings.TrimSpace(s.cfg.ADCWorkingDir)
+	}
 	rec.cmd = cmd
 	cmd.Stdout = stdoutFile
 	cmd.Stderr = stderrFile
@@ -572,12 +585,13 @@ func (s *Server) caseProcessArgs(mode string, req CaseCreateRequest, caseID stri
 
 	if mode == "run" {
 		args := []string{
-			"run",
+			"--adc-bin", s.cfg.ADCBin,
 			"--case-id", caseID,
 			"--run-id", runID,
 			"--out-dir", outDir,
 			"--caseapi-addr", caseAPIAddr,
 		}
+		args = addString(args, "--adc-working-dir", s.cfg.ADCWorkingDir)
 		if strings.TrimSpace(scenarioPath) != "" {
 			args = append(args, "--scenario", strings.TrimSpace(scenarioPath))
 		} else {

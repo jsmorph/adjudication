@@ -179,7 +179,11 @@ func TestListCasesOmitsStoredSummary(t *testing.T) {
 }
 
 func TestCaseProcessArgsDefaultsToRun(t *testing.T) {
-	s := &Server{cfg: Config{EnginePath: "lake exe adc-engine"}}
+	s := &Server{cfg: Config{
+		ADCBin:        "/opt/carve/adc",
+		ADCWorkingDir: "/opt/carve",
+		EnginePath:    "lake exe adc-engine",
+	}}
 	startDelay := 15
 	unanimousRequired := false
 	args := s.caseProcessArgs("", CaseCreateRequest{
@@ -199,10 +203,10 @@ func TestCaseProcessArgsDefaultsToRun(t *testing.T) {
 		ExternalRoles:             []string{"plaintiff"},
 		Offline:                   true,
 	}, "case-1", "run-case-1", "/tmp/out", "127.0.0.1:9001", "", "/tmp/scenario.json")
-	if args[0] != "run" {
+	if len(args) < 2 || args[0] != "--adc-bin" || args[1] != "/opt/carve/adc" {
 		t.Fatalf("command = %#v", args)
 	}
-	for _, want := range []string{"--scenario", "/tmp/scenario.json", "--caseapi-addr", "127.0.0.1:9001", "--model", "model-1", "--juror-personas", "pool.jsonl", "--juror-count", "8", "--minimum-concurring", "6", "--unanimous-required", "false", "--offline", "--mcp-listen", "127.0.0.1:8001", "--lawyer-timeout-seconds", "900", "--juror-timeout-seconds", "900", "--auto-lawyers", "defendant", "--openclaw-auth", "codex", "--openclaw-codex-auth", "auth.json", "--openclaw-lawyer-start-delay-seconds", "15", "--pi-image", "pi-image", "--juror-output-limit-bytes", "4096"} {
+	for _, want := range []string{"--adc-working-dir", "/opt/carve", "--scenario", "/tmp/scenario.json", "--caseapi-addr", "127.0.0.1:9001", "--model", "model-1", "--juror-personas", "pool.jsonl", "--juror-count", "8", "--minimum-concurring", "6", "--unanimous-required", "false", "--offline", "--mcp-listen", "127.0.0.1:8001", "--lawyer-timeout-seconds", "900", "--juror-timeout-seconds", "900", "--auto-lawyers", "defendant", "--openclaw-auth", "codex", "--openclaw-codex-auth", "auth.json", "--openclaw-lawyer-start-delay-seconds", "15", "--pi-image", "pi-image", "--juror-output-limit-bytes", "4096"} {
 		if !containsArg(args, want) {
 			t.Fatalf("missing %q in %#v", want, args)
 		}
@@ -311,7 +315,7 @@ exit 0
 	if err := os.WriteFile(scenario, []byte("{}\n"), 0o644); err != nil {
 		t.Fatalf("write scenario: %v", err)
 	}
-	s, err := New(Config{OutputRoot: filepath.Join(root, "service"), ADCBin: bin})
+	s, err := New(Config{OutputRoot: filepath.Join(root, "service"), ADCBin: bin, ADCRunBin: bin})
 	if err != nil {
 		t.Fatalf("new service: %v", err)
 	}

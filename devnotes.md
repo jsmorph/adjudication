@@ -59,3 +59,18 @@ The paired test starts the real `aard` binary and Lean engine from carve, perfor
 - [x] `go test -buildvcs=false -count=1 ./service/arbd ./service/localrun/arbd ./cmd/aard-service ./cmd/aard-run`
 - [x] `go test -buildvcs=false -count=1 -run '^TestPairedCoreCaseAPI$' ./service/localrun/arbd -args -carve-bin-dir=/tmp/carve-core-bins -carve-root=/media/hd2/src/adjudication-clones/adjudication-1`
 - [x] Import search found no `adjudication/arbd/runtime` import in `service/localrun/arbd` or `cmd/aard-run`.
+
+### ADC local launcher extraction
+
+The ADC local-agent launcher now lives at `service/localrun/adc`, with `adc-run` as its standalone command.  It starts `adc case` for a complaint or `adc scenario` for a prepared scenario, waits for the private Role API, and uses the service-owned ADC MCP package.  The launcher imports no ADC implementation package and preserves the complete core `run.json` object in its command result.
+
+The launcher embeds its three default agent templates while preserving file-path overrides.  It passes complaint preparation, jury policy, runtime, report, and external-role inputs through explicit command flags, accepts an explicit core working directory, records core output under `logs/`, and rejects a stale `run.json`.  The ADC multi-case service now invokes `adc-run` for Clerk local-agent requests and reserves `adc` for direct core cases.
+
+The paired test starts the real `adc` binary and Lean engine from carve, waits for `/health`, and reads the Role API status route while an external plaintiff opportunity remains open.  Cancellation stops the core child and verifies that the launcher observes its exit.  Test flags identify the paired executable directory and carve checkout while retaining the reusable `go test` command prefix.
+
+### ADC launcher verification
+
+- [x] `go test -buildvcs=false -count=1 ./service/adc ./service/localrun/adc ./cmd/adc-service ./cmd/adc-run`
+- [x] `go test -buildvcs=false -count=1 -run '^TestPairedCoreCaseAPI$' ./service/localrun/adc -args -carve-bin-dir=/tmp/carve-core-bins -carve-root=/media/hd2/src/adjudication-clones/adjudication-1`
+- [x] `go test -buildvcs=false -count=1 ./service/... ./cmd/...`
+- [x] Import search found no `adjudication/adc/runtime` import in `service/localrun/adc`, `service/adc`, `cmd/adc-run`, or `cmd/adc-service`.

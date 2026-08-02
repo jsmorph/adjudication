@@ -33,22 +33,22 @@ A component can remain temporarily on both branches while its replacement and co
 | `adc case` | Carve. | Preserve complaint preparation, one-case execution, Role API startup, durable records, and JSON summary behavior. |
 | `adc scenario` | Carve. | Preserve direct execution of a prepared scenario because the extracted service currently uses this path. |
 | `adc validate` and `adc verify-certificate` | Carve. | Retain as command-line validation and replay tools. |
-| `adc run` | Service. | Move local OpenClaw, Pi, and MCP supervision to a service-owned command that starts `adc case` or `adc scenario`. |
-| `adc mcp` and `adc service` | Service. | Add standalone service-owned commands before removing these dispatch entries from carve. |
+| `adc run` | Service. | Moved to `adc-run`, which starts `adc case` or `adc scenario` and uses the service-owned MCP adapter. |
+| `adc mcp` and `adc service` | Service. | Moved to the standalone `adc-mcp` and `adc-service` commands. |
 | `adc case-packet` | Review in Stage 3. | Assign deterministic packet construction after specifying the packet schema and core artifact input. |
 | `adc complain` and `adc pacer` | Review on carve. | Retain only if the distilled one-case command path or durable record requires them. |
 | `adc eval`, `adc juror`, `adc llm`, and `adc pool` | Remove after preserving required assertions. | Keep no experimental command solely as an archive. |
 | `aar case` | Carve. | Preserve one-case execution, Lawyer and Council APIs, durable records, and JSON summary behavior. |
 | `aar validate` and `aar verify-certificate` | Carve. | Retain as command-line validation and replay tools. |
-| `aar run` | Service. | Move local OpenClaw, Pi, and MCP supervision to a service-owned command that starts `aar case`. |
-| `aar mcp` and `aar service` | Service. | Add standalone service-owned commands before removing these dispatch entries from carve. |
+| `aar run` | Service. | Moved to `aar-run`, which starts `aar case` and uses the service-owned MCP adapter. |
+| `aar mcp` and `aar service` | Service. | Moved to the standalone `aar-mcp` and `aar-service` commands. |
 | `aar case-packet` | Review in Stage 3. | Apply the shared packet ownership decision. |
 | `aar complain` | Review on carve. | Retain only if complaint preparation belongs to the distilled core command path. |
 | `aar council-replay` and `aar juror-replay` | Remove unless a selected service acceptance test requires a defined operational use. | Preserve procedure assertions as ordinary tests. |
 | `aard case` | Carve. | Preserve one-case execution, Lawyer and Council APIs, durable records, and JSON summary behavior. |
 | `aard validate` and `aard verify-certificate` | Carve. | Retain as command-line validation and replay tools. |
 | `aard run` | Service. | Moved to `aard-run`, which starts `aard case` and uses the service-owned MCP adapter. |
-| `aard mcp` and `aard service` | Service. | Add standalone service-owned commands before removing these dispatch entries from carve. |
+| `aard mcp` and `aard service` | Service. | Moved to the standalone `aard-mcp` and `aard-service` commands. |
 | `aard case-packet` | Review in Stage 3. | Apply the shared packet ownership decision. |
 | `aard complain` | Review on carve. | Retain only if complaint preparation belongs to the distilled core command path. |
 

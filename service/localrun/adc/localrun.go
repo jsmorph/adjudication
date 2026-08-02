@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -22,13 +23,8 @@ import (
 	"text/template"
 	"time"
 
-	"adjudication/adc/runtime/lean"
-	"adjudication/adc/runtime/mcp"
-	"adjudication/adc/runtime/report"
-	"adjudication/adc/runtime/runner"
-	"adjudication/adc/runtime/store"
 	"adjudication/common/modelrequest"
-	"adjudication/common/openai"
+	adcmcp "adjudication/service/mcp/adc"
 )
 
 const (
@@ -53,54 +49,71 @@ const (
 	DefaultRunJurorTimeoutSeconds  = 15 * 60
 	DefaultRunLawyerTimeoutSeconds = DefaultRunJurorTimeoutSeconds
 	DefaultJurorOutputLimitBytes   = 128 * 1024 * 1024
+	DefaultLLMTimeoutSeconds       = 180
+	DefaultMaxResponseBytes        = 128 * 1024
+	DefaultInvalidAttemptLimit     = 3
+	DefaultJurorMaxOutputTokens    = 4096
+	DefaultReportModel             = "gpt-4.1-mini"
+	DefaultPlannerModel            = "gpt-4.1-mini"
+	DefaultNonJurorModel           = "gpt-5.4"
+	DefaultCourt                   = "United States District"
 	DefaultAutoLawyers             = "both"
 	DefaultDockerCommand           = "docker"
 	DefaultPodmanCommand           = "podman"
+	DefaultCoreCommand             = "adc"
+)
+
+const (
+	defaultLawyerInstructions = "embedded:adc/openclaw-lawyer"
+	defaultRemoteLawyerSkill  = "embedded:adc/openclaw-remote-lawyer-skill"
+	defaultJurorInstructions  = "embedded:adc/pi-juror"
 )
 
 func DefaultLawyerInstructionsPath() string {
-	return resolveADCDefaultPath("agent-instructions", "openclaw-lawyer.md.tmpl")
+	return defaultLawyerInstructions
 }
 
 func DefaultRemoteLawyerSkillPath() string {
-	return resolveADCDefaultPath("agent-instructions", "openclaw-remote-lawyer-skill.md.tmpl")
+	return defaultRemoteLawyerSkill
 }
 
 func DefaultJurorInstructionsPath() string {
-	return resolveADCDefaultPath("agent-instructions", "pi-juror.md.tmpl")
+	return defaultJurorInstructions
 }
 
-func resolveADCDefaultPath(parts ...string) string {
-	rel := filepath.Join(parts...)
-	cwd, err := os.Getwd()
-	if err != nil {
-		return rel
-	}
-	for {
-		for _, candidate := range []string{
-			filepath.Join(cwd, rel),
-			filepath.Join(cwd, "adc", rel),
-		} {
-			if _, err := os.Stat(candidate); err == nil {
-				return candidate
-			}
-		}
-		parent := filepath.Dir(cwd)
-		if parent == cwd {
-			return rel
-		}
-		cwd = parent
-	}
-}
+//go:embed agent-instructions/openclaw-lawyer.md.tmpl
+var embeddedLawyerInstructions string
+
+//go:embed agent-instructions/openclaw-remote-lawyer-skill.md.tmpl
+var embeddedRemoteLawyerSkill string
+
+//go:embed agent-instructions/pi-juror.md.tmpl
+var embeddedJurorInstructions string
 
 type Options struct {
+	CoreCommand               string
+	CoreWorkingDir            string
+	ComplaintPath             string
 	ScenarioPath              string
 	OutputDir                 string
+	Court                     string
 	Model                     string
 	DigestModel               string
-	Temperature               *float64
-	JurorTemperature          *float64
+	NonJurorModel             string
+	PlaintiffModel            string
+	DefendantModel            string
+	JudgeModel                string
+	ClerkModel                string
+	PlannerModel              string
+	Temperature               string
+	NonJurorTemperature       string
+	JurorTemperature          string
 	JurorPersonasPath         string
+	TrialMode                 string
+	SkipVoirDire              bool
+	JurorCount                int
+	MinimumConcurring         int
+	UnanimousRequired         string
 	Online                    bool
 	Offline                   bool
 	CaseAPIAddr               string
@@ -134,8 +147,24 @@ type Options struct {
 	JurorOutputLimitBytes     int64
 	DockerMCPHost             string
 	PodmanMCPHost             string
-	PolicyOverrides           map[string]any
 	Log                       io.Writer
+}
+
+type Result struct {
+	Scenario   string            `json:"scenario"`
+	Assertions []map[string]any  `json:"assertions"`
+	TurnLogs   []json.RawMessage `json:"turn_logs"`
+	FinalState map[string]any    `json:"final_state"`
+
+	raw json.RawMessage
+}
+
+func (r Result) MarshalJSON() ([]byte, error) {
+	if len(r.raw) > 0 {
+		return append([]byte(nil), r.raw...), nil
+	}
+	type resultAlias Result
+	return json.Marshal(resultAlias(r))
 }
 
 type instructionData struct {
@@ -232,24 +261,24 @@ type openClawAuthConfig struct {
 }
 
 type caseOutcome struct {
-	result runner.Result
+	result Result
 	err    error
 }
 
-func Run(ctx context.Context, opts Options) (result runner.Result, err error) {
+func Run(ctx context.Context, opts Options) (result Result, err error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	opts = applyDefaults(opts)
 	if err := validateOptions(opts); err != nil {
-		return runner.Result{}, err
+		return Result{}, err
 	}
 	openClawAuth, err := resolveOpenClawAuth(opts)
 	if err != nil {
-		return runner.Result{}, err
+		return Result{}, err
 	}
 	if err := os.MkdirAll(filepath.Join(opts.OutputDir, "logs"), 0o755); err != nil {
-		return runner.Result{}, fmt.Errorf("create output logs: %w", err)
+		return Result{}, fmt.Errorf("create output logs: %w", err)
 	}
 	state := &runState{
 		opts:             opts,
@@ -263,7 +292,7 @@ func Run(ctx context.Context, opts Options) (result runner.Result, err error) {
 	if state.token == "" {
 		token, err := randomToken()
 		if err != nil {
-			return runner.Result{}, err
+			return Result{}, err
 		}
 		state.token = token
 	}
@@ -276,36 +305,35 @@ func Run(ctx context.Context, opts Options) (result runner.Result, err error) {
 
 	caseAPIAddr, err := resolveListenAddr(opts.CaseAPIAddr, "127.0.0.1")
 	if err != nil {
-		return runner.Result{}, fmt.Errorf("resolve case API address: %w", err)
+		return Result{}, fmt.Errorf("resolve case API address: %w", err)
 	}
 	state.caseBase = "http://" + caseAPIAddr
 	mcpListenAddr, err := resolveListenAddr(opts.MCPListenAddr, "0.0.0.0")
 	if err != nil {
-		return runner.Result{}, fmt.Errorf("resolve MCP listen address: %w", err)
+		return Result{}, fmt.Errorf("resolve MCP listen address: %w", err)
 	}
 	state.mcpPublicBase, err = publicMCPBase(opts.MCPPublicBaseURL, mcpListenAddr)
 	if err != nil {
-		return runner.Result{}, err
+		return Result{}, err
 	}
 	if len(manualLawyerRoles(opts.AutoLawyers)) > 0 {
 		if err := validateManualLawyerAddress(opts.MCPPublicBaseURL, mcpListenAddr); err != nil {
-			return runner.Result{}, err
+			return Result{}, err
 		}
 	}
 	_, mcpPort, err := net.SplitHostPort(mcpListenAddr)
 	if err != nil {
-		return runner.Result{}, fmt.Errorf("parse MCP listen address %q: %w", mcpListenAddr, err)
+		return Result{}, fmt.Errorf("parse MCP listen address %q: %w", mcpListenAddr, err)
 	}
 	state.mcpBase = "http://" + net.JoinHostPort("127.0.0.1", mcpPort)
 
-	caseDone := make(chan caseOutcome, 1)
-	go func() {
-		result, err := runScenarioCase(runCtx, opts, caseAPIAddr)
-		caseDone <- caseOutcome{result: result, err: err}
-	}()
+	caseDone, err := startCoreCase(runCtx, opts, caseAPIAddr, state.logDir)
+	if err != nil {
+		return Result{}, err
+	}
 	if err := state.waitForCaseAPI(runCtx, caseDone); err != nil {
 		cancel()
-		return runner.Result{}, err
+		return Result{}, err
 	}
 
 	mcpDone := make(chan error, 1)
@@ -316,7 +344,7 @@ func Run(ctx context.Context, opts Options) (result runner.Result, err error) {
 			return
 		}
 		defer logFile.Close()
-		mcpDone <- mcp.Run(runCtx, mcp.Options{
+		mcpDone <- adcmcp.Run(runCtx, adcmcp.Options{
 			ListenAddr:           mcpListenAddr,
 			CaseAPIBase:          state.caseBase,
 			BearerToken:          state.token,
@@ -326,20 +354,20 @@ func Run(ctx context.Context, opts Options) (result runner.Result, err error) {
 	}()
 	if err := state.waitForMCP(runCtx, caseDone, mcpDone); err != nil {
 		cancel()
-		return runner.Result{}, err
+		return Result{}, err
 	}
 
 	for _, role := range manualLawyerRoles(opts.AutoLawyers) {
 		if err := state.writeRemoteLawyerSkill(role); err != nil {
 			cancel()
-			return runner.Result{}, err
+			return Result{}, err
 		}
 	}
 	startedPlaintiff := false
 	if autoLawyerEnabled(opts.AutoLawyers, "plaintiff") {
 		if err := state.startOpenClawLawyer(runCtx, "plaintiff", mcpPort); err != nil {
 			cancel()
-			return runner.Result{}, err
+			return Result{}, err
 		}
 		startedPlaintiff = true
 	}
@@ -347,12 +375,12 @@ func Run(ctx context.Context, opts Options) (result runner.Result, err error) {
 		if startedPlaintiff {
 			if err := state.waitOpenClawStartDelay(runCtx); err != nil {
 				cancel()
-				return runner.Result{}, err
+				return Result{}, err
 			}
 		}
 		if err := state.startOpenClawLawyer(runCtx, "defendant", mcpPort); err != nil {
 			cancel()
-			return runner.Result{}, err
+			return Result{}, err
 		}
 	}
 
@@ -360,9 +388,9 @@ func Run(ctx context.Context, opts Options) (result runner.Result, err error) {
 	defer jurorTicker.Stop()
 	if err := state.updateJurorProcesses(runCtx, mcpPort); err != nil {
 		cancel()
-		return runner.Result{}, err
+		return Result{}, err
 	}
-	finishCase := func(outcome caseOutcome) (runner.Result, error) {
+	finishCase := func(outcome caseOutcome) (Result, error) {
 		cancel()
 		if err := <-mcpDone; err != nil && !errors.Is(err, context.Canceled) {
 			return outcome.result, err
@@ -384,12 +412,12 @@ func Run(ctx context.Context, opts Options) (result runner.Result, err error) {
 		case err := <-mcpDone:
 			cancel()
 			if err == nil {
-				return runner.Result{}, fmt.Errorf("MCP server exited before case completion")
+				return Result{}, fmt.Errorf("MCP server exited before case completion")
 			}
-			return runner.Result{}, fmt.Errorf("MCP server failed: %w", err)
+			return Result{}, fmt.Errorf("MCP server failed: %w", err)
 		case exit := <-state.agentErrs:
 			cancel()
-			return runner.Result{}, exit
+			return Result{}, exit
 		case <-jurorTicker.C:
 			if err := state.updateJurorProcesses(runCtx, mcpPort); err != nil {
 				if isConnectionRefused(err) {
@@ -398,7 +426,7 @@ func Run(ctx context.Context, opts Options) (result runner.Result, err error) {
 						return finishCase(outcome)
 					case <-ctx.Done():
 						cancel()
-						return runner.Result{}, ctx.Err()
+						return Result{}, ctx.Err()
 					}
 				}
 				select {
@@ -407,83 +435,244 @@ func Run(ctx context.Context, opts Options) (result runner.Result, err error) {
 				default:
 				}
 				cancel()
-				return runner.Result{}, err
+				return Result{}, err
 			}
 		case <-ctx.Done():
 			cancel()
-			return runner.Result{}, ctx.Err()
+			return Result{}, ctx.Err()
 		}
 	}
 }
 
-func runScenarioCase(ctx context.Context, opts Options, caseAPIAddr string) (runner.Result, error) {
-	runtimeLimits := runner.RuntimeLimits{
-		LLMTimeoutSeconds:     opts.TimeoutSeconds,
-		RoleAPITimeoutSeconds: opts.LawyerTimeoutSeconds,
-		MaxResponseBytes:      opts.MaxResponseBytes,
-		InvalidAttemptLimit:   opts.InvalidAttemptLimit,
-	}.Normalized()
-	if opts.JurorTimeoutSeconds > runtimeLimits.RoleAPITimeoutSeconds {
-		runtimeLimits.RoleAPITimeoutSeconds = opts.JurorTimeoutSeconds
-	}
-	if err := writeJSONFile(filepath.Join(opts.OutputDir, "runtime.json"), runtimeLimits); err != nil {
-		return runner.Result{}, err
-	}
-
-	st, err := store.Open(filepath.Join(opts.OutputDir, "run.db"))
+func startCoreCase(ctx context.Context, opts Options, caseAPIAddr string, logDir string) (<-chan caseOutcome, error) {
+	stdoutPath := filepath.Join(logDir, "adc.stdout")
+	stderrPath := filepath.Join(logDir, "adc.stderr")
+	stdout, err := os.Create(stdoutPath)
 	if err != nil {
-		return runner.Result{}, err
+		return nil, fmt.Errorf("create core stdout log: %w", err)
 	}
-	defer st.Close()
+	stderr, err := os.Create(stderrPath)
+	if err != nil {
+		return nil, errors.Join(fmt.Errorf("create core stderr log: %w", err), stdout.Close())
+	}
+	runPath := filepath.Join(opts.OutputDir, "run.json")
+	previousRun, runExisted, err := readOptionalFile(runPath)
+	if err != nil {
+		return nil, errors.Join(fmt.Errorf("read existing core result: %w", err), stdout.Close(), stderr.Close())
+	}
 
-	var client *openai.Client
-	var jurorClient *openai.Client
-	if !opts.Offline {
-		client, err = openai.NewFromEnv(opts.Online, time.Duration(runtimeLimits.LLMTimeoutSeconds)*time.Second)
-		if err != nil {
-			return runner.Result{}, err
+	cmd := exec.CommandContext(ctx, opts.CoreCommand, coreCaseArgs(opts, caseAPIAddr)...)
+	if strings.TrimSpace(opts.CoreWorkingDir) != "" {
+		cmd.Dir = strings.TrimSpace(opts.CoreWorkingDir)
+	}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	if err := cmd.Start(); err != nil {
+		return nil, errors.Join(fmt.Errorf("start core case: %w", err), stdout.Close(), stderr.Close())
+	}
+
+	done := make(chan caseOutcome, 1)
+	go func() {
+		waitErr := cmd.Wait()
+		closeErr := errors.Join(stdout.Close(), stderr.Close())
+		result, resultErr := readCoreResult(runPath, previousRun, runExisted)
+		done <- caseOutcome{
+			result: result,
+			err: errors.Join(
+				coreProcessError(waitErr, stderrPath),
+				closeErr,
+				resultErr,
+			),
 		}
-		if strings.TrimSpace(opts.JurorPersonasPath) != "" {
-			jurorClient, err = openai.NewFromEnv(opts.Online, time.Duration(runtimeLimits.LLMTimeoutSeconds)*time.Second)
-			if err != nil {
-				return runner.Result{}, err
-			}
-		}
-	}
+	}()
+	return done, nil
+}
 
-	r, err := runner.New(st, lean.New(strings.Fields(strings.TrimSpace(opts.EnginePath))), client, jurorClient, runner.Config{
-		ScenarioPath:      opts.ScenarioPath,
-		OutputPath:        filepath.Join(opts.OutputDir, "run.json"),
-		EventsPath:        filepath.Join(opts.OutputDir, "events.ndjson"),
-		RunID:             opts.RunID,
-		CaseID:            opts.CaseID,
-		CaseAPIAddr:       caseAPIAddr,
-		ExternalRoles:     []string{"plaintiff", "defendant", "juror"},
-		Model:             strings.TrimSpace(opts.Model),
-		Temperature:       opts.Temperature,
-		JurorTemperature:  opts.JurorTemperature,
-		JurorPersonasPath: strings.TrimSpace(opts.JurorPersonasPath),
-		Offline:           opts.Offline,
-		Runtime:           runtimeLimits,
-		PolicyOverrides:   opts.PolicyOverrides,
-	})
+func coreCaseArgs(opts Options, caseAPIAddr string) []string {
+	if strings.TrimSpace(opts.ComplaintPath) != "" {
+		return coreComplaintArgs(opts, caseAPIAddr)
+	}
+	return coreScenarioArgs(opts, caseAPIAddr)
+}
+
+func coreComplaintArgs(opts Options, caseAPIAddr string) []string {
+	args := []string{
+		"case",
+		"--complaint", opts.ComplaintPath,
+		"--out-dir", opts.OutputDir,
+		"--case-id", opts.CaseID,
+		"--run-id", opts.RunID,
+		"--caseapi-addr", caseAPIAddr,
+	}
+	args = appendCoreRoleArgs(args)
+	args = appendCoreCommonArgs(args, opts)
+	args = addCoreString(args, "--court", opts.Court)
+	args = addCoreString(args, "--non-juror-model", opts.NonJurorModel)
+	args = addCoreString(args, "--plaintiff-model", opts.PlaintiffModel)
+	args = addCoreString(args, "--defendant-model", opts.DefendantModel)
+	args = addCoreString(args, "--judge-model", opts.JudgeModel)
+	args = addCoreString(args, "--clerk-model", opts.ClerkModel)
+	args = addCoreString(args, "--planner-model", opts.PlannerModel)
+	args = addCoreString(args, "--report-model", opts.DigestModel)
+	args = addCoreString(args, "--non-juror-temperature", opts.NonJurorTemperature)
+	args = addCoreString(args, "--trial-mode", opts.TrialMode)
+	if opts.SkipVoirDire {
+		args = append(args, "--skip-voir-dire")
+	}
+	return args
+}
+
+func coreScenarioArgs(opts Options, caseAPIAddr string) []string {
+	args := []string{
+		"scenario",
+		"--scenario", opts.ScenarioPath,
+		"--output", filepath.Join(opts.OutputDir, "run.json"),
+		"--runtime", filepath.Join(opts.OutputDir, "runtime.json"),
+		"--events", filepath.Join(opts.OutputDir, "events.ndjson"),
+		"--db", filepath.Join(opts.OutputDir, "run.db"),
+		"--transcript", filepath.Join(opts.OutputDir, "transcript.md"),
+		"--digest", filepath.Join(opts.OutputDir, "digest.md"),
+		"--allow-assertion-failures",
+		"--case-id", opts.CaseID,
+		"--run-id", opts.RunID,
+		"--caseapi-addr", caseAPIAddr,
+	}
+	args = appendCoreRoleArgs(args)
+	args = appendCoreCommonArgs(args, opts)
+	args = addCoreString(args, "--report-model", opts.DigestModel)
+	if opts.Offline {
+		args = append(args, "--offline")
+	}
+	return args
+}
+
+func appendCoreRoleArgs(args []string) []string {
+	for _, role := range []string{"plaintiff", "defendant", "juror"} {
+		args = append(args, "--external-role", role)
+	}
+	return args
+}
+
+func appendCoreCommonArgs(args []string, opts Options) []string {
+	args = addCoreString(args, "--model", opts.Model)
+	args = addCoreString(args, "--temperature", opts.Temperature)
+	args = addCoreString(args, "--juror-temperature", opts.JurorTemperature)
+	args = addCoreString(args, "--juror-personas", opts.JurorPersonasPath)
+	args = addCoreString(args, "--engine", opts.EnginePath)
+	args = addCoreInt(args, "--timeout-seconds", opts.TimeoutSeconds)
+	args = addCoreInt(args, "--roleapi-timeout-seconds", max(opts.LawyerTimeoutSeconds, opts.JurorTimeoutSeconds))
+	args = addCoreInt(args, "--invalid-attempt-limit", opts.InvalidAttemptLimit)
+	args = addCoreInt(args, "--max-response-bytes", opts.MaxResponseBytes)
+	args = addCoreInt(args, "--juror-count", opts.JurorCount)
+	args = addCoreInt(args, "--minimum-concurring", opts.MinimumConcurring)
+	args = addCoreString(args, "--unanimous-required", opts.UnanimousRequired)
+	if opts.Online {
+		args = append(args, "--online")
+	}
+	return args
+}
+
+func addCoreString(args []string, name string, value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return args
+	}
+	return append(args, name, strings.TrimSpace(value))
+}
+
+func addCoreInt(args []string, name string, value int) []string {
+	if value <= 0 {
+		return args
+	}
+	return append(args, name, fmt.Sprintf("%d", value))
+}
+
+func readOptionalFile(path string) ([]byte, bool, error) {
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, false, nil
+	}
 	if err != nil {
-		return runner.Result{}, err
+		return nil, false, err
 	}
-	result, err := r.Run(ctx)
+	return raw, true, nil
+}
+
+func readCoreResult(path string, previous []byte, existed bool) (Result, error) {
+	raw, err := os.ReadFile(path)
 	if err != nil {
-		return result, err
+		return Result{}, fmt.Errorf("read core result %s: %w", path, err)
 	}
-	if err := report.WriteTranscript(filepath.Join(opts.OutputDir, "transcript.md"), result); err != nil {
-		return result, err
+	if existed && bytes.Equal(raw, previous) {
+		return Result{}, fmt.Errorf("core process did not replace existing result %s", path)
 	}
-	if err := report.WriteDigestWithClient(filepath.Join(opts.OutputDir, "digest.md"), result, strings.TrimSpace(opts.DigestModel), client); err != nil {
-		return result, err
+	var result Result
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return Result{}, fmt.Errorf("decode core result %s: %w", path, err)
 	}
+	result.raw = append(json.RawMessage(nil), bytes.TrimSpace(raw)...)
 	return result, nil
 }
 
+func coreProcessError(waitErr error, stderrPath string) error {
+	if waitErr == nil {
+		return nil
+	}
+	raw, readErr := readFileTail(stderrPath, 64*1024)
+	message := strings.TrimSpace(string(raw))
+	if message == "" {
+		return errors.Join(fmt.Errorf("core case process: %w", waitErr), readErr)
+	}
+	return errors.Join(fmt.Errorf("core case process: %w: %s", waitErr, message), readErr)
+}
+
+func readFileTail(path string, limit int64) ([]byte, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	offset := info.Size() - limit
+	if offset < 0 {
+		offset = 0
+	}
+	if _, err := f.Seek(offset, io.SeekStart); err != nil {
+		return nil, err
+	}
+	raw, err := io.ReadAll(io.LimitReader(f, limit))
+	if err != nil {
+		return nil, err
+	}
+	if offset > 0 {
+		if index := bytes.IndexByte(raw, '\n'); index >= 0 {
+			raw = raw[index+1:]
+		}
+	}
+	return raw, nil
+}
+
 func applyDefaults(opts Options) Options {
+	if strings.TrimSpace(opts.CoreCommand) == "" {
+		opts.CoreCommand = DefaultCoreCommand
+	}
+	if strings.TrimSpace(opts.Court) == "" {
+		opts.Court = DefaultCourt
+	}
+	if strings.TrimSpace(opts.NonJurorModel) == "" {
+		opts.NonJurorModel = DefaultNonJurorModel
+	}
+	if strings.TrimSpace(opts.PlannerModel) == "" {
+		opts.PlannerModel = DefaultPlannerModel
+	}
+	if strings.TrimSpace(opts.DigestModel) == "" {
+		opts.DigestModel = DefaultReportModel
+	}
 	if strings.TrimSpace(opts.DockerCommand) == "" {
 		opts.DockerCommand = DefaultDockerCommand
 	}
@@ -518,13 +707,13 @@ func applyDefaults(opts Options) Options {
 		opts.LawyerTimeoutSeconds = DefaultRunLawyerTimeoutSeconds
 	}
 	if opts.TimeoutSeconds <= 0 {
-		opts.TimeoutSeconds = runner.DefaultLLMTimeoutSeconds
+		opts.TimeoutSeconds = DefaultLLMTimeoutSeconds
 	}
 	if opts.MaxResponseBytes <= 0 {
-		opts.MaxResponseBytes = runner.DefaultMaxResponseBytes
+		opts.MaxResponseBytes = DefaultMaxResponseBytes
 	}
 	if opts.InvalidAttemptLimit <= 0 {
-		opts.InvalidAttemptLimit = runner.DefaultInvalidAttemptLimit
+		opts.InvalidAttemptLimit = DefaultInvalidAttemptLimit
 	}
 	if strings.TrimSpace(opts.PiImage) == "" {
 		if image := strings.TrimSpace(os.Getenv("PI_CONTAINER_IMAGE")); image != "" {
@@ -565,8 +754,10 @@ func applyDefaults(opts Options) Options {
 }
 
 func validateOptions(opts Options) error {
-	if strings.TrimSpace(opts.ScenarioPath) == "" {
-		return fmt.Errorf("scenario path is required")
+	hasComplaint := strings.TrimSpace(opts.ComplaintPath) != ""
+	hasScenario := strings.TrimSpace(opts.ScenarioPath) != ""
+	if hasComplaint == hasScenario {
+		return fmt.Errorf("exactly one complaint path or scenario path is required")
 	}
 	if strings.TrimSpace(opts.OutputDir) == "" {
 		return fmt.Errorf("output dir is required")
@@ -574,8 +765,8 @@ func validateOptions(opts Options) error {
 	if strings.TrimSpace(opts.CaseID) == "" {
 		return fmt.Errorf("case id is required")
 	}
-	if strings.TrimSpace(opts.JurorPersonasPath) == "" {
-		return fmt.Errorf("juror personas path is required for Pi jurors")
+	if hasComplaint && opts.Offline {
+		return fmt.Errorf("offline mode cannot prepare a complaint-based case")
 	}
 	if strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY")) == "" {
 		return fmt.Errorf("OPENROUTER_API_KEY is required for Pi jurors")
@@ -589,7 +780,18 @@ func validateOptions(opts Options) error {
 	if opts.OpenClawNetwork != "" && opts.OpenClawNetwork != "host" {
 		return fmt.Errorf("invalid OpenClaw network %q; expected host or empty", opts.OpenClawNetwork)
 	}
-	for _, path := range []string{opts.ScenarioPath, opts.JurorPersonasPath, opts.LawyerInstructionsPath, opts.RemoteLawyerSkillPath, opts.JurorInstructionsPath} {
+	for _, path := range []string{opts.ComplaintPath, opts.ScenarioPath, opts.JurorPersonasPath} {
+		if strings.TrimSpace(path) == "" {
+			continue
+		}
+		if _, err := os.Stat(path); err != nil {
+			return fmt.Errorf("stat %s: %w", path, err)
+		}
+	}
+	for _, path := range []string{opts.LawyerInstructionsPath, opts.RemoteLawyerSkillPath, opts.JurorInstructionsPath} {
+		if _, ok := embeddedInstruction(path); ok {
+			continue
+		}
 		if _, err := os.Stat(path); err != nil {
 			return fmt.Errorf("stat %s: %w", path, err)
 		}
@@ -1298,11 +1500,15 @@ func safeProcessNameComponent(value string) string {
 }
 
 func renderInstructions(path string, data instructionData) (string, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("read instruction template %s: %w", path, err)
+	raw, ok := embeddedInstruction(path)
+	if !ok {
+		fileRaw, err := os.ReadFile(path)
+		if err != nil {
+			return "", fmt.Errorf("read instruction template %s: %w", path, err)
+		}
+		raw = string(fileRaw)
 	}
-	tmpl, err := template.New(filepath.Base(path)).Option("missingkey=error").Parse(string(raw))
+	tmpl, err := template.New(filepath.Base(path)).Option("missingkey=error").Parse(raw)
 	if err != nil {
 		return "", fmt.Errorf("parse instruction template %s: %w", path, err)
 	}
@@ -1311,6 +1517,19 @@ func renderInstructions(path string, data instructionData) (string, error) {
 		return "", fmt.Errorf("render instruction template %s: %w", path, err)
 	}
 	return out.String(), nil
+}
+
+func embeddedInstruction(path string) (string, bool) {
+	switch strings.TrimSpace(path) {
+	case defaultLawyerInstructions:
+		return embeddedLawyerInstructions, true
+	case defaultRemoteLawyerSkill:
+		return embeddedRemoteLawyerSkill, true
+	case defaultJurorInstructions:
+		return embeddedJurorInstructions, true
+	default:
+		return "", false
+	}
 }
 
 func writePiConfig(home string, active activeJurorOpportunity, server string, mcpURL string, token string) (string, error) {
@@ -1347,7 +1566,7 @@ func writePiConfig(home string, active activeJurorOpportunity, server string, mc
 		"id":   model,
 		"name": "ADC " + active.principalID + " " + model,
 	}
-	spec = spec.WithFallbackMaxOutputTokens(runner.DefaultJurorMaxOutputTokens)
+	spec = spec.WithFallbackMaxOutputTokens(DefaultJurorMaxOutputTokens)
 	if maxTokens := spec.MaxOutputTokens(); maxTokens != nil {
 		modelEntry["maxTokens"] = *maxTokens
 	}
@@ -1727,7 +1946,7 @@ func (s *runState) cleanupSecrets() error {
 	return errors.Join(errs...)
 }
 
-func writeRunSummary(outDir string, result runner.Result, opts Options) error {
+func writeRunSummary(outDir string, result Result, opts Options) error {
 	caseObj, _ := result.FinalState["case"].(map[string]any)
 	return writeJSONFile(filepath.Join(outDir, "local-run.json"), map[string]any{
 		"case_id":                             opts.CaseID,
@@ -1738,7 +1957,7 @@ func writeRunSummary(outDir string, result runner.Result, opts Options) error {
 		"mcp_public_base_url":                 opts.MCPPublicBaseURL,
 		"openclaw_lawyer_start_delay_seconds": opts.OpenClawStartDelaySeconds,
 		"juror_output_limit_bytes":            opts.JurorOutputLimitBytes,
-		"juror_default_max_output_tokens":     runner.DefaultJurorMaxOutputTokens,
+		"juror_default_max_output_tokens":     DefaultJurorMaxOutputTokens,
 		"assertion_count":                     len(result.Assertions),
 		"turn_count":                          len(result.TurnLogs),
 	})

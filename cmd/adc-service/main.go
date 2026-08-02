@@ -28,6 +28,8 @@ func run(ctx context.Context, args []string, stderr io.Writer) error {
 	listenAddr := fs.String("listen", adcservice.DefaultListenAddr, "Service listen address")
 	outputRoot := fs.String("output-root", "out/adc-service", "Directory containing service-created case output directories")
 	adcBin := fs.String("adc-bin", "adc", "ADC binary used to start child cases")
+	adcRunBin := fs.String("adc-run-bin", "adc-run", "Service-owned ADC local-agent launcher")
+	adcWorkingDir := fs.String("adc-working-dir", "", "Optional working directory for core adc processes")
 	enginePath := fs.String("engine", "", "Optional Lean engine command passed to child cases")
 	bearerToken := fs.String("bearer-token", "", "Optional bearer token required from service clients")
 	startupWait := fs.Duration("case-startup-timeout", adcservice.DefaultCaseStartupWait, "Maximum time to wait for a child case API health response")
@@ -62,11 +64,13 @@ func run(ctx context.Context, args []string, stderr io.Writer) error {
 		return err
 	}
 	return adcservice.Run(ctx, adcservice.Config{
-		ListenAddr:  strings.TrimSpace(*listenAddr),
-		OutputRoot:  strings.TrimSpace(*outputRoot),
-		ADCBin:      strings.TrimSpace(*adcBin),
-		EnginePath:  strings.TrimSpace(*enginePath),
-		BearerToken: strings.TrimSpace(*bearerToken),
+		ListenAddr:    strings.TrimSpace(*listenAddr),
+		OutputRoot:    strings.TrimSpace(*outputRoot),
+		ADCBin:        strings.TrimSpace(*adcBin),
+		ADCRunBin:     strings.TrimSpace(*adcRunBin),
+		ADCWorkingDir: strings.TrimSpace(*adcWorkingDir),
+		EnginePath:    strings.TrimSpace(*enginePath),
+		BearerToken:   strings.TrimSpace(*bearerToken),
 		Attested: adcservice.AttestedClerkConfig{
 			Verify:              true,
 			DriverPath:          strings.TrimSpace(*attestedDriver),
