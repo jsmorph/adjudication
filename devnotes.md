@@ -83,6 +83,8 @@ The service cases verify lawyer attempt exhaustion, lawyer deadlines, council-me
 
 The compatibility packages accept `-service-bin-dir`, `-carve-bin-dir`, and `-carve-root`, allowing one `go test` command to run every package.  The test packages import only the Go standard library and communicate with service and core through processes and HTTP.  The tests report process cleanup, HTTP body closure, fake-provider I/O, and retained-fixture log errors.
 
+Service commit `48d19263fde43f010312cb446cd4d6970a019c4f` passes the complete compatibility suite against carve commit `e1e0c9d54783e04e30391d628c892507498007d4`.  That carve revision excludes the multi-case services, MCP adapters, local-agent launchers, and their combined command entries.  The passing pair confirms that the retained service programs use the installed core commands and private case APIs after those removals.
+
 ### Cross-branch verification
 
 - [x] `go build -buildvcs=false -o /tmp/service-bins/aar-service ./cmd/aar-service`
@@ -90,4 +92,5 @@ The compatibility packages accept `-service-bin-dir`, `-carve-bin-dir`, and `-ca
 - [x] `go build -buildvcs=false -o /tmp/service-bins/aar-mcp ./cmd/aar-mcp`
 - [x] `go build -buildvcs=false -o /tmp/service-bins/aard-mcp ./cmd/aard-mcp`
 - [x] `go test -buildvcs=false -count=1 ./service/compat/... -args -service-bin-dir=/tmp/service-bins -carve-bin-dir=/tmp/carve-core-bins -carve-root=/media/hd2/src/adjudication-clones/adjudication-1`
+- [x] `go test -buildvcs=false -count=1 ./service/compat/... -args -service-bin-dir=/tmp/service-bins -carve-bin-dir=/tmp/carve-core-only-bins -carve-root=/media/hd2/src/adjudication-clones/adjudication-1`
 - [x] `go list` found no core implementation import in the three compatibility packages.
