@@ -120,7 +120,6 @@ COPY --from=core-build /src/core/arbd/.bin /opt/core/arbd/.bin
 COPY --from=core-build /src/core/arbd/examples /opt/core/arbd/examples
 COPY --from=core-build /src/core/arbd/prompts /opt/core/arbd/prompts
 COPY --from=core-build /src/core/arbd/attorney-instructions /opt/core/arbd/attorney-instructions
-COPY --from=core-build /src/core/arbd/pool.jsonl /opt/core/arbd/pool.jsonl
 COPY --from=core-build /src/core/common/data /opt/core/common/data
 COPY --from=core-build /src/core/common/etc /opt/core/common/etc
 COPY --from=service-build /out/aard-run /usr/local/bin/aard-run

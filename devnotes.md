@@ -135,3 +135,5 @@ The example wrapper accepts a core example directory and calls the sibling servi
 - [x] `go vet ./service/arbd ./cmd/aard-service ./cmd/aard-run`
 - [x] `go build -buildvcs=false -o /tmp/service-aard-run ./cmd/aard-run`
 - [ ] Build the base image from exact service and core commits, inspect its entrypoint and working directory, display `aard-run --help`, and validate an embedded complaint through the installed core executable.
+
+The first exact-commit image build found an obsolete `arbd/pool.jsonl` copy in the extracted Dockerfile.  The selected core commit stores the default council pool at `common/data/personas/pool.jsonl`, and the image already copies the complete `common/data` and `common/etc` trees.  Removing the nonexistent source path preserves the runtime lookup under the explicit `/opt/core/common` root.
