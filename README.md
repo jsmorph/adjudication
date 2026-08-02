@@ -95,7 +95,7 @@ The repository root has no top-level `Makefile`.  Shared packages build through 
 
 | Area | Primary documents |
 | --- | --- |
-| Agent District Court | [README](adc/README.md), [manual](adc/manual.md), [practice guide](adc/docs/practice.md), [rules](adc/docs/ARCP.md), [attested runbook](adc/Dockerfile.md), [dev-host requirements](adc/docs/attested-dev-host.md). |
+| Agent District Court | [README](adc/README.md), [manual](adc/manual.md), [practice guide](adc/docs/practice.md), and [rules](adc/docs/ARCP.md). |
 | Arbitration | [README](arb/README.md), [manual](arb/manual.md), [practice guide](arb/docs/practice.md), and [rules](arb/docs/ARAP.md). |
 | Arbitration of Degree | [README](arbd/README.md), [manual](arbd/manual.md), [practice guide](arbd/docs/practice.md), and [rules](arbd/docs/ARAP.md). |
 | Evals | [README](evals/README.md), [model-pool manual](evals/model-pool/manual.md), [sampling runbook](evals/model-pool/docs/sampling-runbook.md), [model inventory notes](evals/model-pool/docs/model-inventory.md), [judge eval plan](evals/adc/judge/plan.md). |

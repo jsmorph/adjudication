@@ -39,6 +39,19 @@ The ADC `run` and `mcp` commands, their runtime packages, and their OpenClaw and
 
 Deterministic ADC case-packet construction remains on `carve` as part of the core input interface.  The builder resolves complaint-linked files through the same case-generation package used by the direct complaint path.  Attested service code will invoke the installed `adc case-packet` command without importing or copying that implementation.
 
+### Attested deployment removal
+
+Service commit `58bd12061e604cca551ddcebcf9e76e46dea3098` retains the ADC attested driver, shell programs, Docker definitions, tests, and runbooks under `service/attested/adc`.  Its container build consumes full core and service commit IDs and invokes the installed core `adc case-packet` command.  Service commit `9766451` records the image proof against `carve@755246b50d0726dfc8dce9faf6a852b3a31f8b18`.
+
+The ADC Docker definitions, exec entrypoint, attested driver, shell helpers, and host runbooks have left `carve`.  Deterministic packet construction remains available through the core command.  The ADC runtime no longer advertises an attested-specific packet format.
+
+### Verification
+
+- [x] `go test -buildvcs=false -count=1 ./adc/runtime/...`
+- [x] `go vet -buildvcs=false ./adc/runtime/...`
+- [x] `go build -buildvcs=false -o /tmp/carve-adc ./adc/runtime/cmd/adc`
+- [x] Deterministic `adc case-packet` outputs compared byte for byte
+
 ## 2026-07-15: Judge Rule 60 eval
 
 ### References
