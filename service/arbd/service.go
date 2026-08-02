@@ -20,14 +20,14 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"adjudication/arb/runtime/proceeding"
 )
 
 const (
-	DefaultListenAddr      = "127.0.0.1:19770"
+	DefaultListenAddr      = "127.0.0.1:19790"
 	DefaultCaseStartupWait = 30 * time.Second
 
+	defaultCaseAPIAddr       = "127.0.0.1:0"
+	defaultCouncilBackend    = "direct"
 	defaultMaxProxyBodyBytes = 32 << 20
 	detachedProcessMessage   = "service restarted and child process is not attached"
 )
@@ -36,7 +36,7 @@ type Config struct {
 	ListenAddr  string
 	RegistryDir string
 	OutputRoot  string
-	AARBin      string
+	AardBin     string
 	CommonRoot  string
 	EnginePath  string
 	BearerToken string
@@ -62,6 +62,8 @@ type CaseCreateRequest struct {
 	PolicyPath              string   `json:"policy_path,omitempty"`
 	OutputDir               string   `json:"out_dir,omitempty"`
 	CouncilBackend          string   `json:"council_backend,omitempty"`
+	CouncilSize             int      `json:"council_size,omitempty"`
+	JudgmentStandard        string   `json:"judgment_standard,omitempty"`
 	LawyerTimeoutSeconds    int      `json:"lawyer_timeout_seconds,omitempty"`
 	CouncilTimeoutSeconds   int      `json:"council_timeout_seconds,omitempty"`
 	InvalidAttemptLimit     int      `json:"invalid_attempt_limit,omitempty"`
@@ -109,8 +111,8 @@ func New(cfg Config) (*Server, error) {
 	if strings.TrimSpace(cfg.OutputRoot) == "" {
 		return nil, fmt.Errorf("output root is required")
 	}
-	if strings.TrimSpace(cfg.AARBin) == "" {
-		return nil, fmt.Errorf("aar binary path is required")
+	if strings.TrimSpace(cfg.AardBin) == "" {
+		return nil, fmt.Errorf("aard binary path is required")
 	}
 	if cfg.StartupWait <= 0 {
 		cfg.StartupWait = DefaultCaseStartupWait
@@ -146,7 +148,7 @@ func Run(ctx context.Context, cfg Config) error {
 		return err
 	}
 	if cfg.Log != nil {
-		fmt.Fprintf(cfg.Log, "aar service listening on http://%s\n", ln.Addr().String())
+		fmt.Fprintf(cfg.Log, "aard service listening on http://%s\n", ln.Addr().String())
 	}
 	return server.Serve(ctx, ln)
 }
@@ -302,7 +304,7 @@ func (s *Server) handleCase(w http.ResponseWriter, r *http.Request) {
 func (s *Server) startCase(ctx context.Context, req CaseCreateRequest) (CaseRecord, error) {
 	caseID := strings.TrimSpace(req.CaseID)
 	if caseID == "" {
-		caseID = "arb-" + time.Now().UTC().Format("20060102150405") + "-" + randomHex(4)
+		caseID = "arbd-" + time.Now().UTC().Format("20060102150405") + "-" + randomHex(4)
 	}
 	if err := validateID(caseID, "case_id"); err != nil {
 		return CaseRecord{}, err
@@ -335,7 +337,7 @@ func (s *Server) startCase(ctx context.Context, req CaseCreateRequest) (CaseReco
 
 	councilBackend := strings.TrimSpace(req.CouncilBackend)
 	if councilBackend == "" {
-		councilBackend = proceeding.DefaultCouncilBackend
+		councilBackend = defaultCouncilBackend
 	}
 	caseAPIAddr, err := chooseLocalCaseAPIAddr()
 	if err != nil {
@@ -367,6 +369,7 @@ func (s *Server) startCase(ctx context.Context, req CaseCreateRequest) (CaseReco
 		}
 	}
 	addStringFlag("--policy", req.PolicyPath)
+	addStringFlag("--judgment-standard", req.JudgmentStandard)
 	addStringFlag("--common-root", firstNonEmpty(req.CommonRoot, s.cfg.CommonRoot))
 	addStringFlag("--engine", firstNonEmpty(req.EnginePath, s.cfg.EnginePath))
 	addStringFlag("--council-pool", req.CouncilPoolPath)
@@ -377,11 +380,12 @@ func (s *Server) startCase(ctx context.Context, req CaseCreateRequest) (CaseReco
 	addStringFlag("--attorney-rebuttals-prompt", req.AttorneyRebuttalsPrompt)
 	addIntFlag("--lawyer-timeout-seconds", req.LawyerTimeoutSeconds)
 	addIntFlag("--timeout-seconds", req.CouncilTimeoutSeconds)
+	addIntFlag("--council-size", req.CouncilSize)
 	addIntFlag("--invalid-attempt-limit", req.InvalidAttemptLimit)
 	addIntFlag("--max-response-bytes", req.MaxResponseBytes)
 
-	stdoutPath := filepath.Join(logDir, "aar.stdout")
-	stderrPath := filepath.Join(logDir, "aar.stderr")
+	stdoutPath := filepath.Join(logDir, "aard.stdout")
+	stderrPath := filepath.Join(logDir, "aard.stderr")
 	stdoutFile, err := os.Create(stdoutPath)
 	if err != nil {
 		return CaseRecord{}, fmt.Errorf("create stdout log: %w", err)
@@ -392,7 +396,7 @@ func (s *Server) startCase(ctx context.Context, req CaseCreateRequest) (CaseReco
 		return CaseRecord{}, fmt.Errorf("create stderr log: %w", err)
 	}
 
-	cmd := exec.CommandContext(context.Background(), s.cfg.AARBin, args...)
+	cmd := exec.CommandContext(context.Background(), s.cfg.AardBin, args...)
 	cmd.Stdout = stdoutFile
 	cmd.Stderr = stderrFile
 	closeLogs := func() error {
@@ -448,7 +452,7 @@ func (s *Server) startCase(ctx context.Context, req CaseCreateRequest) (CaseReco
 }
 
 func chooseLocalCaseAPIAddr() (string, error) {
-	ln, err := net.Listen("tcp", proceeding.DefaultCaseAPIAddr)
+	ln, err := net.Listen("tcp", defaultCaseAPIAddr)
 	if err != nil {
 		return "", fmt.Errorf("choose caseapi address: %w", err)
 	}
@@ -889,7 +893,6 @@ func finalStatusResponse(caseID string, roleID string, run map[string]any, inclu
 		"status":              status,
 		"phase":               mapString(run["phase"]),
 		"case_status":         mapString(caseObj["status"]),
-		"resolution":          mapString(run["resolution"]),
 		"prompt":              "",
 		"tools":               []map[string]any{},
 		"turn":                nil,
@@ -912,7 +915,7 @@ func finalStatusResponse(caseID string, roleID string, run map[string]any, inclu
 func finalResultResponse(caseID string, roleID string, run map[string]any) map[string]any {
 	finalState := mapAny(run["final_state"])
 	caseObj := mapAny(finalState["case"])
-	votes := mapList(caseObj["council_votes"])
+	answers := mapList(caseObj["council_answers"])
 	status := "done"
 	if mapString(run["status"]) == "failed" || mapString(caseObj["status"]) == "failed" {
 		status = "failed"
@@ -926,12 +929,12 @@ func finalResultResponse(caseID string, roleID string, run map[string]any) map[s
 		"case_status": mapString(caseObj["status"]),
 		"status":      status,
 		"result": map[string]any{
-			"resolution":         mapString(run["resolution"]),
 			"phase":              mapString(run["phase"]),
 			"case_status":        mapString(caseObj["status"]),
 			"final_reason":       mapString(run["final_reason"]),
-			"council_votes":      votes,
-			"vote_tally":         voteTally(votes),
+			"answers":            mapAny(run["answers"]),
+			"council_answers":    answers,
+			"answer_summary":     answerSummary(answers),
 			"deliberation_round": intNumber(caseObj["deliberation_round"]),
 		},
 	}
@@ -1169,7 +1172,7 @@ func listArtifacts(root string) ([]map[string]any, error) {
 }
 
 func listedArtifactNames() []string {
-	return []string{"run.json", "certificate.json", "digest.md", "transcript.md", "work-notes.ndjson", "events.ndjson", "evidence-manifest.json", "service-logs/aar.stdout", "service-logs/aar.stderr"}
+	return []string{"run.json", "state.json", "certificate.json", "digest.md", "transcript.md", "work-notes.ndjson", "events.ndjson", "evidence-manifest.json", "service-logs/aard.stdout", "service-logs/aard.stderr"}
 }
 
 func listedArtifactName(name string) bool {
@@ -1431,13 +1434,48 @@ func stateVersionFromRun(run map[string]any) int {
 	return intNumber(mapAny(run["final_state"])["state_version"])
 }
 
-func voteTally(votes []map[string]any) map[string]any {
-	counts := map[string]int{}
-	for _, vote := range votes {
-		counts[mapString(vote["vote"])]++
+func answerSummary(answers []map[string]any) map[string]any {
+	type stats struct {
+		count int
+		sum   int
+		min   int
+		max   int
+	}
+	rounds := map[int]stats{}
+	finalRound := 0
+	for _, answer := range answers {
+		round := intNumber(answer["round"])
+		if round <= 0 {
+			round = 1
+		}
+		if round > finalRound {
+			finalRound = round
+		}
+		value := intNumber(answer["answer"])
+		s := rounds[round]
+		if s.count == 0 || value < s.min {
+			s.min = value
+		}
+		if s.count == 0 || value > s.max {
+			s.max = value
+		}
+		s.count++
+		s.sum += value
+		rounds[round] = s
+	}
+	final := map[string]any{}
+	if finalRound > 0 {
+		s := rounds[finalRound]
+		final = map[string]any{
+			"round": finalRound,
+			"count": s.count,
+			"min":   s.min,
+			"max":   s.max,
+			"mean":  float64(s.sum) / float64(s.count),
+		}
 	}
 	return map[string]any{
-		"demonstrated":     counts["demonstrated"],
-		"not_demonstrated": counts["not_demonstrated"],
+		"final_round": finalRound,
+		"final":       final,
 	}
 }
