@@ -40,6 +40,10 @@ Verification:
 - [x] `go vet -buildvcs=false ./arb/runtime/...`
 - [x] `go build -buildvcs=false -o /tmp/carve-core-only-bins/aar ./arb/runtime/cmd/aar`
 
+### Case-packet ownership
+
+Deterministic ARB case-packet construction remains on `carve` as part of the core input interface.  The builder uses the proceeding package's automatic and explicit case-file selection rules, preserving one implementation of input validation.  Attested service code will invoke the installed `aar case-packet` command without importing or copying that implementation.
+
 ## 2026-07-13
 
 ### Runtime replay certificates

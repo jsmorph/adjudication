@@ -35,6 +35,10 @@ The ADC `run` and `mcp` commands, their runtime packages, and their OpenClaw and
 - [x] `go vet -buildvcs=false ./adc/runtime/...`
 - [x] `go build -buildvcs=false -o /tmp/carve-core-only-bins/adc ./adc/runtime/cmd/adc`
 
+### Case-packet ownership
+
+Deterministic ADC case-packet construction remains on `carve` as part of the core input interface.  The builder resolves complaint-linked files through the same case-generation package used by the direct complaint path.  Attested service code will invoke the installed `adc case-packet` command without importing or copying that implementation.
+
 ## 2026-07-15: Judge Rule 60 eval
 
 ### References

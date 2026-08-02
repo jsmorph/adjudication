@@ -21,7 +21,7 @@ A core process returns a nonzero exit status for startup, configuration, input, 
 
 The service-owned `adc-run`, `aar-run`, and `aard-run` commands start a direct core case through this interface and use the corresponding service-owned MCP adapter.  `adc-run` selects `adc case` for a complaint and `adc scenario` for a prepared scenario.  Each launcher preserves the complete core `run.json` object, records core standard streams beneath `logs/`, and rejects a result file that the new process did not replace.
 
-The core branch retains `validate` and `verify-certificate` for operator use.  Attested drivers will live on service and must identify the exact core source or artifacts placed in a workload image.  Case-packet construction remains subject to the Stage 3 ownership decision in the plan.
+The core branch retains `validate`, `verify-certificate`, and deterministic `case-packet` construction for operator and service use.  Attested drivers live on service, invoke the installed core packet command, and identify the exact core source or artifacts placed in a workload image.  This keeps complaint and case-file selection under the procedure that later validates and runs those inputs.
 
 ## Private Case APIs
 

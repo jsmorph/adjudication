@@ -145,10 +145,10 @@ This stage should preserve the private listener owned by one running case if D1 
 ### 3. Extract Attested and Deployment Execution
 
 - [ ] If D7 retains attested operation, move the attested Python and shell programs, Docker definitions, S3 configuration, AMI and PCR handling, service routes, tests, and runbooks to `service`.
-- [ ] Decide whether deterministic case-packet construction belongs to the core input interface or the operational branch.  If it moves to `service`, define the packet schema in the compatibility specification and test it against the selected core binaries.
+- [x] Keep deterministic case-packet construction in the core input interface.  Service invokes the installed `adc`, `aar`, or `aard` `case-packet` command so complaint and case-file selection continue to use the procedure implementation.
 - [ ] Change service container builds to consume explicit core source or prebuilt artifacts from a pinned `carve` revision.
 - [ ] Verify one local packet build, one container build, and one attested-driver test before deleting the original files from `carve`.
-- [ ] On `carve`, delete service-owned `case-packet` code, Dockerfiles, `attest/`, attested tools, S3 settings, and attested runbooks after extraction.
+- [ ] On `carve`, retain the core `case-packet` commands and delete Dockerfiles, `attest/`, attested tools, S3 settings, and attested runbooks after their service-owned replacements pass.
 - [ ] Search both branches for stale source paths and implicit assumptions that service and core files share one checkout.
 
 ### 4. Assign Participant Adapters and Local Launchers
