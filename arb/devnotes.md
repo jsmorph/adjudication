@@ -2,6 +2,17 @@
 
 ## 2026-08-02
 
+### Lean 4.32.0
+
+Reference: [Lean 4.32.0 release notes](https://lean-lang.org/doc/reference/latest/releases/v4.32.0/)
+
+The ARB Lean engine now selects Lean 4.32.0.  Lean 4.32.0 makes the new `do` elaborator the default and exposes reductions that the earlier proof build discharged implicitly.  The revised proofs reduce those monadic operations explicitly and use field-preservation lemmas when a record update leaves the vote summary, council count, or termination measure unchanged.
+
+Verification:
+
+- [x] `lean --version` reports Lean 4.32.0.
+- [x] `lake build` completes all 45 ARB engine and proof jobs.
+
 ### Core and service branch split
 
 Reference: [Core and service branch plan](../plan.md)

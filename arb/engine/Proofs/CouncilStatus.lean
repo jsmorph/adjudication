@@ -365,7 +365,7 @@ theorem step_shrinks_seatedCouncilMemberIds
           · rcases step_deliver_closing_statement_result s t action hClosing hStepCore with ⟨rawText, rfl⟩
             exact seatedCouncilMemberIdsShrink_of_same_members <|
               by
-                simpa [List.isEmpty_iff] using
+                simpa [List.isEmpty_iff, stateWithCase] using
                   addFiling_preserves_council_members s.case "closings"
                     (if s.case.closings.isEmpty then "plaintiff" else "defendant")
                     (trimString rawText)
@@ -633,7 +633,7 @@ theorem step_introduces_newCouncilVotes_only_from_seated
           · rcases step_deliver_closing_statement_result s t action hClosing hStepCore with ⟨rawText, rfl⟩
             exact newCouncilVotesComeFromSeated_of_same_votes <|
               by
-                simpa [List.isEmpty_iff] using
+                simpa [List.isEmpty_iff, stateWithCase] using
                   addFiling_preserves_council_votes s.case "closings"
                     (if s.case.closings.isEmpty then "plaintiff" else "defendant")
                     (trimString rawText)

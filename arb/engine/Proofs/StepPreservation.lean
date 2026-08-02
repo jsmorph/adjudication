@@ -79,7 +79,8 @@ theorem step_record_opening_statement_result
                 pure <| stateWithCase s
                   (addFiling s.case "openings"
                     (if s.case.openings.isEmpty then "plaintiff" else "defendant") text)) = .ok t := by
-            simpa using hStep'
+            simpa [SeqRight.seqRight, Bind.bind, Except.bind, Functor.map, Except.map,
+              Pure.pure, Except.pure] using hStep'
           cases hTextCheck :
               requireTextWithinLimit "opening statement" (trimString rawText) s.policy.max_opening_chars with
           | error err =>
@@ -203,7 +204,8 @@ theorem step_deliver_closing_statement_result
                 pure <| stateWithCase s
                   (addFiling s.case "closings"
                     (if s.case.closings.isEmpty then "plaintiff" else "defendant") text)) = .ok t := by
-            simpa using hStep'
+            simpa [SeqRight.seqRight, Bind.bind, Except.bind, Functor.map, Except.map,
+              Pure.pure, Except.pure] using hStep'
           cases hTextCheck :
               requireTextWithinLimit "closing statement" (trimString rawText) s.policy.max_closing_chars with
           | error err =>
@@ -326,7 +328,7 @@ theorem parseOfferedEvidenceEntry_role
                   role := role
                   evidence_id := trimString rawFileId
                   label := getOptionalString entry "label" }) = .ok item := by
-        simpa [Except.bind] using hParse
+        simpa [Bind.bind, Except.bind] using hParse
       by_cases hEmpty : trimString rawFileId = ""
       · have : False := by
           have hBad : (Except.error "offered_evidence entry requires evidence_id" : Except String OfferedEvidence) = .ok item := by
@@ -431,7 +433,7 @@ theorem parseTechnicalReportEntry_role
                       role := role
                       title := trimString rawTitle
                       summary := trimString rawSummary }) = .ok item := by
-            simpa [Except.bind] using hParse
+            simpa [Bind.bind, Except.bind] using hParse
           by_cases hTitleEmpty : trimString rawTitle = ""
           · have : False := by
               have hBad : (Except.error "technical_reports entry requires title" : Except String TechnicalReport) = .ok item := by
@@ -593,7 +595,8 @@ theorem recordMeritsSubmission_with_materials_result
                     (addFiling s.case phase expectedRole (trimString rawText))
                     offered
                     reports)) = .ok t := by
-            simpa using hSubmit'
+            simpa [SeqRight.seqRight, Bind.bind, Except.bind, Functor.map, Except.map,
+              Pure.pure, Except.pure] using hSubmit'
           cases hTextCheck : requireTextWithinLimit textLabel (trimString rawText) limit with
           | error err =>
               simp [hTextCheck] at hSubmit''
@@ -626,7 +629,8 @@ theorem recordMeritsSubmission_with_materials_result
                                 (addFiling s.case phase expectedRole (trimString rawText))
                                 offered
                                 reports)) = .ok t := by
-                        simpa [Except.bind] using hSubmit''
+                        simpa [SeqRight.seqRight, Bind.bind, Except.bind, Functor.map, Except.map,
+                          Pure.pure, Except.pure] using hSubmit''
                       cases hOfferedPer :
                           requireCountWithinLimit "offered_evidence" offered.length s.policy.max_exhibits_per_filing with
                       | error err =>
@@ -654,7 +658,8 @@ theorem recordMeritsSubmission_with_materials_result
                                         (addFiling s.case phase expectedRole (trimString rawText))
                                         offered
                                         reports)) = .ok t := by
-                                simpa [Except.bind] using hSubmit'''
+                                simpa [SeqRight.seqRight, Bind.bind, Except.bind, Functor.map, Except.map,
+                                  Pure.pure, Except.pure] using hSubmit'''
                               cases hOfferedSide :
                                   requireCountWithinLimit "offered_evidence for this side" totalOffered s.policy.max_exhibits_per_side with
                               | error err =>
@@ -760,7 +765,8 @@ theorem recordMeritsSubmission_with_materials_details
                     (addFiling s.case phase expectedRole (trimString rawText))
                     offered
                     reports)) = .ok t := by
-            simpa using hSubmit'
+            simpa [SeqRight.seqRight, Bind.bind, Except.bind, Functor.map, Except.map,
+              Pure.pure, Except.pure] using hSubmit'
           cases hTextCheck : requireTextWithinLimit textLabel (trimString rawText) limit with
           | error err =>
               simp [hTextCheck] at hSubmit''
@@ -793,7 +799,8 @@ theorem recordMeritsSubmission_with_materials_details
                                 (addFiling s.case phase expectedRole (trimString rawText))
                                 offered
                                 reports)) = .ok t := by
-                        simpa [Except.bind] using hSubmit''
+                        simpa [SeqRight.seqRight, Bind.bind, Except.bind, Functor.map, Except.map,
+                          Pure.pure, Except.pure] using hSubmit''
                       cases hOfferedPer :
                           requireCountWithinLimit "offered_evidence" offered.length s.policy.max_exhibits_per_filing with
                       | error err =>
@@ -821,7 +828,8 @@ theorem recordMeritsSubmission_with_materials_details
                                         (addFiling s.case phase expectedRole (trimString rawText))
                                         offered
                                         reports)) = .ok t := by
-                                simpa [Except.bind] using hSubmit'''
+                                simpa [SeqRight.seqRight, Bind.bind, Except.bind, Functor.map, Except.map,
+                                  Pure.pure, Except.pure] using hSubmit'''
                               cases hOfferedSide :
                                   requireCountWithinLimit "offered_evidence for this side" totalOffered s.policy.max_exhibits_per_side with
                               | error err =>
@@ -912,7 +920,8 @@ theorem recordMeritsSubmission_without_materials_result
                 requireTextWithinLimit textLabel text limit
                 requireNoSupplementalMaterials payload
                 pure <| stateWithCase s (addFiling s.case phase expectedRole (trimString rawText))) = .ok t := by
-            simpa using hSubmit'
+            simpa [SeqRight.seqRight, Bind.bind, Except.bind, Functor.map, Except.map,
+              Pure.pure, Except.pure] using hSubmit'
           cases hTextCheck : requireTextWithinLimit textLabel (trimString rawText) limit with
           | error err =>
               simp [hTextCheck] at hSubmit''
@@ -1301,7 +1310,8 @@ theorem step_submit_evidence_preserves_material_limits
   have hSubmit : submitEvidence s action.actor_role action.payload = .ok t := by
     simpa [stepCore, hType] using hStep
   rcases submitEvidence_result s t action.actor_role action.payload hSubmit with ⟨evidence, rfl⟩
-  simpa [stateWithCase] using appendSubmittedEvidence_preserves_material_limits s evidence hLimits
+  simpa [stateWithCase, materialLimitsRespected] using
+    appendSubmittedEvidence_preserves_material_limits s evidence hLimits
 
 /--
 A successful surrebuttal step preserves the merits-sequence invariant.
@@ -1674,7 +1684,7 @@ theorem step_submit_council_vote_result
               let rationale := getOptionalString action.payload "rationale"
               have hRecord :
                   recordCouncilVote s memberId vote rationale = .ok t := by
-                simpa [memberId, vote, rationale] using hStep'
+                simpa [memberId, vote, rationale, SeqRight.seqRight, Bind.bind, Except.bind] using hStep'
               have hPhase : s.case.phase = "deliberation" := by
                 by_cases hDelib : s.case.phase = "deliberation"
                 · exact hDelib
@@ -1777,7 +1787,7 @@ private theorem step_submit_council_vote_details_core
               let rationale := getOptionalString action.payload "rationale"
               have hRecord :
                   recordCouncilVote s memberId vote rationale = .ok t := by
-                simpa [memberId, vote, rationale] using hStep'
+                simpa [memberId, vote, rationale, SeqRight.seqRight, Bind.bind, Except.bind] using hStep'
               have hPhase : s.case.phase = "deliberation" := by
                 by_cases hDelib : s.case.phase = "deliberation"
                 · exact hDelib
@@ -1956,7 +1966,7 @@ theorem step_remove_council_member_result
               let status := rawStatus
               have hRemove :
                   removeCouncilMember s memberId status = .ok t := by
-                simpa [memberId, status] using hStep'
+                simpa [memberId, status, SeqRight.seqRight, Bind.bind, Except.bind] using hStep'
               have hPhase : s.case.phase = "deliberation" := by
                 by_cases hDelib : s.case.phase = "deliberation"
                 · exact hDelib
@@ -2059,7 +2069,7 @@ theorem step_remove_council_member_details
               let status := rawStatus
               have hRemove :
                   removeCouncilMember s memberId status = .ok t := by
-                simpa [memberId, status] using hStep'
+                simpa [memberId, status, SeqRight.seqRight, Bind.bind, Except.bind] using hStep'
               have hPhase : s.case.phase = "deliberation" := by
                 by_cases hDelib : s.case.phase = "deliberation"
                 · exact hDelib

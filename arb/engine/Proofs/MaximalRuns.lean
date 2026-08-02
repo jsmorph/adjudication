@@ -193,7 +193,7 @@ theorem step_preserves_terminalStatusInvariant
                         | ok okv =>
                             cases okv
                             rw [hRole] at hCore
-                            simpa using hCore
+                            simpa [SeqRight.seqRight, Bind.bind, Except.bind] using hCore
                       rcases failOpportunity_result s t action.payload hFailStep with hCouncil | hParty
                       · rcases hCouncil with ⟨memberId, reason, opportunityId, message, c1,
                           hC1, _hPhase, _hSeated, _hFresh, hCont⟩

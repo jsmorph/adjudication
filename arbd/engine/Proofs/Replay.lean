@@ -67,7 +67,8 @@ theorem replaySteps_concat_ok
           cases hReplay
       | ok next =>
           rw [hFirst] at hReplay
-          simpa using ih next hReplay
+          change replaySteps next (rest ++ [action]) = .ok target
+          simpa only [List.concat_eq_append] using ih next hReplay
 
 theorem replaySteps_success_stepReachableFrom_of_base
     (base current target : ArbitrationState)
@@ -133,7 +134,9 @@ theorem replayInitialized_success_components
       cases hReplay
   | ok start =>
       have hSteps : replaySteps start actions = .ok target := by
-        simpa [hInit] using hReplay
+        rw [hInit] at hReplay
+        change replaySteps start actions = .ok target at hReplay
+        exact hReplay
       exact ⟨start, rfl, hSteps⟩
 
 theorem replayInitialized_success_reachable

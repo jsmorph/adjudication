@@ -158,13 +158,13 @@ theorem addOpening_preserves_phaseShape
       cases rest with
       | nil =>
           have hOne : first.phase = "openings" ∧ first.role = "plaintiff" := by
-            simpa [hList] using hOpenings
+            simpa [bilateralStarted, hList] using hOpenings
           rcases hOne with ⟨hFirstPhase, hFirstRole⟩
           simp [addFiling, advanceAfterMerits, hPhase, hList, phaseShape, bilateralComplete, bilateralStarted,
             hArgs, hRebuttals, hSurrebuttals, hClosings, hFirstPhase, hFirstRole]
       | cons second tail =>
           have : False := by
-            simpa [hList] using hOpenings
+            simp [bilateralStarted, hList] at hOpenings
           exact False.elim this
 
 /--
@@ -190,14 +190,14 @@ theorem addArgument_preserves_phaseShape
       cases rest with
       | nil =>
           have hOne : first.phase = "arguments" ∧ first.role = "plaintiff" := by
-            simpa [hList] using hArguments
+            simpa [bilateralStarted, hList] using hArguments
           rcases hOne with ⟨hFirstPhase, hFirstRole⟩
           simp [addFiling, advanceAfterMerits, hPhase, hList, phaseShape]
           refine ⟨hOpenings, ?_, hRebuttals, hSurrebuttals, hClosings⟩
           simp [bilateralComplete, hFirstPhase, hFirstRole]
       | cons second tail =>
           have : False := by
-            simpa [hList] using hArguments
+            simp [bilateralStarted, hList] at hArguments
           exact False.elim this
 
 /--
@@ -269,14 +269,14 @@ theorem addClosing_preserves_phaseShape
       cases rest with
       | nil =>
           have hOne : first.phase = "closings" ∧ first.role = "plaintiff" := by
-            simpa [hList] using hClosings
+            simpa [bilateralStarted, hList] using hClosings
           rcases hOne with ⟨hFirstPhase, hFirstRole⟩
           simp [addFiling, advanceAfterMerits, hPhase, hList, phaseShape]
           refine ⟨hOpenings, hArguments, hRebuttals, hSurrebuttals, ?_⟩
           simp [bilateralComplete, hFirstPhase, hFirstRole]
       | cons second tail =>
           have : False := by
-            simpa [hList] using hClosings
+            simp [bilateralStarted, hList] at hClosings
           exact False.elim this
 
 /--

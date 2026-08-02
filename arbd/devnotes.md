@@ -2,6 +2,17 @@
 
 ## 2026-08-02
 
+### Lean 4.32.0
+
+Reference: [Lean 4.32.0 release notes](https://lean-lang.org/doc/reference/latest/releases/v4.32.0/)
+
+The AARD Lean engine now selects Lean 4.32.0.  Lean 4.32.0 makes the new `do` elaborator the default, which changes the reductions exposed to the replay proof.  The revised proof reduces the monadic operations explicitly and applies `List.concat_eq_append` when comparing replayed action lists.
+
+Verification:
+
+- [x] `lean --version` reports Lean 4.32.0.
+- [x] `lake build` completes all 15 AARD engine and proof jobs.
+
 ### Core and service branch split
 
 Reference: [Core and service branch plan](../plan.md)

@@ -1069,6 +1069,15 @@ theorem failOpportunity_same_round_preserves_noSubstantiveOutcomeViable
     exact hMid
   · rcases hParty with ⟨failure, rfl, _hNotClosed, _hNotDeliberation,
       _hFailureType, _hFailureRole, _hFailurePhase⟩
-    simpa [deliberationSummary, deliberationSummaryForCase, stateWithCase] using hNoViable
+    have hSummary :
+        deliberationSummary
+            (stateWithCase s
+              { s.case with
+                status := "failed"
+                failure := some failure }) =
+          deliberationSummary s := by
+      apply deliberationSummary_congr <;> rfl
+    rw [hSummary]
+    exact hNoViable
 
 end ArbProofs

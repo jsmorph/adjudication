@@ -1,6 +1,6 @@
 # vmcp
 
-A persistent MCP server implemented in Lean.  It holds the state of a simplified arbitration, accepts or rejects each tool call by rule, advertises to each connection only the tools its role currently holds, and writes an append-only log whose replay is the certificate of the run.  [The VMCP design](../docs/vmcp.md) records the architecture and development plan.  The project is standalone: it builds with `lake build` under Lean `v4.27.0` and imports nothing from the rest of the repository.
+A persistent MCP server implemented in Lean.  It holds the state of a simplified arbitration, accepts or rejects each tool call by rule, advertises to each connection only the tools its role currently holds, and writes an append-only log whose replay is the certificate of the run.  [The VMCP design](../docs/vmcp.md) records the architecture and development plan.  The project is standalone: it builds with `lake build` under Lean `v4.32.0` and imports nothing from the rest of the repository.
 
 ## Layout
 

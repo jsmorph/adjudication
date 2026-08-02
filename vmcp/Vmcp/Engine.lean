@@ -58,7 +58,7 @@ def encNat (n : Nat) : Json :=
 def decNat (j : Json) : Except String Nat :=
   match j with
   | .num ⟨m, 0⟩ =>
-      if h : 0 ≤ m then .ok m.toNat else .error "number must be a natural"
+      if 0 ≤ m then .ok m.toNat else .error "number must be a natural"
   | _ => .error "natural number expected"
 
 def decStr (j : Json) : Except String String :=

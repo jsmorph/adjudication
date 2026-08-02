@@ -124,7 +124,7 @@ private theorem voteCountFor_cons_neutrality
     voteCountFor (vote :: votes) value =
       (if trimString vote.vote = value then 1 else 0) + voteCountFor votes value := by
   unfold voteCountFor
-  simpa using voteCountFor_foldl_acc votes value
+  simpa only [voteCountFor, List.foldl] using voteCountFor_foldl_acc votes value
     (if trimString vote.vote = value then 1 else 0)
 
 private theorem flipCouncilVote_demonstrated_increment
@@ -382,7 +382,8 @@ theorem reachable_currentResolution_is_neutral_under_vote_flip
         2 * (deliberationSummary s).required_votes := by
     exact Nat.lt_of_le_of_lt
       (reachable_deliberationSummary_seated_count_le_council_size s hs)
-      (by simpa [deliberationSummary] using reachable_strict_majority s hs)
+      (by simpa [deliberationSummary, deliberationSummaryForCase] using
+        reachable_strict_majority s hs)
   calc
     currentResolution? (flipCaseVotes s.case) s.policy.required_votes_for_decision
       = (deliberationSummary (stateWithCase s (flipCaseVotes s.case))).currentResolution? := by

@@ -23,7 +23,7 @@ The manual documents the core commands, one-case Role API, durable records, and 
 | Requirement | Purpose |
 | --- | --- |
 | Go `1.25` | Builds the ADC runtime. |
-| Lean `4.27.0` and `lake` | Builds the Lean engine and proof tree. |
+| Lean `4.32.0` and `lake` | Builds the Lean engine and proof tree. |
 | `make` | Runs build, test, proof, and example targets. |
 
 ## Build

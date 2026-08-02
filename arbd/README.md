@@ -17,7 +17,7 @@ The manual documents the core commands, case-owned HTTP APIs, outputs, and certi
 | Requirement | Purpose |
 | --- | --- |
 | Go `1.25` | Builds the AARD runtime. |
-| Lean `4.27.0` and `lake` | Build the Lean engine and proof tree. |
+| Lean `4.32.0` and `lake` | Build the Lean engine and proof tree. |
 | Model-provider key | Direct council calls require the environment variable named by the selected pool endpoint. |
 
 ## Build
