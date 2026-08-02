@@ -101,6 +101,8 @@ The recorded split base is `1f62a56f66da3a476a7f4064a86a580a2970fadc`.  Local br
 
 The completed service checkpoints are `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` for the multi-case services, `6eaed038b468add7099b77edb766b987ba053dcd` for the MCP adapters, `19b9254442e90c25c6cac21460d80eadb04ba7f3` for the ARB launcher, `25dac0e20c08ffa730a661eb4080677bd3bdfaa7` for the AARD launcher, `aaec158d94981e26e9979841b3f7f8ffca17e454` for the ADC launcher, and `48d19263fde43f010312cb446cd4d6970a019c4f` for the ARB and AARD cross-branch service tests.  Their service-owned package tests pass, and all three launcher checkpoints pass paired private-API tests against core binaries built from `carve`.  The cross-branch tests run the standalone ARB and AARD Clerk and MCP programs against those core binaries, so the corresponding service cases can now leave `carve`.
 
+The first recorded compatibility pair is `service@48d19263fde43f010312cb446cd4d6970a019c4f` with `carve@e1e0c9d54783e04e30391d628c892507498007d4`.  The complete service compatibility suite passes against binaries built after `carve` removed the multi-case services, MCP adapters, local-agent launchers, and replay experiments.  The pair establishes the process boundary for the current interface version.
+
 Every moved component should follow one order: preserve it on `service`, make it build there, add compatibility tests, and then remove it from `carve`.  Git history can recover deleted files, but a tested destination proves that the extracted component still works under its new ownership.  Each extraction commit on `service` should identify the corresponding removal commit on `carve` in its development notes.
 
 ## Implementation Stages
@@ -125,7 +127,7 @@ Every moved component should follow one order: preserve it on `service`, make it
 - [ ] Document the durable artifact names and schemas consumed by the services and web programs, including run records, events, evidence manifests, transcripts, summaries, and certificates.
 - [x] Replace ARB and AARD imports of `DefaultCouncilBackend` and `DefaultCaseAPIAddr` with service-owned configuration defaults or values obtained from the compatibility specification.
 - [x] Preserve fake-core tests for service process management and add an opt-in paired test that checks real core command interfaces from the selected `carve` commit.
-- [ ] Apply D8 through version fields, supported commit pairs, or both, and make incompatibility produce a precise startup error.
+- [x] Apply D8 initially by recording the tested immutable pair `service@48d19263fde43f010312cb446cd4d6970a019c4f` and `carve@e1e0c9d54783e04e30391d628c892507498007d4`.  Add explicit version negotiation and a precise startup error when an interface change requires it.
 
 ### 2. Extract the Multi-Case Services
 

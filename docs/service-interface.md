@@ -60,4 +60,6 @@ Service unit tests use fake core executables to verify argument construction, st
 
 The `service/compat/arb` and `service/compat/arbd` packages start the standalone Clerk and MCP executables against selected core binaries.  They retain the service cases formerly mixed into the core command tests, including participant failures, deadlines, complete MCP cases, terminal records, and service reconciliation.  Test flags select the service binaries, core binaries, and core checkout without importing a core implementation package.
 
+The tested pair `service@48d19263fde43f010312cb446cd4d6970a019c4f` and `carve@e1e0c9d54783e04e30391d628c892507498007d4` passes the complete compatibility suite.  The selected carve revision excludes multi-case services, MCP adapters, and local-agent launchers.  This pair tests the intended process boundary after operational code has left `carve`.
+
 Changes to command names, required flags, private routes, request or response fields used by service, exit behavior, or record names require coordinated edits.  Additive fields remain acceptable when existing meanings and required fields remain unchanged.  Removing or changing an interface element requires a new compatibility decision and a paired update.
