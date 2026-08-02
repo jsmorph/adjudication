@@ -10,9 +10,9 @@
 
 The `carve` branch retains ADC's Lean engine, proofs, one-case Go runtime, case-owned Role API, durable records, certificate verification, and procedural `clerk` actor.  The `service` branch receives the multi-case Clerk service, MCP adapter, local OpenClaw and Pi launchers, agent templates, attested execution, Docker deployment, web programs, and their operational support.  The branches communicate through documented executable, HTTP, and artifact interfaces, with tested commit pairs recording compatibility.
 
-Service commit `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` contains the extracted ADC multi-case package and `adc-service` command.  Service commit `6eaed038b468add7099b77edb766b987ba053dcd` contains the extracted ADC MCP adapter and `adc-mcp` command.  ADC's local launcher remains on both branches until its service-owned command passes fake-core and paired real-core tests.
+Service commit `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` contains the extracted ADC multi-case package and `adc-service` command.  Service commit `6eaed038b468add7099b77edb766b987ba053dcd` contains the extracted ADC MCP adapter and `adc-mcp` command.  Service commit `aaec158d94981e26e9979841b3f7f8ffca17e454` contains the extracted OpenClaw and Pi launcher, agent templates, and `adc-run` command.  Its fake-core tests and paired private-API test against the `carve` ADC executable pass.
 
-The service-owned ADC launcher will start `adc case` for complaint input and `adc scenario` for prepared scenario input.  The scenario command now accepts `--report-model` so the launcher can preserve the selected digest model, and `--allow-assertion-failures` so recorded scenario assertions retain the existing `adc run` exit behavior.  Both flags preserve the previous `adc scenario` defaults when omitted.
+The service-owned ADC launcher starts `adc case` for complaint input and `adc scenario` for prepared scenario input.  The scenario command accepts `--report-model` so the launcher preserves the selected digest model, and `--allow-assertion-failures` so recorded scenario assertions retain the former `adc run` exit behavior.  Both flags preserve the previous `adc scenario` defaults when omitted.
 
 ## 2026-07-15: Judge Rule 60 eval
 

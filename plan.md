@@ -99,7 +99,7 @@ Both branches should begin at the current common source commit, recorded by exac
 
 The recorded split base is `1f62a56f66da3a476a7f4064a86a580a2970fadc`.  Local branches `carve`, `main`, and `service` pointed to that commit when Stage 0 began.  Later compatibility records should use full commit IDs for both branches.
 
-The completed service checkpoints are `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` for the multi-case services, `6eaed038b468add7099b77edb766b987ba053dcd` for the MCP adapters, `19b9254442e90c25c6cac21460d80eadb04ba7f3` for the ARB launcher, and `25dac0e20c08ffa730a661eb4080677bd3bdfaa7` for the AARD launcher.  Their service-owned package tests pass, and the two launcher checkpoints pass paired private-API tests against core binaries built from the recorded split base.  Corresponding carve removals remain pending until ADC's launcher and the remaining combined command tests have service-owned replacements.
+The completed service checkpoints are `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581` for the multi-case services, `6eaed038b468add7099b77edb766b987ba053dcd` for the MCP adapters, `19b9254442e90c25c6cac21460d80eadb04ba7f3` for the ARB launcher, `25dac0e20c08ffa730a661eb4080677bd3bdfaa7` for the AARD launcher, and `aaec158d94981e26e9979841b3f7f8ffca17e454` for the ADC launcher.  Their service-owned package tests pass, and all three launcher checkpoints pass paired private-API tests against core binaries built from `carve`.  Corresponding carve removals remain pending until the remaining combined command tests have service-owned replacements.
 
 Every moved component should follow one order: preserve it on `service`, make it build there, add compatibility tests, and then remove it from `carve`.  Git history can recover deleted files, but a tested destination proves that the extracted component still works under its new ownership.  Each extraction commit on `service` should identify the corresponding removal commit on `carve` in its development notes.
 
@@ -154,9 +154,10 @@ This stage should preserve the private listener owned by one running case if D1 
 - [x] Move the three MCP adapter packages to service-owned paths and add standalone `adc-mcp`, `aar-mcp`, and `aard-mcp` commands; the paired real-core test remains pending.
 - [x] Move the ARB local-agent launcher and templates to service-owned paths, replace its proceeding import with `aar case`, and pass its fake-core and paired real-core tests.
 - [x] Move the AARD local-agent launcher and templates to service-owned paths, replace its proceeding import with `aard case`, and pass its fake-core and paired real-core tests.
+- [x] Move the ADC local-agent launcher and templates to service-owned paths, replace its runner import with `adc case` or `adc scenario`, and pass its fake-core and paired real-core tests.
 - [ ] Apply D3 and D7 to MCP, OpenClaw, Pi, agent templates, local-run commands, credential staging, model pools, and container support.
-- [ ] If these components move to `service`, make them start a core case process and use its documented Role API rather than import a core runner or proceeding package.
-- [ ] Preserve participant supervision tests, secret cleanup tests, tool-authority tests, failure tests, and output-limit tests with fake and real core processes.
+- [x] Make the three service-owned launchers start a core case process and use its documented Role API without importing a core runner or proceeding package.
+- [x] Preserve participant supervision, secret cleanup, tool-authority, failure, output-limit, fake-core, and paired real-core interface tests.
 - [ ] On `carve`, remove each adapter or launcher only after its retained service replacement passes the paired compatibility test.
 - [ ] If D1 keeps autonomous local runs on `carve`, record those files as core and exclude their duplicates from `service`.
 - [ ] Verify one complete local case per procedure through the selected ownership model.
