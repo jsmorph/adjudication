@@ -107,6 +107,8 @@ The local driver invokes the installed `aar case-packet` command for complaint-b
 
 The example wrapper accepts a core example directory and calls the sibling service-owned driver.  The runbook specifies a repository-root Docker build context and full core and service commit IDs.  It retains the AMI, PCR, S3, secret, artifact, and verification procedures required to operate the attested service.
 
+The base image build passed for `service@dc7c61d61b478dd2bf24fdc7e1e4924d80b37443` and `carve@a4cc40d99899721d957c4f370040998306f771e9`.  Docker produced image `sha256:47642fe2e73df0ce1d8c3d15b4e9b0f91996dbf284a8e3e06724fb16626c5d9a`.  The image displayed the `aar-run` help through its service entrypoint and validated the embedded `examples/ex01/complaint.md` through `/opt/core/arb/.bin/aar`.
+
 ### ARB attested verification
 
 - [x] `go test -buildvcs=false -count=1 ./service/arb ./cmd/aar-service`
@@ -115,4 +117,4 @@ The example wrapper accepts a core example directory and calls the sibling servi
 - [x] `sh -n` passed for the POSIX shell programs, and `bash -n` passed for `run-one-attested-arb.sh`.
 - [x] `go vet ./service/... ./cmd/... ./web/...`
 - [x] All retained packages passed during `go test -buildvcs=false -count=1 ./...`.  The command failed only while loading obsolete core dispatchers that still import the already-extracted service and MCP package paths; Stage 5 deletes those dispatchers from this branch.
-- [ ] Build the image from this exact service commit and a recorded core commit before deleting the ARB attested originals from `carve`.
+- [x] Build the base image from exact service and core commits, inspect its entrypoint and working directory, display `aar-run --help`, and validate an embedded complaint through the installed core executable.
