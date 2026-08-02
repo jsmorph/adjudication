@@ -134,6 +134,8 @@ The example wrapper accepts a core example directory and calls the sibling servi
 - [x] `sh -n` passed for the POSIX shell programs, and `bash -n` passed for `run-one-attested-arbd.sh`.
 - [x] `go vet ./service/arbd ./cmd/aard-service ./cmd/aard-run`
 - [x] `go build -buildvcs=false -o /tmp/service-aard-run ./cmd/aard-run`
-- [ ] Build the base image from exact service and core commits, inspect its entrypoint and working directory, display `aard-run --help`, and validate an embedded complaint through the installed core executable.
+- [x] Build the base image from exact service and core commits, inspect its entrypoint and working directory, display `aard-run --help`, and validate an embedded complaint through the installed core executable.
 
 The first exact-commit image build found an obsolete `arbd/pool.jsonl` copy in the extracted Dockerfile.  The selected core commit stores the default council pool at `common/data/personas/pool.jsonl`, and the image already copies the complete `common/data` and `common/etc` trees.  Removing the nonexistent source path preserves the runtime lookup under the explicit `/opt/core/common` root.
+
+The corrected base image build passed for `service@5bf19d083ea670cdbf767ccf304c81ec712f90d4` and `carve@489cd9ecdb46f41f036d825fc9f5221f68c13c1a`.  Docker produced image `sha256:a35e3e6bdd8090f890ab3cdf9d877fbcc758670cce1b72b5ad25c56243d83264` with entrypoint `/usr/local/bin/aard-run-entrypoint` and working directory `/opt/core/arbd`.  The image displayed `aard-run` help and validated `examples/ex1/complaint.md` through `/opt/core/arbd/.bin/aard`.
