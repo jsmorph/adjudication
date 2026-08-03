@@ -22,7 +22,7 @@ import (
 	"text/template"
 	"time"
 
-	"adjudication/common/modelrequest"
+	"adjudication/service/modelrequest"
 	ardmcp "adjudication/service/mcp/arbd"
 )
 

@@ -23,7 +23,7 @@ import (
 	"text/template"
 	"time"
 
-	"adjudication/common/modelrequest"
+	"adjudication/service/modelrequest"
 	adcmcp "adjudication/service/mcp/adc"
 )
 

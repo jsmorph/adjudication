@@ -12,6 +12,18 @@ The service branch's temporary core copies and the three attested image build st
 - [x] `lake build` completes all four project builds.
 - [x] Every active Lean toolchain and attested image build definition names Lean 4.32.0.
 
+## 2026-08-02: Service-owned shared code
+
+### Decision
+
+The model-request parser now lives at `service/modelrequest`, and all three local launchers import that service-owned package.  The Pi image recipe now lives at `service/pi-container`, beside the programs that require the image for juror and council agents.  Its retained files build the image directly, while the removed wrapper scripts had no caller and one required a `pi-acp` executable absent from the image.
+
+### Verification
+
+- [x] `go test -buildvcs=false -count=1 ./service/... ./cmd/... ./web/...`
+- [x] `go list -buildvcs=false -deps ./service/... ./cmd/... ./web/...` lists no package under `adjudication/common`.
+- [x] `bash -n service/pi-container/build-image.sh`
+
 ## 2026-08-02: Core and service branch split
 
 ### Split base

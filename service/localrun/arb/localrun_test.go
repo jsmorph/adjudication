@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"adjudication/common/modelrequest"
+	"adjudication/service/modelrequest"
 )
 
 func TestRenderInstructionsUsesTemplateData(t *testing.T) {

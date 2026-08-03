@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"adjudication/common/modelrequest"
+	"adjudication/service/modelrequest"
 )
 
 var pairedCoreBinDir = flag.String("carve-bin-dir", "", "Directory containing paired carve executables")
