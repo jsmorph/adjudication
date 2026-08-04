@@ -43,7 +43,7 @@ Each procedure has a service-owned attested driver, base image, workload image, 
 
 ## Documentation
 
-The [service development journal](devnotes.md) records extraction commits, tested core and service pairs, design decisions, and verification results.  The [web overview](web/README.md) and [web runbook](web/runbook.md) document the three operator-facing web programs.  The [retention ledger](docs/retention-ledger.md) records ownership decisions during the branch split.
+The [ADC service manual](service/adc/README.md), [ARB service manual](service/arb/README.md), and [AARD service manual](service/arbd/README.md) document their commands and HTTP APIs.  The [web overview](web/README.md) and [web runbook](web/runbook.md) document the three operator-facing web programs.  The [service development journal](devnotes.md) records extraction commits and verification results, while the [retention ledger](docs/retention-ledger.md) records ownership decisions during the branch split.
 
 ## License
 

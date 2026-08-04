@@ -2,9 +2,9 @@
 
 ## Scope
 
-Attested AARD runs use the generic exec AMI launcher from the `attest` repository and add AARD-specific Docker, S3, secret, and verification requirements.  [Dev Host Requirements](../../../attest/dev-host.md) defines the generic `dev` host, Nix, EC2, IAM, and launched-instance assumptions for `attest`.  This document adds the requirements for building the AARD attested workload image, staging inputs, launching the Docker-enabled exec AMI, collecting S3 artifacts, and verifying an AARD attestation.
+Attested AARD runs use the generic exec AMI launcher from the `attest` repository and add AARD-specific Docker, S3, secret, and verification requirements.  The `dev-host.md` file in the external `attest` checkout defines the generic `dev` host, Nix, EC2, IAM, and launched-instance assumptions for `attest`.  This document adds the requirements for building the AARD attested workload image, staging inputs, launching the Docker-enabled exec AMI, collecting S3 artifacts, and verifying an AARD attestation.
 
-The Clerk request path lives in the [Agent Arbitration of Degree Manual](../../../arbd/manual.md#aard-service) and its [Clerk API](../../../arbd/manual.md#clerk-api) section.  The image build, exec AMI run path, S3 artifact layout, and verification commands live in the [AARD Docker Image Runbook](Dockerfile.md).  This document defines the `dev` host requirements those paths assume.
+The Clerk request path lives in the [AARD Service Manual](../../arbd/README.md).  The image build, exec AMI run path, S3 artifact layout, and verification commands live in the [AARD Docker Image Runbook](Dockerfile.md).  This document defines the `dev` host requirements those paths assume.
 
 The attested AARD path supports checked-in examples and Clerk-style local case inputs.  Example mode selects a case inside the AARD Docker image with `AARD_EXAMPLE`.  Case-packet mode packages a local `complaint_path` and optional `case_files` into `case.tar.gz` and `case-packet.json`, uploads them under the S3 input prefix through `dev`, and records their hashes in the attestation manifest.
 
@@ -83,7 +83,7 @@ The `dev` host role needs all generic `attest` runner permissions because the lo
 
 | Actor | Required AWS actions |
 | --- | --- |
-| `dev` host role | Generic `attest` build and runner actions from [Dev Host Requirements](../../../attest/dev-host.md), plus the S3 actions above. |
+| `dev` host role | Generic `attest` build and runner actions from `dev-host.md` in the external `attest` checkout, plus the S3 actions above. |
 | `dev` host role when passing `ec2-nix-builder` | `iam:PassRole` on the role attached to the `ec2-nix-builder` instance profile. |
 | Launched exec instance profile | S3 read/write actions above; no EC2 launch action is required by the current AARD exec path. |
 
@@ -152,4 +152,4 @@ rm -f /tmp/arbattest-s3-probe.txt
 
 ## References
 
-The Clerk request path lives in the [Agent Arbitration of Degree Manual](../../../arbd/manual.md#aard-service) and [Clerk API](../../../arbd/manual.md#clerk-api) section.  The generic host and AMI requirements live in [Dev Host Requirements](../../../attest/dev-host.md).  The AARD image build and run sequence lives in [AARD Docker Image Runbook](Dockerfile.md), while the lower-level runner and example wrapper live in this directory.
+The Clerk request path lives in the [AARD Service Manual](../../arbd/README.md).  The generic host and AMI requirements live in `dev-host.md` in the external `attest` checkout.  The AARD image build and run sequence lives in [AARD Docker Image Runbook](Dockerfile.md), while the lower-level runner and example wrapper live in this directory.

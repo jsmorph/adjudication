@@ -2,7 +2,7 @@
 
 ## Scope
 
-Attested ADC runs use the generic exec AMI launcher from the `attest` repository and add ADC-specific Docker, S3, secret, and verification requirements.  Start with [Dev Host Requirements](../../../attest/dev-host.md), which defines the generic `dev` host, Nix, EC2, IAM, and launched-instance assumptions for `attest`.  This document adds the requirements for building the ADC attested workload image, staging complaint-packet inputs, collecting S3 artifacts, and verifying an ADC attestation.
+Attested ADC runs use the generic exec AMI launcher from the `attest` repository and add ADC-specific Docker, S3, secret, and verification requirements.  Start with `dev-host.md` in the external `attest` checkout, which defines the generic `dev` host, Nix, EC2, IAM, and launched-instance assumptions for `attest`.  This document adds the requirements for building the ADC attested workload image, staging complaint-packet inputs, collecting S3 artifacts, and verifying an ADC attestation.
 
 The current attested ADC path supports the complaint path only.  The caller gives the same `complaint_path` that local ADC accepts, and the local driver packages the complaint plus linked files into `case.tar.gz` and `case-packet.json`.  Scenario input and local ADC runtime overrides are rejected by the attested clerk path until they have explicit attestation support.
 
@@ -137,4 +137,4 @@ rm -f /tmp/arbattest-s3-probe.txt
 
 ## References
 
-The generic host and AMI requirements live in [Dev Host Requirements](../../../attest/dev-host.md).  The ADC image build, local driver run, Clerk service run, verification checks, and troubleshooting table live in [ADC Docker Image Runbook](Dockerfile.md).  The one-complaint helper is `service/attested/adc/run-one-attested-adc.sh`; it stages `auth.json` and `keys.sh` before invoking the lower-level driver and exec workload script in the same directory.
+The generic host and AMI requirements live in `dev-host.md` in the external `attest` checkout.  The ADC image build, local driver run, Clerk service run, verification checks, and troubleshooting table live in [ADC Docker Image Runbook](Dockerfile.md).  The one-complaint helper is `service/attested/adc/run-one-attested-adc.sh`; it stages `auth.json` and `keys.sh` before invoking the lower-level driver and exec workload script in the same directory.

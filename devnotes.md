@@ -24,6 +24,24 @@ The service branch no longer tracks the ADC, ARB, AARD, or VMCP core source tree
 - [x] `go list -buildvcs=false -deps ./service/... ./cmd/... ./web/...` lists no ADC, ARB, AARD, VMCP, or `common` implementation package.
 - [x] `git ls-files 'adc/**' 'arb/**' 'arbd/**' 'vmcp/**'` returns no tracked path.
 
+## 2026-08-02: Auxiliary material removal
+
+### Decision
+
+The service branch now keeps implementation code under `cmd/`, `service/`, and `web/`, with cross-branch documents under `docs/`.  Core evals, model-pool experiments, proof tools, research notes, the unused Pi ACP submodule, and the obsolete direct-ARB example left this branch after their service consumers reduced to zero.  `go mod tidy` reduced the retained module to Go 1.25 and the standard library.
+
+The ADC, ARB, and AARD service manuals now live beside their service implementations.  They preserve the command, HTTP API, request-mode, record, artifact, and attested-execution documentation formerly embedded in the core manuals.  Attested runbooks and the web runbook now refer to these service-owned manuals and identify `dev-host.md` as a file in the external `attest` checkout.
+
+### Verification
+
+- [x] `go test -buildvcs=false -count=1 ./...`
+- [x] `go build -buildvcs=false ./cmd/... ./web/cmd/...`
+- [x] `go list -buildvcs=false -deps ./...` lists no package outside `cmd/`, `service/`, or `web/` for this module.
+- [x] `go mod tidy` leaves no required module or checksum file.
+- [x] The three attested-driver Python unit tests pass.
+- [x] `sh -n` and `bash -n` accept every retained shell program.
+- [x] Retained Markdown contains no local link to a removed core manual or to the external `attest` checkout.
+
 ## 2026-08-02: Service-owned shared code
 
 ### Decision

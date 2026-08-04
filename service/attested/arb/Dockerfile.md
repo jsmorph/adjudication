@@ -4,7 +4,7 @@
 
 This runbook covers the AAR base image, attested workload image, and exec run under `service/attested/arb`.  The base image combines the core `aar` and `aarengine` binaries with the service `aar-run` launcher, the required core data, the Docker CLI, and an embedded Pi council root filesystem.  The attested workload image adds AWS CLI, `nitro-tpm-attest`, the TSS runtime libraries, and the exec container entrypoint.
 
-The Clerk path uses the `aar-service` command and Clerk API.  Its request shape, service flags, monitoring route, artifact routes, and completion rule live in the [Agent Arbitration Manual](../../../arb/manual.md#aar-service) and its [Clerk API](../../../arb/manual.md#clerk-api) section.  This runbook covers the Docker image, exec AMI, S3 artifact flow, local driver, and verification procedure used by those service requests.
+The Clerk path uses the `aar-service` command and Clerk API.  Its request shape, service flags, monitoring route, artifact routes, and completion rule live in the [ARB Service Manual](../../arb/README.md).  This runbook covers the Docker image, exec AMI, S3 artifact flow, local driver, and verification procedure used by those service requests.
 
 The attested path supports two AAR input modes.  Example mode runs a checked-in core directory under `arb/examples/<name>` selected by `AAR_EXAMPLE`; when the variable is absent, both `run-aar.sh` and the exec container entrypoint use `ex01`.  Case-packet mode runs a local complaint and optional case files by packaging them through `aar case-packet`, uploading `case.tar.gz` and `case-packet.json` under `INPUT_PREFIX`, and passing the extracted inputs to `aar-run`.
 
@@ -29,7 +29,7 @@ Build from full 40-character core and service commit IDs.  The current Docker-en
 
 ## Dev Host And AWS Requirements
 
-The generic `dev` host requirements for the exec AMI launcher live in [Dev Host Requirements](../../../attest/dev-host.md).  That document covers the base x86_64 host, Nix daemon setup, AWS CLI, EC2 permissions, EBS direct snapshot permissions, role passing, default VPC assumptions, disk requirements, and verification commands.  Review it before building or launching through `attest/exec.sh`.
+The generic `dev` host requirements for the exec AMI launcher live in `dev-host.md` in the external `attest` checkout.  That document covers the base x86_64 host, Nix daemon setup, AWS CLI, EC2 permissions, EBS direct snapshot permissions, role passing, default VPC assumptions, disk requirements, and verification commands.  Review it before building or launching through `attest/exec.sh`.
 
 The AAR-specific requirements live in [Attested AAR Dev Host Requirements](attested-dev-host.md).  That document adds the Docker build checkout, launcher directory, secret file locations, S3 prefixes, S3 permissions, `ec2-nix-builder` instance profile, expected PCR values, and operational checks for attested AAR runs.  The `dev` host builds and uploads `arb-glue:poc`, stages `auth.json` and `keys.sh`, launches the exec AMI, polls the output prefix, downloads terminal artifacts, and supports verification.
 
@@ -213,7 +213,7 @@ The `keys.sh` file must define `OPENROUTER_API_KEY`.  The exec container entrypo
 
 ## Run The Attested AAR
 
-For Clerk-managed attested runs, start with the [Agent Arbitration Manual](../../../arb/manual.md#aar-service).  The commands here run the lower-level driver directly.  They also expose the S3 and verification path used by the service.
+For Clerk-managed attested runs, start with the [ARB Service Manual](../../arb/README.md).  The commands here run the lower-level driver directly.  They also expose the S3 and verification path used by the service.
 
 The example wrapper is `service/attested/arb/run-one-attested-arb.sh`.  It takes the path to an example directory from the selected core checkout and verifies that the directory contains `complaint.md`.  It stages `auth.json` and `keys.sh` into a fresh S3 input prefix, chooses timestamped input and output prefixes, starts the exec AMI, downloads the S3 artifacts, extracts the AAR archive, and verifies the attestation.
 

@@ -23,7 +23,7 @@ The generic exec AMI launcher lives under `attest`.  The launcher directory on `
 
 ## Dev Host And AWS Requirements
 
-The generic `dev` host requirements for the exec AMI launcher live in [Dev Host Requirements](../../../attest/dev-host.md).  Read that document before building or launching through `attest/exec.sh`.  It covers the base x86_64 host, Nix daemon setup, AWS CLI, EC2 permissions, EBS direct snapshot permissions, role passing, default VPC assumptions, disk requirements, and verification commands.
+The generic `dev` host requirements for the exec AMI launcher live in `dev-host.md` in the external `attest` checkout.  Read that document before building or launching through `attest/exec.sh`.  It covers the base x86_64 host, Nix daemon setup, AWS CLI, EC2 permissions, EBS direct snapshot permissions, role passing, default VPC assumptions, disk requirements, and verification commands.
 
 ADC-specific requirements live in [Attested ADC Dev Host Requirements](attested-dev-host.md).  The ADC document adds Docker image build requirements, S3 prefixes, secret file locations, instance profile requirements, expected PCR values, and operational checks.  The verified first path uses `us-east-2`, `m5.4xlarge`, `ec2-nix-builder`, `s3://agentcourt-data/arbattest/images/adc-glue-poc.tar`, `s3://agentcourt-data/arbattest/adc-inputs/`, and `s3://agentcourt-data/arbattest/adc-runs/`.
 
