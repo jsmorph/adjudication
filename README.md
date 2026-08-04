@@ -1,109 +1,50 @@
-# Agent-driven adjudication
+# Adjudication Services
 
-This repo provides agent-driven adjudication that uses agents in legal procedures controlled by explicit rules.  In these systems, lawyers, jurors, judges (if applicable) and council members operate together to perform an adjudication in some form.  A rigorous engine, implemented in Lean, controls phases, opportunities, accepted actions, and final outcomes.  Each run produces a record that can be evaluated and, in some modes, verified via an attestation.
+This branch contains the operational programs for Agent District Court, Agent Arbitration, and Agent Arbitration Degree.  The programs start and supervise core processes, expose multi-case Clerk APIs, adapt case Role APIs to MCP, run local agents, build attested workloads, and present service records through web applications.  The procedure engines, proofs, one-case runtimes, rules, and core commands live on the `carve` branch.
 
-## Approach
+## Programs
 
-Each system separates procedure from advocacy and fact evaluation.  The procedural engine (Lean) controls the current phase, required opportunities, accepted actions, and ending conditions.  The (Go) runtime exposes the engine through commands, HTTP APIs, MCP adapters, services, and artifacts.  Lawyers, jurors, and council members create filings, votes, and answers that the engine accepts or rejects.
-
-The systems use different procedures for different goals.  [Agent District Court](adc/README.md) models civil litigation with pleadings, motions, discovery, voir dire, trial, jury deliberation, verdict, and judgment.  [Arbitration](arb/README.md) models binary arbitration over whether a proposition has been demonstrated.  [Arbitration of Degree](arbd/README.md) models degree arbitration over a numerical answer.
-
-## Core Capabilities
-
-| Capability | Description |
+| Program | Purpose |
 | --- | --- |
-| Lean engines | The three systems use separate Lean engines for phases, opportunities, accepted actions, and final states. |
-| Engine proofs | The proof work checks engine behavior and certificate replay.  Lawyer search quality and juror reasoning are judged from records and evals, not Lean proofs. |
-| Run records | Completed runs write state, event, transcript, and certificate artifacts for later inspection and replay verification. |
-| Pool sampling | Model-pool evals compare candidate model endpoints, group behavior, and sample juror or council panels for live runs. |
-| External lawyers | Lawyer agents can participate through assigned role APIs and MCP adapters. |
-| OpenClaw support | A run can start OpenClaw lawyers for one or both sides as one way to run lawyer agents.  For example, `adc run --auto-lawyers defendant` starts the defendant lawyer locally and writes plaintiff instructions for an independently running OpenClaw session. |
-| Evals | Evals cover model pools, juror and council behavior, and Agent District Court judge decisions.  The judge evals include voir dire question rulings and test candidate prompts before use in live Agent District Court runs. |
-| Attested execution | Attested runs package case inputs, run the procedure on an attested host, and link uploaded artifacts to attestation records and manifest hashes. |
-| Service operation | Long-lived services can create, track, inspect, and stop case runs through service APIs. |
+| `adc-service`, `aar-service`, `aard-service` | Create, inspect, stop, and retrieve artifacts from multiple cases. |
+| `adc-mcp`, `aar-mcp`, `aard-mcp` | Expose one core case's Role API through Streamable HTTP MCP. |
+| `adc-run`, `aar-run`, `aard-run` | Start one core case and manage its OpenClaw lawyers and Pi jurors or council members. |
+| `adjudication-web` | Operate the three Clerk services through one server-rendered console. |
+| `adjudication-manage` | Manage ARB Clerk, attested, and direct cases. |
+| `adjudication-report` | Read and render completed run directories from disk. |
 
-## Example Usage
+## Core Boundary
 
-Run a direct [Arbitration](arb/README.md) case when you want one local arbitration without the service API.  This builds the `aar` command, creates a small complaint, and starts a complete local proceeding.  With the default OpenClaw settings, the plaintiff and defendant litigators are OpenClaw agents running in Docker containers, using OpenAI `gpt-5.5` with `low` thinking.  The council agents come from a sampled Pi council pool and decide whether the proposition in the complaint has been demonstrated.
+The service programs communicate with installed `adc`, `aar`, and `aard` executables through their command-line, private HTTP, and artifact interfaces.  A service deployment selects an immutable `carve` commit, builds or installs those core executables, and supplies their executable and working-directory paths to the service commands.  [The core interface specification](docs/core-interface.md) records the commands, routes, schemas, artifacts, and process behavior used across that boundary.
+
+The attested Dockerfiles fetch full core and service commit IDs into separate build stages.  They compile the selected core command and Lean engine from `carve`, compile the service-owned launcher from this branch, and copy the required runtime assets into the final image.  Moving branch names do not define a compatible deployment pair.
+
+## Build and Test
+
+Go 1.25 builds every retained command.  The package test command covers the services, launchers, adapters, compatibility fixtures, and web programs.  The dependency command confirms that these packages import only service-owned repository packages.
 
 ```bash
-cd arb
-make build
-
-mkdir -p work/example-arbitration
-cat > work/example-arbitration/complaint.md <<'EOF'
-# Proposition
-
-During May 2026 (ET), Iran initiated a major non-weather closure of its airspace.
-EOF
-
-export OPENROUTER_API_KEY=REPLACE_WITH_OPENROUTER_KEY
-
-.bin/aar run \
-  --complaint work/example-arbitration/complaint.md \
-  --openclaw-auth codex \
-  --openclaw-codex-auth "$HOME/.codex/auth.json" \
-  --council-pool "$(pwd)/pool.jsonl"
+go build -buildvcs=false ./cmd/... ./web/cmd/...
+go test -buildvcs=false -count=1 ./service/... ./cmd/... ./web/...
+go list -buildvcs=false -deps ./service/... ./cmd/... ./web/...
 ```
 
-Use `--openclaw-auth api-key` with `OPENAI_API_KEY` for API-key lawyer auth instead of Codex auth.  The completed run writes the transcript, event log, state, certificate, and summary files under its output directory.
+The local-agent launchers require Docker for OpenClaw and Podman for Pi.  [The Pi container recipe](service/pi-container/README.md) builds the default `agentcourt-pi-sandbox` image used by the three launchers.  Model-provider credentials depend on the selected lawyer configuration and Pi pool records.
 
-## Systems
+## Attested Execution
 
-| Path | Command | Manual | Purpose |
-| --- | --- | --- | --- |
-| [adc/](adc/README.md) | `adc` | [Agent District Court Manual](adc/manual.md) | Civil litigation procedure with pleadings, motions, discovery, trial, jury deliberation, verdict, and judgment. |
-| [arb/](arb/README.md) | `aar` | [Agent Arbitration Manual](arb/manual.md) | Arbitration over one proposition, with plaintiff and defendant lawyers and a council vote on demonstrated or not demonstrated. |
-| [arbd/](arbd/README.md) | `aard` | [Agent Arbitration Degree Manual](arbd/manual.md) | Degree arbitration over one question, with plaintiff and defendant lawyers and council answers from `0` through `100`. |
-| [evals/model-pool/](evals/model-pool/README.md) | `cd evals/model-pool && uv run tools/COMMAND.py` | [Model-Pool Evals Manual](evals/model-pool/manual.md) | Core and deliberation eval sets, model endpoint inventory, scoring, grouping, and pool sampling tools. |
+Each procedure has a service-owned attested driver, base image, workload image, entrypoint, and operating runbook.  The drivers call the installed core `case-packet` command for complaint inputs and retain deployment, S3, attestation, and artifact handling on this branch.  Their build commands require full `CORE_COMMIT` and `SERVICE_COMMIT` values.
 
-The manuals document commands, services, HTTP APIs, MCP adapters, attested execution, outputs, and troubleshooting.  The practice guides describe how lawyers, jurors, and council members examine evidence, create the record, and deliberate within each procedure.
-
-## Shared Directories
-
-| Path | Purpose |
-| --- | --- |
-| `common/` | Shared Go packages, model-request types, persona data, Pi container support, and common tools. |
-| [docs/](docs/README.md) | Cross-system proof and repository notes. |
-| [scratch/](scratch/README.md) | Archived notes, old drafts, run observations, and investigation records. |
-| `skills/` | Local analysis notes for proof review. |
-| [web/](web/README.md) | Service console, run report, and ARB management web servers. |
-
-## Requirements
-
-| Requirement | Purpose |
-| --- | --- |
-| Go `1.25` | Builds the Go runtimes. |
-| Lean `4.32.0` and `lake` | Build the Lean engines and proof trees. |
-| `make` | Runs build, test, proof, and example targets in each system directory. |
-| Docker | Runs the included OpenClaw lawyer containers and builds attested workload images. |
-| Podman | Runs Pi juror and council containers for local-agent runs. |
-| Model-provider credentials | The included OpenClaw support uses Codex `auth.json` or `OPENAI_API_KEY`.  Current Pi pools use OpenRouter through `OPENROUTER_API_KEY`. |
-
-## Build
-
-Build one or more systems from the repository root:
-
-```bash
-make -C adc build test prove
-make -C arb build test prove
-make -C arbd build test prove
-```
-
-The repository root has no top-level `Makefile`.  Shared packages build through the system commands because the runtimes use the same Go module.  Build the Pi container image from `common/pi-container/` when a local-agent run needs the local Pi image.
+| Procedure | Runbook | Development host |
+| --- | --- | --- |
+| ADC | [ADC attested runbook](service/attested/adc/Dockerfile.md) | [ADC host requirements](service/attested/adc/attested-dev-host.md) |
+| ARB | [ARB attested runbook](service/attested/arb/Dockerfile.md) | [ARB host requirements](service/attested/arb/attested-dev-host.md) |
+| AARD | [AARD attested runbook](service/attested/arbd/Dockerfile.md) | [AARD host requirements](service/attested/arbd/attested-dev-host.md) |
 
 ## Documentation
 
-| Area | Primary documents |
-| --- | --- |
-| Agent District Court | [README](adc/README.md), [manual](adc/manual.md), [practice guide](adc/docs/practice.md), [rules](adc/docs/ARCP.md), [attested runbook](service/attested/adc/Dockerfile.md), [dev-host requirements](service/attested/adc/attested-dev-host.md). |
-| Arbitration | [README](arb/README.md), [manual](arb/manual.md), [council and juror replay guide](arb/docs/council-replay.md), [practice guide](arb/docs/practice.md), [rules](arb/docs/ARAP.md), [attested runbook](service/attested/arb/Dockerfile.md), [dev-host requirements](service/attested/arb/attested-dev-host.md). |
-| Arbitration of Degree | [README](arbd/README.md), [manual](arbd/manual.md), [practice guide](arbd/docs/practice.md), [rules](arbd/docs/ARAP.md), [attested runbook](service/attested/arbd/Dockerfile.md), [dev-host requirements](service/attested/arbd/attested-dev-host.md). |
-| Evals | [README](evals/README.md), [model-pool manual](evals/model-pool/manual.md), [sampling runbook](evals/model-pool/docs/sampling-runbook.md), [model inventory notes](evals/model-pool/docs/model-inventory.md), [judge eval plan](evals/adc/judge/plan.md). |
-| Proofs | [Proof work status](docs/proof-notes.md). |
-| Web | [Web servers overview](web/README.md), [web runbook](web/runbook.md). |
-| Shared model pools | [Jury and council pool generation](evals/model-pool/docs/jury-pool-generation.md). |
+The [service development journal](devnotes.md) records extraction commits, tested core and service pairs, design decisions, and verification results.  The [web overview](web/README.md) and [web runbook](web/runbook.md) document the three operator-facing web programs.  The [retention ledger](docs/retention-ledger.md) records ownership decisions during the branch split.
 
 ## License
 
-The software is released under the MIT License in [LICENSE](LICENSE).  Trademark and related notice terms are in [NOTICES.md](NOTICES.md).
+The software is released under the MIT License in [LICENSE](LICENSE).  Trademark and related notice terms are in [NOTICES.md](NOTICES.md).  The notices apply to the retained service programs and deployment material.

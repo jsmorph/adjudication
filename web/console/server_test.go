@@ -80,16 +80,29 @@ func TestDirectCreateTemplatesOmitOutputDir(t *testing.T) {
 	}
 }
 
-func TestADCCreateTemplateUsesServiceDefaults(t *testing.T) {
+func TestCreateTemplatesUseExplicitCorePaths(t *testing.T) {
 	body := createTemplate("adc", "clerk")
 	for _, unwanted := range []string{`"out_dir"`} {
 		if strings.Contains(body, unwanted) {
 			t.Fatalf("ADC template includes %s: %s", unwanted, body)
 		}
 	}
-	for _, want := range []string{`"openclaw_auth": "codex"`, `"juror_personas": "../common/data/personas/pool.jsonl"`} {
+	for _, want := range []string{
+		`"openclaw_auth": "codex"`,
+		`"complaint_path": "/path/to/carve/adc/examples/ex1/complaint.md"`,
+		`"juror_personas": "/path/to/carve/common/data/personas/pool.jsonl"`,
+	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("ADC template missing %s: %s", want, body)
+		}
+	}
+	for systemID, want := range map[string]string{
+		"arb":  `"council_pool_path": "/path/to/carve/arb/pool.jsonl"`,
+		"arbd": `"council_pool_path": "/path/to/carve/common/data/personas/pool.jsonl"`,
+	} {
+		body := createTemplate(systemID, "clerk")
+		if !strings.Contains(body, want) {
+			t.Fatalf("%s template missing %s: %s", systemID, want, body)
 		}
 	}
 }

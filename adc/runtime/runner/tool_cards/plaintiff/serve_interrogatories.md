@@ -1,1 +1,0 @@
-Serve focused written questions aimed at disputed facts that matter to liability, defenses, or damages.  Use the set to pin down facts, not to argue.  Ask only what will help prove the claim or rebut a defense.

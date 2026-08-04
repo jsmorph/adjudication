@@ -1,1 +1,0 @@
-Offer one case file that materially advances the current side's proof or response.  Use the `file_id`, not a filename.  Do not re-offer a file this side has already offered.  The runtime will assign the next exhibit number automatically if you do not provide one.

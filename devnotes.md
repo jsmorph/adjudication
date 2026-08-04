@@ -12,6 +12,18 @@ The service branch's temporary core copies and the three attested image build st
 - [x] `lake build` completes all four project builds.
 - [x] Every active Lean toolchain and attested image build definition names Lean 4.32.0.
 
+## 2026-08-02: Core source removal
+
+### Decision
+
+The service branch no longer tracks the ADC, ARB, AARD, or VMCP core source trees.  Retained services use installed core executables and explicit core working directories, while compatibility tests use the selected `carve` checkout and attested builds fetch the selected core commit.  Web case-creation templates now show explicit `/path/to/carve` inputs instead of paths that depended on a combined checkout.
+
+### Verification
+
+- [x] `go test -buildvcs=false -count=1 ./service/... ./cmd/... ./web/...`
+- [x] `go list -buildvcs=false -deps ./service/... ./cmd/... ./web/...` lists no ADC, ARB, AARD, VMCP, or `common` implementation package.
+- [x] `git ls-files 'adc/**' 'arb/**' 'arbd/**' 'vmcp/**'` returns no tracked path.
+
 ## 2026-08-02: Service-owned shared code
 
 ### Decision

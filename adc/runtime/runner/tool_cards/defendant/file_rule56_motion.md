@@ -1,1 +1,0 @@
-Move for summary judgment only if the visible record shows no genuine dispute of material fact and the defendant is entitled to judgment as a matter of law.  If the motion depends on disputing facts, do not file it.

@@ -1,1 +1,0 @@
-Oppose summary judgment by identifying the genuine disputes of material fact or the legal errors in the motion.  Tie each disputed point to evidence already in the record.  Do not rely on speculation.

@@ -1561,15 +1561,15 @@ func createTemplate(systemID string, scopeID string) string {
 		return `{
   "mode": "run",
   "case_id": "adc-web-YYYYMMDDHHMMSS",
-  "complaint_path": "examples/ex1/complaint.md",
+  "complaint_path": "/path/to/carve/adc/examples/ex1/complaint.md",
   "openclaw_auth": "codex",
-  "juror_personas": "../common/data/personas/pool.jsonl"
+  "juror_personas": "/path/to/carve/common/data/personas/pool.jsonl"
 }`
 	case "arb":
 		if scopeID == "direct" {
 			return `{
   "case_id": "arb-api-web-YYYYMMDDHHMMSS",
-  "complaint_path": "examples/ex01/complaint.md",
+  "complaint_path": "/path/to/carve/arb/examples/ex01/complaint.md",
   "council_backend": "councilapi"
 }`
 		}
@@ -1578,13 +1578,13 @@ func createTemplate(systemID string, scopeID string) string {
   "example": "ex01",
   "out_dir": "arb-web-YYYYMMDDHHMMSS",
   "openclaw_auth": "codex",
-  "council_pool_path": "../arb/pool.jsonl"
+  "council_pool_path": "/path/to/carve/arb/pool.jsonl"
 }`
 	case "arbd":
 		if scopeID == "direct" {
 			return `{
   "case_id": "arbd-api-web-YYYYMMDDHHMMSS",
-  "complaint_path": "examples/ex1/complaint.md",
+  "complaint_path": "/path/to/carve/arbd/examples/ex1/complaint.md",
   "council_backend": "councilapi"
 }`
 		}
@@ -1593,7 +1593,7 @@ func createTemplate(systemID string, scopeID string) string {
   "example": "ex1",
   "out_dir": "arbd-web-YYYYMMDDHHMMSS",
   "openclaw_auth": "codex",
-  "council_pool_path": "../common/data/personas/pool.jsonl"
+  "council_pool_path": "/path/to/carve/common/data/personas/pool.jsonl"
 }`
 	default:
 		return "{}"
