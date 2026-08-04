@@ -42,6 +42,14 @@ The ADC, ARB, and AARD service manuals now live beside their service implementat
 - [x] `sh -n` and `bash -n` accept every retained shell program.
 - [x] Retained Markdown contains no local link to a removed core manual or to the external `attest` checkout.
 
+### Current cross-branch verification
+
+Service commit `de0e4b633ace8dc3b19ec1f4bb74b1f1c535b2b1` passes the complete compatibility suite against carve commit `e887cc3e0379b5a3eb9892a4183b6e6259d75305`.  Fresh procedure builds used the Lean 4.32.0 toolchain pins and produced all three core executables and engines.  Fresh service builds produced the nine standalone service, launcher, and MCP executables from the pruned service tree.
+
+- [x] `make -C adc build`, `make -C arb build`, and `make -C arbd build`
+- [x] Build `adc-service`, `adc-run`, `adc-mcp`, `aar-service`, `aar-run`, `aar-mcp`, `aard-service`, `aard-run`, and `aard-mcp`.
+- [x] `go test -buildvcs=false -count=1 ./service/compat/... -args -service-bin-dir=/tmp/adjudication-service-bins-tg6MBt -carve-bin-dir=/tmp/adjudication-carve-bins-vKtEaY -carve-root=/media/hd2/src/adjudication-clones/adjudication-1`
+
 ## 2026-08-02: Service-owned shared code
 
 ### Decision
