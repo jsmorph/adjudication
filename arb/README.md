@@ -41,7 +41,7 @@ export OPENROUTER_API_KEY=REPLACE_WITH_KEY
 
 .bin/aar case \
   --complaint examples/ex01/complaint.md \
-  --council-pool "$(pwd)/pool.jsonl" \
+  --council-pool ../common/data/personas/pool.jsonl \
   --out-dir out/ex01
 ```
 

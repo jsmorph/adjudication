@@ -1,5 +1,11 @@
 # Development Notes
 
+## 2026-08-02: Acceptance example reduction
+
+ADC retains `examples/ex1` as its command-line acceptance case.  The removed `examples/ex2` repeated the procedure with an International Claw District complaint and supplied no distinct runtime or proof test.  The court guide now describes that profile directly instead of depending on the deleted example.
+
+The complete Go test, build, and vet checks pass after the reduction.  `bash -n adc/examples/ex1/sign.sh` accepts the retained signature-preparation program.  A live case continues to require the model credentials documented by the example.
+
 ## 2026-08-02: Core reduction
 
 The core command now exposes `case`, `scenario`, `case-packet`, `complain`, `pacer`, `validate`, and `verify-certificate`.  The eval, juror-probe, model-probe, and pool-generation commands left with their experimental packages and data.  The remaining command paths implement complaint preparation, one-case adjudication, the case-owned Role API, record inspection, and replay verification.

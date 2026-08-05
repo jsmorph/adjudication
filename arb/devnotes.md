@@ -1,5 +1,11 @@
 # Development Notes
 
+## 2026-08-02: Acceptance example reduction
+
+ARB retains `examples/ex01` as its command-line acceptance case.  The removed examples duplicated the same input interface or preserved run-specific market research and source captures.  The retained example now documents validation, one-case execution, output records, and certificate verification.
+
+The complete Go test, build, and vet checks pass after the reduction.  `aar validate --complaint examples/ex01/complaint.md` accepts the retained complaint and its case-file references.  A live case continues to require the model credentials documented by the example.
+
 ## 2026-08-02: Core reduction
 
 The unexposed council replay implementation and its operator document were removed.  The live runtime still writes council-turn snapshots as part of the durable record, so the snapshot writer and shared JSON helpers now live in core-specific files.  The complete Go test identified that shared dependency before the removal was committed.

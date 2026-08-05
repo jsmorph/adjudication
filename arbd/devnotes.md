@@ -1,5 +1,11 @@
 # Development Notes
 
+## 2026-08-02: Acceptance example reduction
+
+AARD retains `examples/ex1` as its command-line acceptance case.  The removed `examples/ex2` and `examples/ex3` supplied additional questions through the same complaint and case-file interface.  The retained example now documents validation, one-case execution, output records, and certificate verification.
+
+The complete Go test, build, and vet checks pass after the reduction.  `aard validate --complaint examples/ex1/complaint.md` accepts the retained complaint and its case-file references.  A live case continues to require the model credentials documented by the example.
+
 ## 2026-08-02: Core reduction
 
 The AARD manuals and supporting documents now describe one-case execution and the case-owned Lawyer and Council APIs.  Service, MCP, OpenClaw, Pi, attestation, and deployment instructions remain on the `service` branch.  The Makefile now reports the retained `aard case` command instead of deleted local-agent commands.

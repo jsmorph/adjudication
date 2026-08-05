@@ -204,11 +204,11 @@ Admission to `service` should require a direct role in building, testing, operat
 
 ### 8. Reduce Documentation and Examples
 
-- [ ] On `carve`, retain one small, redistributable acceptance example for each procedure and document build, test, proof, one-case execution, records, and certificate verification.
+- [x] On `carve`, retain one small, redistributable acceptance example for each procedure and document build, test, proof, one-case execution, records, and certificate verification.
 - [ ] On `service`, retain small service fixtures and document installation of compatible core binaries, configuration, operation, deployment, inspection, and version compatibility.
-- [ ] Remove saved web pages, provider captures, large PDFs, duplicate scenarios, and run-specific observations from both branches.
+- [x] Remove saved web pages, provider captures, large PDFs, duplicate scenarios, and run-specific observations from both branches.
 - [ ] Retain the governing rules and proof documentation on `carve`.  Retain service API, deployment, and operating documentation on `service`.
-- [ ] Keep the procedure development journals on `carve` and the service-owned `devnotes.md` on `service`, as required by `AGENTS.md`.
+- [x] Keep the procedure development journals on `carve` and the service-owned `devnotes.md` on `service`, as required by `AGENTS.md`.
 - [ ] Check every local Markdown link and command example on both branches.
 
 ### 9. Final Verification

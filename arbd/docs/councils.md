@@ -15,7 +15,7 @@ The Go runtime draws council members from a pool file, assigns seat ids, and sen
 
 ## Pool File
 
-The pool file comes from `--council-pool` when the caller supplies it.  Otherwise `arbd` uses the checked-in `pool.jsonl` when present, then the shared default under `common`.  Each usable line must be a JSON request-spec record with model, provider, optional quantization, request settings, and persona information.
+The pool file comes from `--council-pool` when the caller supplies it.  Otherwise `arbd` checks for a local `pool.jsonl`, then uses the shared default under `common`.  Each usable line must be a JSON request-spec record with model, provider, optional quantization, request settings, and persona information.
 
 Each usable line becomes one sampleable record.  A JSON record supplies provider, model, optional quantization, persona file, and request settings through the shared `modelrequest` parser.  The persona loader resolves the persona file relative to the pool file, reads the persona text immediately, and rejects empty persona text.
 

@@ -52,7 +52,7 @@ Treat the output directory as the case record for one run.  Preserve `run.json`,
 | `prompts/` | Lawyer prompt files used by the case runner. |
 | `attorney-instructions/` | Default standing instructions included in lawyer turns. |
 | `examples/` | Example cases.  Each example has a `complaint.md` and may have supporting case files. |
-| `pool.jsonl` and `personas/` | Default direct-council request specifications and personas. |
+| `../common/data/personas/pool.jsonl` and `../common/etc/personas/` | Default direct-council request specifications and personas. |
 | `../common/` | Shared model-request, provider, and persona packages used by the core procedures. |
 
 ## Build And Environment
@@ -342,14 +342,14 @@ The repository examples contain complaint and evidence inputs.  They do not incl
 find examples -maxdepth 2 -name complaint.md -printf '%h\n' | sort
 ```
 
-Start `ex01` with the direct council backend after setting the credentials required by `pool.jsonl`.  The command prints the case API base URL to stderr and waits for plaintiff and defendant clients.  Those clients act through the Lawyer API described above.
+Start `ex01` with the direct council backend after setting the credentials required by the shared council pool.  The command prints the case API base URL to stderr and waits for plaintiff and defendant clients.  Those clients act through the Lawyer API described above.
 
 ```bash
 export OPENROUTER_API_KEY=REPLACE_WITH_KEY
 
 .bin/aar case \
   --complaint examples/ex01/complaint.md \
-  --council-pool "$(pwd)/pool.jsonl" \
+  --council-pool ../common/data/personas/pool.jsonl \
   --out-dir out/ex01-direct
 ```
 
@@ -359,7 +359,7 @@ The `councilapi` backend uses external clients for the final votes.  It exposes 
 .bin/aar case \
   --complaint examples/ex01/complaint.md \
   --council-backend councilapi \
-  --council-pool "$(pwd)/pool.jsonl" \
+  --council-pool ../common/data/personas/pool.jsonl \
   --out-dir out/ex01-councilapi
 ```
 

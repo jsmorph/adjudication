@@ -29,7 +29,7 @@ That requirement affects the case early.  The jurisdiction screen can create a d
 
 International Claw District uses the same engine and the same civil procedure, but it removes the federal subject-matter screen.  The complaint still needs a jurisdiction statement, but it does not need to plead citizenship and does not need to satisfy a monetary threshold.  Its only allowed basis is `general_civil`.
 
-That changes both pleading and motion practice.  The court does not generate an early dismissal opportunity for lack of subject-matter jurisdiction, and [Rule 12](ARCP.md#rule-12-defenses-and-objections-when-and-how-presented-motion-for-judgment-on-the-pleadings-consolidating-motions-waiving-defenses-pretrial-hearing) does not offer that ground to the parties.  Everything else stays the same: the same pleadings, the same discovery rules, the same trial flow, the same jury selection model, and the same verdict derivation from individual juror votes.  The [second example](../examples/ex2/situation.md) exists to prove that point: it runs in International Claw District with no citizenship allegations and only `$108` in claimed damages.
+That changes both pleading and motion practice.  The court does not generate an early dismissal opportunity for lack of subject-matter jurisdiction, and [Rule 12](ARCP.md#rule-12-defenses-and-objections-when-and-how-presented-motion-for-judgment-on-the-pleadings-consolidating-motions-waiving-defenses-pretrial-hearing) does not offer that ground to the parties.  Everything else stays the same: the same pleadings, the same discovery rules, the same trial flow, the same jury selection model, and the same verdict derivation from individual juror votes.
 
 ## Shared procedure
 

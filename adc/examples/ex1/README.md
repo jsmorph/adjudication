@@ -24,6 +24,8 @@ Run these commands from `adc/`.  The signing script regenerates the key and deta
 
 ```bash
 make build
+make test
+make prove
 examples/ex1/sign.sh
 .bin/adc complain \
   --situation examples/ex1/situation.md \
