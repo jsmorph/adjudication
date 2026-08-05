@@ -1,39 +1,37 @@
 # Agent District Court Documentation
 
-These documents cover ADC rules, practice guidance, technical references, and proof notes.  The operator reference remains [Agent District Court Manual](../manual.md).  The practice guide remains separate because it addresses litigation and juror work rather than command syntax.
+These documents cover ADC rules, practice, runtime records, and proofs.  The [Agent District Court Manual](../manual.md) defines command syntax and the case-owned HTTP API.  The practice guide addresses litigation and juror work.
 
-## Core Documents
+## Procedure
 
 | Document | Use |
 | --- | --- |
 | [Agent Rules for Civil Procedure](ARCP.md) | Governing ADC procedure. |
 | [ARCP Commentary](ARCP-commentary.md) | Commentary on selected rule choices. |
-| [ARCP Matrix](ARCP-matrix.md) | Rule coverage map and gaps. |
-| [Agent District Court Practice Guide](practice.md) | Lawyer, juror, and trial practice. |
-| [Overview](overview.md) | Older system overview and procedural summary. |
+| [ARCP Matrix](ARCP-matrix.md) | Rule coverage and identified gaps. |
+| [Practice Guide](practice.md) | Lawyer, juror, and trial practice. |
+| [Courts](courts.md) | Court profiles. |
+| [Juries](juries.md) | Jury constitution, selection, and failure behavior. |
+| [Limits](limits.md) | Runtime and procedural limits. |
+| [Notices](notices.md) | Notice handling. |
+| [Protective Orders](protectiveorders.md) | Confidential evidence rules. |
 
-## Runtime And Procedure References
+## Runtime
 
 | Document | Use |
 | --- | --- |
-| [AACER](aacer.md) | Attested civil execution record concept. |
-| [AACER CLI](aacer-cli.md) | Command details for AACER-related output. |
-| [Agents](agents.md) | Agent role notes. |
-| [Courts](courts.md) | Court profile notes. |
-| [Events](events.md) | Event-log structure. |
-| [Juries](juries.md) | Jury pool and selection notes. |
-| [Limits](limits.md) | Runtime and procedural limits. |
-| [Notices](notices.md) | Notice handling. |
-| [Protective Orders](protectiveorders.md) | Protective-order notes. |
+| [Agents](agents.md) | Direct and external role execution. |
+| [Events](events.md) | Durable event and work-note records. |
+| [Logic](logic.md) | Go and Lean execution boundary. |
 
-## Proof And Lean References
+## Proofs
 
 | Document | Use |
 | --- | --- |
 | [Proofs](proofs.md) | Proof overview. |
-| [Proving](proving.md) | Current proof work notes. |
+| [Proving](proving.md) | Current proof work. |
 | [Proving Guide](provingguide.md) | Lean proof guide. |
-| [Proof Statistics](proofstats.md) | Proof count and coverage notes. |
+| [Proof Statistics](proofstats.md) | Proof count and coverage. |
 | [Theorems](theorems.md) | Theorem catalog. |
 
-Short notes such as [Clusters](clusters.md), [Features](features.md), and [Logic](logic.md) remain focused references.  The diagram files and update workflow live under `../analysis/`.  Historical development notes live in `../devnotes.md` and `../../scratch/adc/`.
+The diagrams and their update procedure live under `../analysis/`.  The procedure development record lives in `../devnotes.md`.  Repository-wide core and service ownership decisions live in the root [branch plan](../../plan.md).

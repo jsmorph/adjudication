@@ -1,5 +1,5 @@
 # Common Documentation
 
-`common/docs/` contains documentation for shared assets and tools used by more than one adjudication system.  System manuals remain under `adc/`, `arb/`, and `arbd/`.  Model-pool evaluation, clustering, graphing, and selection documentation lives under [Adjudication Evals](../../evals/README.md).
+`common/` contains the model-request, provider, and persona code shared by the three core runtimes.  Its retained data provides the default juror and council request-spec pool and the persona named by that pool.  System manuals remain under `adc/`, `arb/`, and `arbd/`.
 
-Container documentation lives in [Pi Container Image](../pi-container/README.md).  Tool documentation lives in [Common Tools](../tools/README.md).  Merits-graph skill notes live in [Merits Graph Skill](../tools/merits-graph-skill.md).
+The [common tools reference](../tools/README.md) describes the retained documentation and proof-maintenance programs.  Each tool operates on a procedure checkout and has no runtime role.  Procedure documents identify the generated files that these programs maintain.

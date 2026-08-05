@@ -2,9 +2,9 @@
 
 ## Ownership
 
-The AAR service owns the case.  A case owns the current opportunity, the phase, the deadline, remaining attempts, evidence state, filings, council state, votes, events, final result, and failure state.  Agents act against the case through HTTP or MCP, but agent processes, containers, scripts, and transport sessions do not decide arbitration consequences.
+The AAR process owns the case.  It owns the current opportunity, phase, deadline, remaining attempts, evidence state, filings, council state, votes, events, final result, and failure state.  External clients act through the case-owned HTTP APIs, while the case process determines every arbitration consequence.
 
-An opportunity is the unit that can fail because a participant did not act correctly.  The service detects participant failures when the opportunity deadline expires, invalid tool calls exhaust the attempt budget, the assigned agent process exits while AAR still reports the same opportunity as ready, or a supervised council agent exceeds its output byte limit before completing the opportunity.  Those failures are procedural case facts, so AAR records them in case state rather than treating them as local process errors.
+An opportunity is the unit that can fail because a participant did not act correctly.  The case process detects deadline expiration and exhausted invalid-attempt budgets, while an external client can report its own failure through the applicable API.  AAR records these procedural facts in case state rather than treating them as process faults.
 
 ## Rules
 
@@ -26,7 +26,7 @@ Lean rejection of a valid procedural failure request is a system error.  The Go 
 
 Invalid tool calls that still have attempts left should return `ok: false`, a precise error object, the active turn, remaining time, and remaining attempts.  The opportunity remains active in that case.  The client should be able to retry without asking any other endpoint what changed.
 
-When a lawyer opportunity failure makes the case terminal, every role API should report the failed case.  `get`, `wait`, `status`, and `result` should return `status: "failed"` and include the same structured failure object.  `wait_for_opportunity` through MCP should map that response to `state: "failed"` so an agent can stop.
+When a lawyer opportunity failure makes the case terminal, every role API reports the failed case.  `get`, `wait`, `status`, and `result` return `status: "failed"` and include the same structured failure object.  An external client can therefore stop without interpreting the event stream.
 
 When a council member fails, that member's API should report `status: "failed"` with the failure object and no mutating tools.  Other council members and lawyers should see the case as running unless AAR has reached a separate terminal rule.  Observers should see the member failure in the case status and events.
 

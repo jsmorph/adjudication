@@ -1,4 +1,4 @@
-.PHONY: build test prove install demo demo-quick cluster-personas clean
+.PHONY: build test prove install demo demo-quick clean
 
 BIN_DIR := .bin
 GO_ENV := CGO_ENABLED=0
@@ -33,20 +33,6 @@ demo-quick: build
 		--complaint examples/ex1/complaint.md \
 		--out-dir out/ex1-demo-quick \
 		--skip-voir-dire
-
-cluster-personas: 
-	uv run --script ../common/tools/cluster-personas.py \
-		--personas-file ../common/etc/personas.csv \
-		--genes-file ../common/data/personas/genes.json \
-		--pca-out ../common/data/personas/personas-pca.csv \
-		--num-personas all \
-		--num-samples 3 \
-		--num-genes 3 \
-		> ../common/data/personas/persona-clusters.csv
-
-pool:
-	.bin/adc pool --size 50  | sort | uniq > ../common/data/personas/pool.jsonl
-	wc -l ../common/data/personas/pool.jsonl
 
 clean:
 	rm -rf $(BIN_DIR) engine/.lake/build

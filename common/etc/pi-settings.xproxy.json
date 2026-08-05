@@ -1,6 +1,0 @@
-{
-  "defaultProvider": "xproxy",
-  "defaultModel": "openai://gpt-5",
-  "defaultThinkingLevel": "medium",
-  "quietStartup": true
-}

@@ -62,7 +62,3 @@ The council can shrink during deliberation through explicit status change.  The 
 After failure, the member remains present in `council_members`, but the member no longer counts as seated.  Later calls to the next-member selector therefore skip that seat, and later rounds use the smaller seated body.  The runtime records that change as an `opportunity_failed` event and a `council_member_removed` event, so the event stream shows both the originally constituted council and the later status transition.
 
 If a council model keeps returning malformed or invalid votes until it exhausts the runtime invalid-attempt limit, AAR records a council-member opportunity failure.  The failed member is dismissed, and the case continues if the remaining seated council members can still proceed under the policy.
-
-## Replay
-
-Council replay runs one council member against a saved AAR output packet.  Use [Council Replay](council-replay.md) for the operator command, the two replay bases, same-spec config generation, snapshot replay, output files, and comparison limits.  The replay path preserves the same Council API tool set used by Pi members during `aar run`, so replay records can show whether a member read evidence bytes before submitting a new vote.

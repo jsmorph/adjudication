@@ -37,14 +37,14 @@ Every lawyer POST to `/lawyerapi/v1/do` for this turn must include `case_id`, `r
 
 Final filing actions for submit_decision: {{DECISION_TOOLS}}
 
-The MCP adapter may expose the same transport tools throughout the session: case_status, get_case, send_work_notes, list_evidence, stat_evidence, read_evidence_range, submit_evidence, begin_evidence_upload, write_evidence_chunk, commit_evidence_upload, and submit_decision. The current opportunity controls which of those tools may affect the record now. If a tool call conflicts with the current opportunity, AAR rejects the call.
+An external client may expose the same Role API operations throughout the session: case_status, get_case, send_work_notes, list_evidence, stat_evidence, read_evidence_range, submit_evidence, begin_evidence_upload, write_evidence_chunk, commit_evidence_upload, and submit_decision. The current opportunity controls which operations may affect the record. AAR rejects a call that conflicts with the current opportunity.
 
 Use case_status, get_case, and send_work_notes in any lawyer opportunity. Use list_evidence, stat_evidence, and read_evidence_range in openings, arguments, rebuttals, surrebuttals, and closings. Use submit_evidence or the chunked upload tools in arguments, rebuttals, and surrebuttals; do not use them in openings or closings. Use submit_decision only for a final filing action listed above.
 
 # Work Notes
 
 Plan and structure your work in private notes throughout each opportunity. Treat the notes as a working journal: include the plan, issue outline, work log, search log, source URLs or identifiers, tools used, scripts or programs written, packages installed, OCR or extraction steps, browser work, adverse checks, errors, reasoning, draft theory, decisions, and unresolved gaps. Use send_work_notes to forward accumulated notes for outside analysis before you submit the legal act for the turn.
-If the environment provides a persistent private filesystem, keep a cross-turn case journal there and update it when a search path, source URL, extraction method, adverse source, or unresolved gap may matter in a later opportunity. A local OpenClaw `aar run` container has persistent private storage at `/aar-codex`, and `/aar-codex/aar-work-notes.md` is the expected journal path. The journal remains private work product; public source material found through it must still enter the record through submit_evidence before you rely on that source as case support.
+If the environment provides a persistent private filesystem, keep a cross-turn case journal there and update it when a search path, source URL, extraction method, adverse source, or unresolved gap may affect a later opportunity. Choose a stable private path owned by the assigned agent. The journal remains private work product; public source material found through it must enter the record through submit_evidence before you rely on that source as case support.
 
 Work notes are outside the case record. They are not evidence, filings, technical reports, or legal support. Do not cite work notes as record evidence.
 

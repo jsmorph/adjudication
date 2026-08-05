@@ -1,5 +1,13 @@
 # Development Notes
 
+## 2026-08-02: Core reduction
+
+The AARD manuals and supporting documents now describe one-case execution and the case-owned Lawyer and Council APIs.  Service, MCP, OpenClaw, Pi, attestation, and deployment instructions remain on the `service` branch.  The Makefile now reports the retained `aard case` command instead of deleted local-agent commands.
+
+The council and evidence documents describe direct model work and external HTTP clients without naming a transport adapter.  The obsolete MCP specification and OpenClaw attorney notes were removed from `carve`.  Procedure rules, practice guidance, policy notes, evidence custody, records, and certificate verification remain.
+
+Verification completed with `go test -buildvcs=false -count=1 ./...`, `go build -buildvcs=false ./...`, `go vet ./...`, command help checks, and `git diff --check`.  The retained tests cover direct and external lawyers, external council members, numeric answers, evidence custody, failures, and replay.  No AARD implementation package imports service code.
+
 ## 2026-08-02
 
 ### Lean 4.32.0

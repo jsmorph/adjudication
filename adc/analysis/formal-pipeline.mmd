@@ -21,7 +21,7 @@ flowchart TD
     M --> N[runner prompt assembly\nrole preamble,\nvisible case,\ntool cards]
     N --> O{local role or external role}
     O -->|local| P[local model call]
-    O -->|external| Q[Role API opportunity\nMCP tools when used]
+    O -->|external| Q[Role API opportunity]
     P --> R[proposed decision or pass]
     Q --> R
     R --> S[Lean apply_decision]

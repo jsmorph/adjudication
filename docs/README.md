@@ -1,10 +1,10 @@
 # Repository Docs
 
-This directory contains cross-system notes spanning more than one runtime.  System-specific references stay under `adc/docs/`, `arb/docs/`, or `arbd/docs/`; eval references stay under `evals/`.  The current proof note records the proof and certificate status across ARB, ADC, and AARD.
+This directory contains notes spanning more than one core procedure.  Procedure-specific rules and proof references remain under `adc/docs/`, `arb/docs/`, and `arbd/docs/`.  The current proof note records proof and replay-certificate status across ADC, ARB, and AARD.
 
 ## Documents
 
 | Document | Use |
 | --- | --- |
 | [Proof Work Status](proof-notes.md) | Current proof surface, certificate status, remaining proof direction, and proof limits. |
-| [VMCP Design](vmcp.md) | Design proposal for a verified MCP gate: architecture, roles, state, trusted base, and development plan. |
+| [Retention Ledger](retention-ledger.md) | Ownership decisions and verification conditions used to split core from service. |

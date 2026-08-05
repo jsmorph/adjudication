@@ -1078,7 +1078,7 @@ func TestBuildAttorneyPromptIncludesWorkGuidanceEveryTurn(t *testing.T) {
 		"Use a browser when the evidentiary content depends on rendering or interaction",
 		"When a missing local program would materially improve retrieval, extraction, or verification",
 		"create a transcript or timestamped notes for material passages",
-		"/aar-codex/aar-work-notes.md",
+		"Choose a stable private path owned by the assigned agent.",
 		"Use list_evidence, stat_evidence, and read_evidence_range when exact evidence bytes matter.",
 	}
 

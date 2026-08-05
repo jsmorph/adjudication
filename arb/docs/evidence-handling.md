@@ -51,7 +51,7 @@ AAR exposes read-only evidence tools through the HTTP Lawyer API in every active
 
 ## Council API tools
 
-When `aar case` runs with `--council-backend councilapi`, council members use read-only evidence tools during deliberation.  These tools are available through the Council HTTP API and through the MCP service that forwards to it:
+When `aar case` runs with `--council-backend councilapi`, council members use read-only evidence operations during deliberation.  The Council HTTP API exposes these operations.  The case process applies the same evidence visibility and read limits used by direct council calls.
 
 - `get_case` returns the visible arbitration record.
 - `list_evidence` lists visible evidence metadata.

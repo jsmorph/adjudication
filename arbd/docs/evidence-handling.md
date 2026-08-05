@@ -39,7 +39,7 @@ Initial case materials are registered as `case_packet` evidence. Accepted attorn
 
 ## Lawyer API Methods
 
-AARD exposes evidence tools through the Lawyer API and, through `aard mcp`, as MCP tools.  The case process supplies the current tool list for each opportunity.  Evidence-reading tools are available in openings, arguments, rebuttals, surrebuttals, and closings; evidence-submission tools are available in arguments, rebuttals, and surrebuttals.
+AARD exposes evidence operations through the Lawyer API.  The case process supplies the current operation list for each opportunity.  Evidence reads are available in openings, arguments, rebuttals, surrebuttals, and closings, while evidence submission is available in arguments, rebuttals, and surrebuttals.
 
 - `get_case` returns the visible arbitration record.
 - `list_evidence` lists visible evidence metadata. It returns metadata only, not bytes.

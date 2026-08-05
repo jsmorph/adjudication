@@ -1,123 +1,82 @@
 # Agent District Court
 
-Agent District Court (ADC) is an experimental civil-litigation runtime for AI legal agents.  The Go runtime manages intake, prompts, storage, role APIs, reports, and local agent processes.  The Lean engine enforces procedure and state transitions under the Agent Rules for Civil Procedure.
+Agent District Court (ADC) implements civil adjudication with a Lean rule engine and a Go runtime.  The engine validates procedural state transitions under the Agent Rules for Civil Procedure.  The runtime prepares cases, obtains role decisions, stores the record, and writes replay material.
 
-ADC starts from either a situation file, a complaint, or a scenario JSON file.  A situation file can be turned into a complaint with `adc complain`.  A complaint can be turned into a one-claim case packet and then run through pleadings, motions, discovery, trial, verdict, and judgment.
+ADC accepts either a complaint or a scenario JSON file.  Complaint intake produces a normalized one-claim case, private party strategies, and a generated scenario before adjudication begins.  A scenario can instead define deterministic turns or model-driven roles directly.
 
-The current external-agent path uses a case-owned HTTP Role API and a Streamable HTTP MCP adapter.  OpenClaw lawyers connect through MCP.  Pi jurors connect through MCP when `adc run` starts a fresh juror agent for an active juror opportunity from a JSONL request-spec pool.  If a deliberating juror agent fails, ADC removes that juror from the effective concurrence count and derives any verdict from the eligible jurors who remain.
-
-Jury size and verdict threshold are case-policy settings.  `adc case`, `adc scenario`, and `adc run` accept `--juror-count`, `--unanimous-required`, and `--minimum-concurring`; the Clerk create API accepts `juror_count`, `unanimous_required`, and `minimum_concurring`.  When those values are omitted, ADC uses the scenario policy or the default six-person unanimous jury.
+The command can handle roles through direct model calls or expose plaintiff, defendant, and juror opportunities through its HTTP Role API.  The process retains ownership of the Lean state, deadlines, validation, case-file visibility, and final record in both modes.  Agent launchers, MCP adapters, Clerk services, attestation, and deployment material live on the `service` branch.
 
 ## Documentation
 
-The manual documents the core commands, one-case Role API, durable records, and certificate verification.  The practice guide describes work performed by the procedural roles.  The rules define the civil procedure enforced by the runtime and Lean engine.
+The manual documents the command-line interface, Role API, records, and replay verification.  The practice guide describes work performed by each procedural role.  The rules state the civil procedure enforced by the runtime and Lean engine.
 
 | Document | Use |
 | --- | --- |
-| [Agent District Court Manual](manual.md) | Core commands, the one-case Role API, output files, certificate verification, failure behavior, and troubleshooting. |
-| [Agent District Court Practice Guide](docs/practice.md) | Pleadings, discovery, evidence search, evidence analysis, trial work, jury instructions, closings, and deliberation. |
+| [Agent District Court Manual](manual.md) | Commands, Role API, records, verification, and failure diagnosis. |
+| [Agent District Court Practice Guide](docs/practice.md) | Pleadings, discovery, evidence, trial, and deliberation. |
 | [Agent Rules for Civil Procedure](docs/ARCP.md) | Governing ADC procedure. |
 
 ## Requirements
 
-| Requirement | Purpose |
-| --- | --- |
-| Go `1.25` | Builds the ADC runtime. |
-| Lean `4.32.0` and `lake` | Builds the Lean engine and proof tree. |
-| `make` | Runs build, test, proof, and example targets. |
+ADC builds with Go 1.25 and Lean 4.32.0.  The Lean build uses `lake`.  The Makefile supplies the standard build, test, proof, and example targets.
 
 ## Build
 
-Build both local binaries from `adc/`:
+Run the build from `adc/`.  It writes the command to `.bin/adc` and the Lean engine to `.bin/adcengine`.  The test and proof targets check the Go runtime and Lean proof tree separately.
 
 ```bash
 make build
-```
-
-That writes `.bin/adc` and `.bin/adcengine`.  Run the Go tests with:
-
-```bash
 make test
-```
-
-Build the Lean proof tree with:
-
-```bash
 make prove
 ```
 
-## Basic Runs
+## Command-Line Use
 
-Draft a complaint from example 1:
+The complaint path uses model calls for complaint drafting, intake, strategy preparation, and procedural roles.  It therefore requires the OpenAI-compatible credentials accepted by the shared model client.  Use `adc help` or `adc help COMMAND` for the complete current flag set.
 
 ```bash
 .bin/adc complain \
   --situation examples/ex1/situation.md \
   --out examples/ex1/complaint.md
-```
 
-Run the complaint with direct internal roles:
-
-```bash
 .bin/adc case \
   --complaint examples/ex1/complaint.md \
-  --out-dir out/ex1-direct
+  --out-dir out/ex1
 ```
 
-Run the complaint with local OpenClaw lawyers and Pi jurors:
+A deterministic scenario can run without model access when every turn specifies its action.  The `--offline` flag enforces that condition.  The command writes each requested record to the supplied path.
 
 ```bash
-export OPENROUTER_API_KEY=REPLACE_WITH_KEY
-.bin/adc run \
-  --complaint examples/ex1/complaint.md \
-  --out-dir out/ex1-openclaw-pi \
-  --openclaw-auth codex \
-  --openclaw-codex-auth PATH/TO/auth.json
+.bin/adc scenario \
+  --scenario PATH/TO/scenario.json \
+  --offline \
+  --output out/scenario/run.json \
+  --runtime out/scenario/runtime.json \
+  --events out/scenario/events.ndjson \
+  --db out/scenario/run.db
 ```
 
-Run the Clerk service:
+## Role API
 
-```bash
-.bin/adc service \
-  --listen 127.0.0.1:19870 \
-  --output-root out/adc-service \
-  --adc-bin .bin/adc \
-  --engine .bin/adcengine
-```
-
-Create a local-agent case through the Clerk service:
-
-```bash
-curl -sS -X POST http://127.0.0.1:19870/clerk/v1/cases \
-  -H 'content-type: application/json' \
-  --data '{
-    "mode": "run",
-    "case_id": "adc-ex1",
-    "complaint_path": "examples/ex1/complaint.md",
-    "out_dir": "out/adc-service/adc-ex1",
-    "openclaw_auth": "codex",
-    "openclaw_codex_auth_path": "PATH/TO/auth.json",
-    "juror_personas": "../common/data/personas/pool.jsonl"
-  }'
-```
+`adc case` and `adc scenario` can expose selected roles with repeated `--external-role` flags and `--caseapi-addr`.  External clients wait for an opportunity, inspect the role-visible record, submit work notes, and submit one permitted legal decision through `/roleapi/v1`.  The [manual](manual.md#role-api) defines the endpoints and request shapes.
 
 ## Repository Layout
+
+The ADC directory contains the complete procedure-specific implementation.  Shared model, record, and diagram code remains under the repository-level `common/` directory.  The table identifies the principal ADC components.
 
 | Path | Purpose |
 | --- | --- |
 | `engine/` | Lean rule engine, proofs, and Lake project. |
-| `runtime/` | Go CLI, runtime, Role API, MCP adapter, local run code, and Clerk service. |
-| `agent-instructions/` | Templates passed to OpenClaw lawyers and Pi jurors. |
-| `etc/` | Court profile files. |
-| `examples/` | Example case source documents. |
-| `docs/` | Rules, practice guide, reference notes, proof notes, and procedure analysis. |
-| `analysis/` | Mermaid diagrams and explanatory notes. |
-| [Agent District Court Manual](manual.md) | Commands, APIs, outputs, and troubleshooting. |
+| `runtime/` | Go command, case preparation, runner, Role API, reports, and storage. |
+| `etc/` | Court profiles. |
+| `examples/` | Example case inputs. |
+| `docs/` | Rules, practice material, proof notes, and procedure analysis. |
+| `analysis/` | Procedure and state diagrams. |
 
-## Output
+## Records
 
-Run output contains `run.json`, `state.json`, `certificate.json`, `runtime.json`, `events.ndjson`, `run.db`, `transcript.md`, `digest.md`, and `work-notes.ndjson`.  Complaint-driven runs also write `normalized-case.json`, `plaintiff-strategy.md`, `defense-strategy.md`, and `generated-scenario.json`.  `adc run` adds process logs and local-agent metadata under the selected output directory.
+A complaint-driven run writes `normalized-case.json`, party strategies, and `generated-scenario.json` before adjudication.  The adjudication record includes `run.json`, `state.json`, `certificate.json`, `runtime.json`, `events.ndjson`, `run.db`, `transcript.md`, `digest.md`, and `work-notes.ndjson`.  `adc verify-certificate` replays the accepted Lean transitions and compares the result with the recorded terminal state.
 
 ## License
 
-The software is released under the repository-level MIT License in [../LICENSE](../LICENSE).  Trademark and related notice terms are in [../NOTICES.md](../NOTICES.md).
+The repository-level [MIT License](../LICENSE) covers the software.  [Notices](../NOTICES.md) contain the trademark and related terms.  Those files govern the ADC sources in this directory.

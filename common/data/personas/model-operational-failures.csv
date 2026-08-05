@@ -1,4 +1,0 @@
-model,failure_type,source_run,observed_at,notes
-openrouter://nvidia/nemotron-3-nano-30b-a3b,council_vote_tool_noncompliance,proprietary-openclaw-brief-iteration-clustering20-seq5-20260517-160225,2026-05-17T21:36:00Z,"C16 exceeded invalid-attempt limit after five attempts without exactly one submit_council_vote call."
-openrouter://mistralai/voxtral-small-24b-2507,context_limit,proprietary-openclaw-brief-iteration-clustering20-evidence-seq5-20260517-170425,2026-05-17T22:38:00Z,"C2 was removed because provider context limit 32768/32000 was exceeded by prompt."
-openrouter://meta-llama/llama-3.1-8b-instruct,council_vote_tool_noncompliance,proprietary-openclaw-brief-iteration-clustering20-evidence-seq5-20260517-170425,2026-05-17T22:38:00Z,"C15 exceeded invalid-attempt limit after five attempts without exactly one submit_council_vote call; provider context mismatch also observed in metadata."

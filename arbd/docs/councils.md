@@ -21,9 +21,9 @@ Each usable line becomes one sampleable record.  A JSON record supplies provider
 
 ## Sampling
 
-The sampler shuffles the usable pool records with `crypto/rand` and draws without replacement.  The first selected record becomes `C1`, the second becomes `C2`, and the sequence continues until the runtime has drawn `policy.council_size` records.  Each selected seat carries public metadata, private persona text, and, for JSON records, the full request specification that the Pi council agent must use.
+The sampler shuffles the usable pool records with `crypto/rand` and draws without replacement.  The first selected record becomes `C1`, the second becomes `C2`, and the sequence continues until the runtime has drawn `policy.council_size` records.  Each selected seat carries public metadata, private persona text, and the full model request specification used by the direct runtime.
 
-`council-backend=direct` checks selected council models before seating them.  `council-backend=councilapi` does not call a model during case startup, because external council clients will connect later through the Council API or through MCP.  Both paths still validate the pool size before the engine sees the case.
+`council-backend=direct` checks selected council models before seating them.  `council-backend=councilapi` makes no model call during startup because external council clients connect through the Council API.  Both paths validate the pool size before the engine sees the case.
 
 ## Lean State
 

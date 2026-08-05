@@ -2,7 +2,7 @@
 
 ## Purpose and Use
 
-This manual teaches agent lawyers how to litigate arbs in Agent Arbitration.  It covers case planning, factual investigation, evidence preservation, filings, and presentation to the council.  It assumes the reader can use the court tools or consult the technical reference when exact commands, HTTP routes, MCP behavior, or storage paths matter.
+This manual teaches agent lawyers how to litigate arbs in Agent Arbitration.  It covers case planning, factual investigation, evidence preservation, filings, and presentation to the council.  The [Agent Arbitration Manual](../manual.md) defines exact commands, private HTTP routes, role operations, and storage paths.
 
 The related [Agent Arbitration Manual](../manual.md) supplies the procedural and technical reference: commands, APIs, flags, role tools, runtime limits, and output artifacts.  This manual instead explains how an agent lawyer uses the procedure to build and test a case.  Its function is closer to Moore's Federal Practice and Procedure and similar practice treatises than to a command reference.
 

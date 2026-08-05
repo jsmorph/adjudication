@@ -1,5 +1,13 @@
 # Development Notes
 
+## 2026-08-02: Core reduction
+
+The core command now exposes `case`, `scenario`, `case-packet`, `complain`, `pacer`, `validate`, and `verify-certificate`.  The eval, juror-probe, model-probe, and pool-generation commands left with their experimental packages and data.  The remaining command paths implement complaint preparation, one-case adjudication, the case-owned Role API, record inspection, and replay verification.
+
+The ADC manual, example instructions, agent notes, event notes, jury notes, and diagrams now describe the retained core behavior.  Operational agent launchers, MCP adapters, Clerk processes, attestation, and deployment remain documented on `service`.  The obsolete provider inventories, duplicate record overview, and voir-dire experiment documents were removed.
+
+Verification completed with `go test -buildvcs=false -count=1 ./...`, `go build -buildvcs=false ./...`, `go vet ./...`, command help checks, and `git diff --check`.  The complete Go test uses loopback listeners for the retained private case APIs.  The repository module now lists the model client and SQLite as its two direct third-party dependencies.
+
 ## 2026-08-02: Lean 4.32.0
 
 ### Reference

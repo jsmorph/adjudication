@@ -4,7 +4,7 @@
 
 This guide teaches agent lawyers how to litigate in Agent District Court, or ADC.  It covers case planning, factual investigation, evidence development, motion practice, trial presentation, jury work, and post-verdict review.  Like Moore's Federal Practice and Procedure and similar practice guides, it explains how advocates use procedure to build proof, preserve the record, and sequence tactical choices.
 
-The related [Agent District Court Manual](../manual.md) supplies the operating reference for commands, flags, HTTP routes, MCP behavior, service endpoints, clerk JSON fields, output artifacts, and local-agent setup.  The [Agent Rules of Civil Procedure](ARCP.md) supply the civil procedure rules, and the [Local Rules Limits Guide](limits.md) supplies local limits and override concepts.  Use those documents for exact syntax, API shape, and rule text.
+The related [Agent District Court Manual](../manual.md) supplies the operating reference for commands, flags, the Role API, output records, and replay verification.  The [Agent Rules of Civil Procedure](ARCP.md) supply the civil procedure rules, and the [Local Rules Limits Guide](limits.md) supplies local limits and override concepts.  Those documents define the exact syntax, API shape, and rule text.
 
 ADC practice depends on three records at once.  The pleadings and docket define the procedural case, the case files and admitted exhibits define the trial record, and the private work notes explain how agent lawyers searched, analyzed, and prepared.  Keep those records separate: private notes do not prove facts, case files do not become trial exhibits without the proper legal act, and docket entries control procedural history.
 
@@ -12,13 +12,13 @@ ADC practice depends on three records at once.  The pleadings and docket define 
 
 A complaint starts the action, the defendant answers or raises threshold objections, the court manages pretrial work, the parties develop the record, and the case resolves by bench decision, jury verdict, judgment, or another authorized disposition.  Complaint-driven runs currently normalize the dispute into a focused claim packet before live litigation begins, so the first task is to understand the claim elements, the defenses, the requested relief, and the files attached to the complaint.
 
-The case process owns the litigation.  It owns the Lean state, the current phase, role opportunities, deadlines, invalid-attempt limits, file visibility, docket updates, event logs, work-note logging, verdict derivation, and final output.  Lawyers and jurors act through the Role API or MCP, but those tools only let them act inside the current opportunity returned by the case process.
+The case process owns the litigation.  It owns the Lean state, the current phase, role opportunities, deadlines, invalid-attempt limits, file visibility, docket updates, event logs, work-note logging, verdict derivation, and final output.  Lawyers and jurors acting through the Role API can act only within the opportunity returned by that process.
 
 ADC separates legal acts from investigation.  Legal acts are court-facing actions accepted through `submit_decision`, such as filing an answer, serving discovery, submitting a technical report, offering an exhibit, delivering a closing argument, proposing a jury instruction, or casting a juror vote.  Investigation uses support tools and the lawyer's ordinary computer resources to inspect files, search sources, extract text, verify signatures, prepare reports, and decide what the court-facing act should say.
 
 ## Procedure Map
 
-Each phase determines what the lawyer can do and what the lawyer prepares for the next phase.  The legal tools for each opportunity come from the Role API or MCP response, not from memory or a static list.
+Each phase determines what the lawyer can do and what the lawyer prepares for the next phase.  The current opportunity identifies the permitted legal tools.  Lean selects that tool set from the case state rather than from a static client list.
 
 | Phase or stage | Main actors | Practice function |
 |---|---|---|
@@ -67,13 +67,13 @@ Technical reports explain source work.  They are appropriate for signature verif
 
 Private work notes are outside the case record.  The `send_work_notes` tool records plans, work logs, search history, extraction steps, source URLs, tool errors, and reasoning for later evaluation, but the jury and judge decide from filed material, admitted exhibits, technical reports, and docketed argument.  If a work-note fact affects the case outcome, counsel must move the relevant source, extraction, or report into the record through an allowed legal tool.
 
-## Role API, MCP, and Remote Lawyering
+## Role API and External Lawyering
 
-The Role API and MCP adapter give a lawyer the current opportunity, current prompt, legal tool specs, support tools, remaining time, and attempts left.  The lawyer should call `wait_for_opportunity`, read the active opportunity, inspect the case with `case_status`, `get_case`, and `list_case_files`, and then complete exactly one legal act for that opportunity.  If the response says another role has the current opportunity, the lawyer waits instead of trying to act.
+The Role API gives a lawyer the current opportunity, prompt, legal-tool specifications, support operations, remaining time, and attempts left.  The lawyer calls `wait_for_opportunity`, reads an active opportunity, inspects the case with `case_status`, `get_case`, and `list_case_files`, and completes one legal act for that opportunity.  A response that names another active role requires the lawyer to wait for its own turn.
 
-Remote lawyers do not need a filesystem mount.  They read the visible record through support tools: `list_case_files` for file identity and uses, `read_case_text_file` for readable `.md`, `.txt`, `.pem`, and `.b64` files, `request_case_file` when a provider can attach the raw file to the next model turn, and `read_case_file_bytes` when byte-level inspection affects analysis.  The lawyer's own web search, browser, OCR, shell, scripts, and installed programs operate in the lawyer's environment, while court filings must still go through ADC tools.
+External lawyers do not need access to the case output directory.  They read the visible record through support operations: `list_case_files` for file identity and uses, `read_case_text_file` for readable `.md`, `.txt`, `.pem`, and `.b64` files, `request_case_file` when a provider can attach the raw file to the next model turn, and `read_case_file_bytes` when byte-level inspection affects analysis.  The lawyer's research and analysis run in its own environment, while court filings pass through ADC legal tools.
 
-The MCP adapter passes Role API opportunities and tool calls to the case process.  The same practice duties apply whether the lawyer acts through curl, MCP, a local OpenClaw container, or a remote OpenClaw.  The opportunity response controls the legal tools for the turn, and the lawyer should treat invalid submissions as practice failures to diagnose immediately through the returned error.
+An external client translates its own interface into Role API requests.  The same practice duties apply to every client because the case process owns opportunity identity, tool authority, and validation.  An invalid submission returns a precise error while leaving the opportunity active when attempts remain.
 
 ## Full Computer Use
 
@@ -169,7 +169,7 @@ Voir dire tests whether jurors can apply the rules to the case.  Counsel should 
 
 Cause challenges need concrete grounds.  A juror who says that all agent-generated documents are worthless regardless of authentication presents a different problem from a juror who wants careful proof.  Peremptory strikes should be reserved for residual risk after cause challenges have done their work.
 
-If voir dire is skipped, trial presentation carries more explanatory load.  Counsel cannot rely on tailored juror questioning to test assumptions, so openings, evidence descriptions, jury instructions, and closings must explain the proof path with extra care.  Jurors still receive the trial transcript, instructions, visible case view, admitted exhibits, and case files exposed by MCP during deliberation.
+If voir dire is skipped, trial presentation carries more explanatory load.  Counsel cannot rely on tailored juror questioning to test assumptions, so openings, evidence descriptions, jury instructions, and closings must explain the proof path with extra care.  Jurors still receive the trial transcript, instructions, visible case view, admitted exhibits, and visible case files during deliberation.
 
 ## Openings and Trial Theory
 
@@ -205,11 +205,11 @@ Closing distinguishes proof from argument.  The exhibit proves a document, amoun
 
 ## Deliberation and Juror Practice
 
-Jurors decide from the record exposed to them.  In current ADC full runs, Pi jurors start when their juror opportunity appears, and a deliberating juror receives the trial transcript from openings through closings, the final instructions, the visible case view, and tools to inspect admitted exhibits and visible case files.  The juror should use those materials to vote on the claim, damages, confidence, and explanation.
+Jurors decide from the record exposed to them.  A deliberating juror receives the trial transcript from openings through closings, the final instructions, the visible case view, and operations for inspecting admitted exhibits and visible case files.  The juror uses those materials to vote on the claim, damages, confidence, and explanation.
 
 Juror analysis should track the court's instructions.  A vote should state the element findings, the exhibits supporting each finding, any limits on the evidence, and the damages reasoning when voting for plaintiff.  A conclusory vote does not show how the record satisfies or fails the legal elements.
 
-Juror failure is separate from disagreement.  If a deliberating juror process fails, ADC removes that juror from the effective concurrence threshold and continues with eligible jurors when the remaining jury can still decide.  A hung jury follows from unresolved disagreement among eligible jurors, exhausted deliberation rounds, or the absence of any eligible juror able to form a verdict.
+Juror failure is separate from disagreement.  If a deliberating juror opportunity fails, ADC removes that juror from the effective concurrence threshold and continues when the remaining jury can decide.  A hung jury follows from unresolved disagreement among eligible jurors, exhausted deliberation rounds, or the absence of any eligible juror able to form a verdict.
 
 ## Bench Trials
 
@@ -237,9 +237,8 @@ The factfinder needs primary sources, adverse-source checks, preserved files, ex
 
 | Resource | Use |
 |---|---|
-| [Agent District Court Manual](../manual.md) | Commands, APIs, MCP sessions, service endpoints, clerk JSON fields, output artifacts, and local-agent setup. |
+| [Agent District Court Manual](../manual.md) | Commands, Role API, output records, and replay verification. |
 | [Agent Rules of Civil Procedure](ARCP.md) | Governing civil procedure rules. |
 | [Local Rules Limits Guide](limits.md) | Local limits, overrides, character budgets, invalid-action policy, and discovery controls. |
 | [Juries](juries.md) | Jury configuration, pool behavior, voir dire, verdicts, and failure handling. |
-| [AACER](aacer.md) | Read-only document and event view. |
 | [Protective Orders](protectiveorders.md) | Confidentiality, access limits, and controlled processing. |

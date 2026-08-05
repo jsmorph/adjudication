@@ -1,5 +1,13 @@
 # Development Notes
 
+## 2026-08-02: Core reduction
+
+The unexposed council replay implementation and its operator document were removed.  The live runtime still writes council-turn snapshots as part of the durable record, so the snapshot writer and shared JSON helpers now live in core-specific files.  The complete Go test identified that shared dependency before the removal was committed.
+
+The attorney prompt now describes a service-independent private journal path and the case-owned Role API.  Core process, failure, evidence, council, and practice documents no longer describe Clerk, MCP, OpenClaw, or Pi operation.  The obsolete pool snapshot, wrapper script, MCP plans, and authentication notes were also removed.
+
+Verification completed with `go test -buildvcs=false -count=1 ./...`, `go build -buildvcs=false ./...`, `go vet ./...`, command help checks, and `git diff --check`.  The retained tests cover direct and external lawyer work, council work, evidence custody, records, and certificate replay.  The snapshot schema remains `aar.council-turn-snapshot.v0`.
+
 ## 2026-08-02
 
 ### Lean 4.32.0

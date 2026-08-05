@@ -1,4 +1,4 @@
-.PHONY: build test prove install demo ex2 ex3 clean
+.PHONY: build test prove install demo clean
 
 BIN_DIR := .bin
 GO_ENV := CGO_ENABLED=0 GOCACHE=$(CURDIR)/.cache/go-build
@@ -18,13 +18,7 @@ prove:
 install: build
 
 demo: build
-	@echo "aard case waits for Lawyer and Council API clients. Use aard run ex1 for a local OpenClaw/Pi run."
-
-ex2: build
-	@echo "aard case waits for Lawyer and Council API clients. Use aard run ex2 for a local OpenClaw/Pi run."
-
-ex3: build
-	@echo "aard case waits for Lawyer and Council API clients. Use aard run ex3 for a local OpenClaw/Pi run."
+	@echo ".bin/aard case --complaint examples/ex1/complaint.md --out-dir out/ex1 --caseapi-addr 127.0.0.1:19791"
 
 clean:
 	rm -rf $(BIN_DIR) .cache engine/.lake/build out

@@ -289,6 +289,33 @@ func writeJSONFile(path string, value any) error {
 	return nil
 }
 
+func cloneMapJSON(in map[string]any) (map[string]any, error) {
+	raw, err := json.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]any
+	dec := json.NewDecoder(strings.NewReader(string(raw)))
+	dec.UseNumber()
+	if err := dec.Decode(&out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func readJSON(path string, target any) error {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", path, err)
+	}
+	dec := json.NewDecoder(strings.NewReader(string(raw)))
+	dec.UseNumber()
+	if err := dec.Decode(target); err != nil {
+		return fmt.Errorf("parse %s: %w", path, err)
+	}
+	return nil
+}
+
 func writeJSONFileAtomic(path string, value any) error {
 	wire, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {

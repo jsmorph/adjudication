@@ -17,14 +17,6 @@ func Run(args []string, stdout io.Writer, stderr io.Writer) error {
 		return RunCasePacket(args[1:], stdout, stderr)
 	case "complain":
 		return RunComplain(args[1:], stdout, stderr)
-	case "eval":
-		return RunEval(args[1:], stdout, stderr)
-	case "juror":
-		return RunJuror(args[1:], stdout, stderr)
-	case "llm":
-		return RunLLM(args[1:], stdout, stderr)
-	case "pool":
-		return RunPool(args[1:], stdout, stderr)
 	case "scenario":
 		return RunScenarioCase(args[1:], stdout, stderr)
 	case "pacer":
@@ -45,14 +37,6 @@ func Run(args []string, stdout io.Writer, stderr io.Writer) error {
 			return RunCasePacket([]string{"-h"}, stdout, stderr)
 		case "complain":
 			return RunComplain([]string{"-h"}, stdout, stderr)
-		case "eval":
-			return RunEval([]string{"-h"}, stdout, stderr)
-		case "juror":
-			return RunJuror([]string{"-h"}, stdout, stderr)
-		case "llm":
-			return RunLLM([]string{"-h"}, stdout, stderr)
-		case "pool":
-			return RunPool([]string{"-h"}, stdout, stderr)
 		case "scenario":
 			return RunScenarioCase([]string{"-h"}, stdout, stderr)
 		case "pacer":
@@ -78,10 +62,6 @@ func printRootUsage(w io.Writer) {
 	fmt.Fprintln(w, "  case       Read a complaint, plan both sides, and run the case")
 	fmt.Fprintln(w, "  case-packet  Build a deterministic complaint packet")
 	fmt.Fprintln(w, "  complain   Draft complaint.md from a situation markdown file")
-	fmt.Fprintln(w, "  eval       Run ADC evals")
-	fmt.Fprintln(w, "  juror      Ask a juror pool member one question, with optional transcript continuation")
-	fmt.Fprintln(w, "  llm        Send one prompt through the runtime model client")
-	fmt.Fprintln(w, "  pool       Sample an experimental juror pool from persona clusters")
 	fmt.Fprintln(w, "  scenario   Run an existing scenario JSON without starting agents")
 	fmt.Fprintln(w, "  pacer      List or fetch PACER-style documents from sqlite")
 	fmt.Fprintln(w, "  validate   Validate a scenario file for the Go runner")
