@@ -864,3 +864,7 @@ The ACP prompt now names current limits instead of relying only on static docume
 ## 2026-08-05: Carve documentation audit
 
 Historical journal references to deliberately removed evaluation, service, adapter, and launcher files now retain their labels and paths without dead Markdown links.  The ADC tree contains 122 checked local links; the only unavailable targets are `confession.sig.b64` and `samantha_public.pem`, which `examples/ex1/sign.sh` generates before complaint drafting.  The current build succeeds, every retained `adc help SUBCOMMAND` topic exits successfully, and the checked shell examples parse under `bash -n`.
+
+## 2026-08-05: Final carve and service verification
+
+The documented `make build test prove` targets pass with Lean 4.32.0, and the root Go test and vet suites pass.  The paired ADC compatibility case starts `adc scenario` from `carve@0c4162fcd985fa0888893f1e25088e9600bdb207` through `service@622daf6feeca4d12b1d0a3aae3768e532a0c38af`, completes a bench case through Clerk and MCP, and verifies the replay certificate.  The final dependency audit finds no service package in the core module.

@@ -1526,3 +1526,7 @@ The proceeding now writes `evidence-manifest.json` when the evidence registry in
 Historical journal references to deliberately removed service, adapter, launcher, and experimental files now retain their labels and paths without dead Markdown links.  The case-failure test plan now describes the retained direct `aar case`, Council API, and proceeding tests, including their current test names and expected records.  The ARB tree contains 82 checked local links with no missing target, and every tracked shell example parses under `bash -n`.
 
 The command audit found that `aar help complain` and `aar help validate` printed usage but returned `flag.ErrHelp`, causing exit status 1.  Both subcommands now treat requested help as success, matching the other retained commands and the manual.  `TestHelpTopicsSucceed` covers every root help topic, and the complete `runtime/cmd/aar` package test passes.
+
+## 2026-08-05: Final carve and service verification
+
+The documented `make build test prove` targets pass with Lean 4.32.0, and the root Go test and vet suites pass.  The paired ARB compatibility package starts `aar case` from `carve@0c4162fcd985fa0888893f1e25088e9600bdb207` through `service@622daf6feeca4d12b1d0a3aae3768e532a0c38af`, completing Clerk and MCP cases and the retained failure cases.  The retained `examples/ex01` complaint passes command-line validation, and the final dependency audit finds no service package in the core module.

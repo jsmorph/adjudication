@@ -103,6 +103,8 @@ The completed service checkpoints are `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581`
 
 The first recorded compatibility pair is `service@48d19263fde43f010312cb446cd4d6970a019c4f` with `carve@e1e0c9d54783e04e30391d628c892507498007d4`.  The complete service compatibility suite passes against binaries built after `carve` removed the multi-case services, MCP adapters, local-agent launchers, and replay experiments.  The pair establishes the process boundary for the current interface version.
 
+The final recorded code pair is `service@622daf6feeca4d12b1d0a3aae3768e532a0c38af` with `carve@0c4162fcd985fa0888893f1e25088e9600bdb207`.  Fresh binaries from this pair pass the core command-interface test and the complete ADC, ARB, and AARD Clerk/MCP compatibility packages.  The ADC case also replays its certificate after service creation, MCP party activity, internal judge action, digest generation, terminal record reconciliation, and Clerk artifact listing.
+
 Every moved component should follow one order: preserve it on `service`, make it build there, add compatibility tests, and then remove it from `carve`.  Git history can recover deleted files, but a tested destination proves that the extracted component still works under its new ownership.  Each extraction commit on `service` should identify the corresponding removal commit on `carve` in its development notes.
 
 ## Implementation Stages
@@ -135,7 +137,7 @@ Every moved component should follow one order: preserve it on `service`, make it
 - [x] Add standalone `adc-service`, `aar-service`, and `aard-service` commands.
 - [x] Preserve the remaining service variants from the core command black-box tests.  Service commit `48d19263fde43f010312cb446cd4d6970a019c4f` retains the ARB and AARD service and MCP variants as cross-branch tests.
 - [x] Retain `web/` on `service`; its programs use the service HTTP APIs without importing service or procedure packages, and all web tests pass there.
-- [ ] Verify all service packages with fake core binaries and then with built `adc`, `aar`, and `aard` binaries from `carve`.  The service package suite, all three paired launcher tests, and the ARB and AARD Clerk/MCP tests pass; a complete ADC Clerk/MCP case remains.
+- [x] Verify all service packages with fake core binaries and then with built `adc`, `aar`, and `aard` binaries from `carve`.  The service package suite, all three paired launcher tests, and complete ADC, ARB, and AARD Clerk/MCP cases pass.
 - [x] On `carve`, delete the three `runtime/service` packages and the three `service` subcommands after the extracted commands and paired tests pass.
 - [x] Remove service variants from core black-box tests while preserving direct one-case tests for lawyer attempt exhaustion, lawyer deadline expiration, and runtime failure exit behavior.
 - [x] Remove Clerk routes, process registries, service artifact routes, and service examples from the `carve` documentation.
@@ -159,7 +161,7 @@ ADC attested execution moved to `service/attested/adc` in service commit `58bd12
 
 ### 4. Assign Participant Adapters and Local Launchers
 
-- [x] Move the three MCP adapter packages to service-owned paths and add standalone `adc-mcp`, `aar-mcp`, and `aard-mcp` commands.  The ARB and AARD adapters pass complete paired real-core cases; the corresponding ADC case remains pending.
+- [x] Move the three MCP adapter packages to service-owned paths and add standalone `adc-mcp`, `aar-mcp`, and `aard-mcp` commands.  All three adapters pass complete paired real-core cases through their standalone Clerk services.
 - [x] Move the ARB local-agent launcher and templates to service-owned paths, replace its proceeding import with `aar case`, and pass its fake-core and paired real-core tests.
 - [x] Move the AARD local-agent launcher and templates to service-owned paths, replace its proceeding import with `aard case`, and pass its fake-core and paired real-core tests.
 - [x] Move the ADC local-agent launcher and templates to service-owned paths, replace its runner import with `adc case` or `adc scenario`, and pass its fake-core and paired real-core tests.
@@ -168,7 +170,7 @@ ADC attested execution moved to `service/attested/adc` in service commit `58bd12
 - [x] Preserve participant supervision, secret cleanup, tool-authority, failure, output-limit, fake-core, and paired real-core interface tests.
 - [x] On `carve`, remove each adapter and launcher after its retained service replacement passes package and paired compatibility tests.
 - [x] Remove autonomous local runs from `carve` under the approved one-case runtime boundary in D1.
-- [ ] Verify one complete local case per procedure through the selected ownership model.
+- [x] Verify one complete local case per procedure through the selected ownership model.  The paired compatibility packages complete ADC, ARB, and AARD cases through the service-owned Clerk and MCP commands against installed `carve` binaries.
 
 ### 5. Prune the Service Branch and Remove Auxiliary Material
 
@@ -189,8 +191,8 @@ Admission to `service` should require a direct role in building, testing, operat
 - [x] Restrict the `carve` command dispatchers to the approved commands.  The retained commands cover one-case execution, input preparation and validation, durable-record inspection, and certificate verification.
 - [x] Preserve all runtime behavior that implements an approved procedural rule outside Lean, including evidence custody, visibility, deadlines, invalid-attempt accounting, role failure, and terminal record production.
 - [x] D1 selected the one-case runtime, so the conditional engine-protocol replacement does not apply.
-- [ ] Make one complete case executable from the command line for each procedure using the saved acceptance fixtures.
-- [ ] Run the service compatibility suite after every change to a command, private API, or retained record.
+- [x] Make one complete case executable from the command line for each procedure using the saved acceptance fixtures.  The paired packages complete `adc scenario`, `aar case`, and `aard case` processes against small checked test fixtures, and the retained ARB and AARD example complaints pass command-line validation.
+- [x] Run the service compatibility suite after every change to a command, private API, or retained record.  The final suite passes at the recorded code pair after the ADC formatted-summary correction.
 - [x] Keep command names `adc`, `aar`, and `aard` unless a separate naming decision approves an interface change.
 
 ### 7. Divide Shared Code and Dependencies
@@ -213,17 +215,17 @@ Admission to `service` should require a direct role in building, testing, operat
 
 ### 9. Final Verification
 
-- [ ] Build `adc`, `aar`, and `aard` from a clean `carve` checkout using the documented commands.
-- [ ] Build all three Lean engines and all three proof trees on `carve`.
-- [ ] Run all retained core Go tests and one command-line acceptance case per procedure.
-- [ ] Build every retained service, adapter, deployment program, and web program from a clean `service` checkout.
-- [ ] Run all retained service tests with fake core binaries.
-- [ ] Install the selected `carve` binaries into the service test environment and run the paired compatibility suite.
-- [ ] Verify service-created cases, proxied participant calls, terminal records, artifacts, evidence reads, cancellation, process reconciliation, and attested execution if retained.
-- [ ] Use `go list -deps` to confirm that `carve` has no service package and `service` has no import of a core implementation package under the process-boundary option.
-- [ ] Search both branches for deleted commands, stale package imports, obsolete paths, and broken examples.
-- [ ] Run `git diff --check` and compare each branch's tracked-file inventory with the retention ledger.
-- [ ] Record the tested `carve` and `service` commit IDs together.
+- [x] Build `adc`, `aar`, and `aard` from the current `carve` code commit using the documented commands.
+- [x] Build all three Lean engines and all three proof trees on `carve`.  Each project reports Lean 4.32.0.
+- [x] Run all retained core Go tests and one command-line acceptance case per procedure.
+- [x] Build every retained service, adapter, deployment program, and web program from the current `service` code commit.
+- [x] Run all retained service tests with fake core binaries.
+- [x] Install the selected `carve` binaries into the service test environment and run the paired compatibility suite.
+- [x] Verify service-created cases, proxied participant calls, terminal records, artifacts, evidence reads, cancellation, process reconciliation, and retained attested execution.  The service and compatibility Go suites, paired launcher tests, attested Python tests, shell syntax checks, and previously recorded exact-commit container builds cover these paths.
+- [x] Use `go list -deps` to confirm that `carve` has no service package and `service` has no import of a core implementation package under the process-boundary option.
+- [x] Search both branches for deleted commands, stale package imports, obsolete paths, and broken examples.  Current source and operator documents are clean; historical paths remain in development journals as records of removed code.
+- [x] Run `git diff --check` and compare each branch's tracked-file inventory with the retention ledger.
+- [x] Record the tested code commits together: `carve@0c4162fcd985fa0888893f1e25088e9600bdb207` and `service@622daf6feeca4d12b1d0a3aae3768e532a0c38af`.
 
 ## Completion Criteria
 

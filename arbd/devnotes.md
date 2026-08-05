@@ -272,3 +272,7 @@ complaint packets stable and readable.  Empty input fails, and an explicit empty
 The historical link to the removed service migration plan now remains as a labeled path without a dead Markdown target.  The AARD tree contains 36 checked local links with no missing target, and every tracked shell example parses under `bash -n`.  The shell check also identified and corrected an unmatched single quote in the documented filing request.
 
 The command audit found that `aard help complain` and `aard help validate` printed usage but returned `flag.ErrHelp`, causing exit status 1.  Both subcommands now treat requested help as success, matching the other retained commands and the manual.  `TestHelpTopicsSucceed` covers every root help topic, and the complete `runtime/cmd/aard` package test passes.
+
+## 2026-08-05: Final carve and service verification
+
+The documented `make build test prove` targets pass with Lean 4.32.0, and the root Go test and vet suites pass.  The paired AARD compatibility package starts `aard case` from `carve@0c4162fcd985fa0888893f1e25088e9600bdb207` through `service@622daf6feeca4d12b1d0a3aae3768e532a0c38af`, completing Clerk and MCP cases and the retained failure cases.  The retained `examples/ex1` complaint passes command-line validation, and the final dependency audit finds no service package in the core module.
