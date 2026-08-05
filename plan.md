@@ -122,9 +122,9 @@ Every moved component should follow one order: preserve it on `service`, make it
 
 ### 1. Define the Core-to-Service Compatibility Specification
 
-- [ ] Document the core executable names, required subcommands, flags, stdout summary schema, exit statuses, startup behavior, and signal handling used by service code.
-- [ ] Document the private health and Role API routes, request and response schemas, wait behavior, authentication assumptions, and terminal result behavior.
-- [ ] Document the durable artifact names and schemas consumed by the services and web programs, including run records, events, evidence manifests, transcripts, summaries, and certificates.
+- [x] Document the core executable names, required subcommands, flags, stdout summary schema, exit statuses, startup behavior, and signal handling used by service code.
+- [x] Document the private health and Role API routes, request and response schemas, wait behavior, authentication assumptions, and terminal result behavior.
+- [x] Document the durable artifact names and schemas consumed by the services and web programs, including run records, events, evidence manifests, transcripts, summaries, and certificates.
 - [x] Replace ARB and AARD imports of `DefaultCouncilBackend` and `DefaultCaseAPIAddr` with service-owned configuration defaults or values obtained from the compatibility specification.
 - [x] Preserve fake-core tests for service process management and add an opt-in paired test that checks real core command interfaces from the selected `carve` commit.
 - [x] Apply D8 initially by recording the tested immutable pair `service@48d19263fde43f010312cb446cd4d6970a019c4f` and `carve@e1e0c9d54783e04e30391d628c892507498007d4`.  Add explicit version negotiation and a precise startup error when an interface change requires it.
@@ -138,7 +138,7 @@ Every moved component should follow one order: preserve it on `service`, make it
 - [ ] Verify all service packages with fake core binaries and then with built `adc`, `aar`, and `aard` binaries from `carve`.  The service package suite, all three paired launcher tests, and the ARB and AARD Clerk/MCP tests pass; a complete ADC Clerk/MCP case remains.
 - [x] On `carve`, delete the three `runtime/service` packages and the three `service` subcommands after the extracted commands and paired tests pass.
 - [x] Remove service variants from core black-box tests while preserving direct one-case tests for lawyer attempt exhaustion, lawyer deadline expiration, and runtime failure exit behavior.
-- [ ] Remove Clerk routes, process registries, service artifact routes, and service examples from the `carve` documentation.
+- [x] Remove Clerk routes, process registries, service artifact routes, and service examples from the `carve` documentation.
 
 This stage should preserve the private listener owned by one running case if D1 selects the one-case runtime.  That listener carries participant opportunities and belongs to the core case process, while the public service may proxy it.  Naming in both branches should distinguish the case-owned Role API from the multi-case Clerk service.
 
@@ -172,42 +172,42 @@ ADC attested execution moved to `service/attested/adc` in service commit `58bd12
 
 ### 5. Prune the Service Branch and Remove Auxiliary Material
 
-- [ ] On `service`, delete the Lean engines, proofs, one-case runner and proceeding implementations, core commands, core rules, and core examples after all selected operational components have service-owned locations.
-- [ ] Retain only compatibility schemas, clients, and small fixtures needed to test service behavior against external core binaries.
-- [ ] Use `go list -deps` to confirm that retained service packages do not import deleted procedure implementation packages under the process-boundary option.
-- [ ] Delete `evals/` and the ADC runtime eval package from `carve` after moving procedure assertions into ordinary tests where needed.
-- [ ] Delete ADC probe commands `eval`, `juror`, `llm`, and `pool`.  ARB's `council-replay` and `juror-replay` experiments have left `carve` because D7 assigned them no operational use.
-- [ ] Delete `vmcp/`, `scratch/`, and `skills/` after moving current design rationale into the applicable manual or development journal.
-- [ ] Remove `common/acp`, `common/xproxy`, and the `common/submodules/pi-acp` submodule unless a selected service component still uses one of them.
-- [ ] Remove `.gitmodules` from each branch that no longer contains a submodule entry.
-- [ ] Review `docs/`, `CHANGES.md`, analysis directories, engine review notes, generated theorem tables, latency data, model-pool data, and source captures against the retention ledger.
+- [x] On `service`, delete the Lean engines, proofs, one-case runner and proceeding implementations, core commands, core rules, and core examples after all selected operational components have service-owned locations.
+- [x] Retain only compatibility schemas, clients, and small fixtures needed to test service behavior against external core binaries.
+- [x] Use `go list -deps` to confirm that retained service packages do not import deleted procedure implementation packages under the process-boundary option.
+- [x] Delete `evals/` and the ADC runtime eval package from `carve` after moving procedure assertions into ordinary tests where needed.
+- [x] Delete ADC probe commands `eval`, `juror`, `llm`, and `pool`.  ARB's `council-replay` and `juror-replay` experiments have left `carve` because D7 assigned them no operational use.
+- [x] Delete `vmcp/`, `scratch/`, and `skills/` after moving current design rationale into the applicable manual or development journal.
+- [x] Remove `common/acp`, `common/xproxy`, and the `common/submodules/pi-acp` submodule unless a selected service component still uses one of them.
+- [x] Remove `.gitmodules` from each branch that no longer contains a submodule entry.
+- [x] Review `docs/`, `CHANGES.md`, analysis directories, engine review notes, generated theorem tables, latency data, model-pool data, and source captures against the retention ledger.
 
 Admission to `service` should require a direct role in building, testing, operating, deploying, or inspecting the retained services.  Tests that assert state transitions, role authority, evidence custody, failure behavior, certificate replay, and output integrity belong with core code on `carve`.  Provider comparisons, prompt candidates, model clustering, archived observations, and unrelated experiments should leave both branches.
 
 ### 6. Reduce Each Core Procedure to the Approved One-Case Path
 
-- [ ] Restrict the `carve` command dispatchers to the approved commands.  The expected minimum for a retained one-case runtime is `case`, input validation, and certificate verification, with `complain`, `scenario`, `mcp`, and `run` governed by D1 and D3.
-- [ ] Preserve all runtime behavior that implements an approved procedural rule outside Lean, including evidence custody, visibility, deadlines, invalid-attempt accounting, role failure, and terminal record production.
-- [ ] If D1 selects the engine protocol, specify and test a stable stdin, stdout, and exit-status interface before deleting the Go case runtimes.
+- [x] Restrict the `carve` command dispatchers to the approved commands.  The retained commands cover one-case execution, input preparation and validation, durable-record inspection, and certificate verification.
+- [x] Preserve all runtime behavior that implements an approved procedural rule outside Lean, including evidence custody, visibility, deadlines, invalid-attempt accounting, role failure, and terminal record production.
+- [x] D1 selected the one-case runtime, so the conditional engine-protocol replacement does not apply.
 - [ ] Make one complete case executable from the command line for each procedure using the saved acceptance fixtures.
 - [ ] Run the service compatibility suite after every change to a command, private API, or retained record.
-- [ ] Keep command names `adc`, `aar`, and `aard` unless a separate naming decision approves an interface change.
+- [x] Keep command names `adc`, `aar`, and `aard` unless a separate naming decision approves an interface change.
 
 ### 7. Divide Shared Code and Dependencies
 
-- [ ] Use `go list` and import searches on each branch to identify the exact packages required by its retained commands.
-- [ ] Apply D4 to the reduced core dependency set on `carve`.
-- [ ] Give retained operational utilities service-owned package paths and remove their imports of core implementation packages.
-- [ ] Remove unused persona corpora, provider inventories, Pi container files, tools, and configuration records from both branches.
-- [ ] Run `go mod tidy` independently on both branches, inspect every remaining module, and document each third-party dependency.
-- [ ] Review ADC's SQLite store and `pacer` command separately.  Preserve the store on `carve` if the approved durable record uses it, and assign any service-side record viewer through D7.
+- [x] Use `go list` and import searches on each branch to identify the exact packages required by its retained commands.
+- [x] Apply D4 to the reduced core dependency set on `carve`.
+- [x] Give retained operational utilities service-owned package paths and remove their imports of core implementation packages.
+- [x] Remove unused persona corpora, provider inventories, Pi container files, tools, and configuration records from both branches.
+- [x] Run `go mod tidy` independently on both branches, inspect every remaining module, and document each third-party dependency.
+- [x] Retain ADC's SQLite store and `pacer` command because `run.db` belongs to the approved durable record and `pacer` is its core command-line reader.
 
 ### 8. Reduce Documentation and Examples
 
 - [x] On `carve`, retain one small, redistributable acceptance example for each procedure and document build, test, proof, one-case execution, records, and certificate verification.
-- [ ] On `service`, retain small service fixtures and document installation of compatible core binaries, configuration, operation, deployment, inspection, and version compatibility.
+- [x] On `service`, retain small service fixtures and document installation of compatible core binaries, configuration, operation, deployment, inspection, and version compatibility.
 - [x] Remove saved web pages, provider captures, large PDFs, duplicate scenarios, and run-specific observations from both branches.
-- [ ] Retain the governing rules and proof documentation on `carve`.  Retain service API, deployment, and operating documentation on `service`.
+- [x] Retain the governing rules and proof documentation on `carve`.  Retain service API, deployment, and operating documentation on `service`.
 - [x] Keep the procedure development journals on `carve` and the service-owned `devnotes.md` on `service`, as required by `AGENTS.md`.
 - [ ] Check every local Markdown link and command example on both branches.
 

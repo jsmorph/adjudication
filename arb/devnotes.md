@@ -1,10 +1,18 @@
 # Development Notes
 
+## 2026-08-05: Concurrent fake-engine execution
+
+Parallel council tests intermittently received `ETXTBSY` when they executed shell files created in temporary directories.  The Go standard library's Linux `os/exec` test documents the cause in [issue 22315](https://go.dev/issue/22315): a concurrent fork can inherit the writable descriptor before its close-on-exec flag takes effect.  The council fixtures now pass their fake engine program to `/bin/sh -c`, eliminating the generated executable while preserving a subprocess that reads the engine request from standard input.
+
+Both ARB and AARD passed 100 repetitions of the two parallel council-removal tests.  The complete core Go suite, build, and vet checks also pass.  Commit `ef540ff` contains the symmetric fixture correction.
+
 ## 2026-08-02: Acceptance example reduction
 
 ARB retains `examples/ex01` as its command-line acceptance case.  The removed examples duplicated the same input interface or preserved run-specific market research and source captures.  The retained example now documents validation, one-case execution, output records, and certificate verification.
 
 The complete Go test, build, and vet checks pass after the reduction.  `aar validate --complaint examples/ex01/complaint.md` accepts the retained complaint and its case-file references.  A live case continues to require the model credentials documented by the example.
+
+The procedure-local `pool.jsonl` and `personas/generic.md` were byte-identical to the retained files under `common/`.  ARB now uses the same shared defaults as ADC and AARD, while an explicit `--council-pool` or a caller-supplied local pool still takes precedence.  Three unlinked Mermaid files also left `arb/analysis` because they described obsolete resolution labels and prohibited surrebuttal evidence that the current procedure accepts.
 
 ## 2026-08-02: Core reduction
 

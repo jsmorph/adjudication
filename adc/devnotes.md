@@ -6,6 +6,8 @@ ADC retains `examples/ex1` as its command-line acceptance case.  The removed `ex
 
 The complete Go test, build, and vet checks pass after the reduction.  `bash -n adc/examples/ex1/sign.sh` accepts the retained signature-preparation program.  A live case continues to require the model credentials documented by the example.
 
+ADC retains its SQLite store because `adc case` writes `run.db` as part of the approved durable record.  The `pacer` command provides the command-line reader for the PACER-style documents derived from that database.  Store tests cover persistence and document derivation, while the service branch reads the documented record through service-owned code.
+
 ## 2026-08-02: Core reduction
 
 The core command now exposes `case`, `scenario`, `case-packet`, `complain`, `pacer`, `validate`, and `verify-certificate`.  The eval, juror-probe, model-probe, and pool-generation commands left with their experimental packages and data.  The remaining command paths implement complaint preparation, one-case adjudication, the case-owned Role API, record inspection, and replay verification.

@@ -1,5 +1,11 @@
 # Development Notes
 
+## 2026-08-05: Concurrent fake-engine execution
+
+The council fixtures now pass their fake engine program to `/bin/sh -c` instead of writing and executing a temporary shell file.  This matches the ARB correction for the `ETXTBSY` race documented by the Go standard library in [issue 22315](https://go.dev/issue/22315).  The change retains the subprocess and standard-input boundary exercised by these tests.
+
+Both ARB and AARD passed 100 repetitions of the two parallel council-removal tests.  The complete core Go suite, build, and vet checks also pass.  Commit `ef540ff` contains the symmetric fixture correction.
+
 ## 2026-08-02: Acceptance example reduction
 
 AARD retains `examples/ex1` as its command-line acceptance case.  The removed `examples/ex2` and `examples/ex3` supplied additional questions through the same complaint and case-file interface.  The retained example now documents validation, one-case execution, output records, and certificate verification.
