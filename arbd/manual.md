@@ -229,7 +229,7 @@ curl -sS -X POST "$BASE/do" -H 'content-type: application/json' --data '{
     "kind": "tool",
     "tool_name": "record_opening_statement",
     "payload": {
-      "text": "The score will turn on the confession's attribution and provenance.",
+      "text": "The score will turn on the attribution and provenance of the confession.",
       "offered_evidence": [],
       "technical_reports": []
     }

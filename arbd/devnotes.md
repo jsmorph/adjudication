@@ -167,7 +167,7 @@ The fifth run used `case_id=clerk-attested-aard-ex1-20260617T014658Z` and `run_i
 
 ### Service and agent runtime migration
 
-Reference: [AARD service and agent update plan](../scratch/arbd/update-plan.md)
+Reference: AARD service and agent update plan (`../scratch/arbd/update-plan.md`)
 
 `arbd` now has the same current runtime shape as `arb`: a direct `aard` command with `case`, `mcp`, `service`, and `run` subcommands; a private case HTTP API; role-bound Lawyer API and Council API endpoints; an MCP adapter over those APIs; a Clerk service; and a local run path that starts OpenClaw lawyers and Pi council agents.  The implementation keeps AARD degree semantics.  Lawyers argue for numeric answers or answer ranges, council members call `submit_council_answer` with an integer from `0` through `100`, and final result data exposes the answer map rather than a binary resolution.
 
@@ -266,3 +266,9 @@ complaint packets stable and readable.  Empty input fails, and an explicit empty
 - [x] Accept plain text as complaint input.
 - [x] Reject blank complaints and blank explicit sections.
 - [x] Cover parser behavior in tests.
+
+## 2026-08-05: Carve documentation and command audit
+
+The historical link to the removed service migration plan now remains as a labeled path without a dead Markdown target.  The AARD tree contains 36 checked local links with no missing target, and every tracked shell example parses under `bash -n`.  The shell check also identified and corrected an unmatched single quote in the documented filing request.
+
+The command audit found that `aard help complain` and `aard help validate` printed usage but returned `flag.ErrHelp`, causing exit status 1.  Both subcommands now treat requested help as success, matching the other retained commands and the manual.  `TestHelpTopicsSucceed` covers every root help topic, and the complete `runtime/cmd/aard` package test passes.

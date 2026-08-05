@@ -87,13 +87,13 @@ The ADC Docker definitions, exec entrypoint, attested driver, shell helpers, and
 
 ### References
 
-- Judge eval plan: [`evals/adc/judge/plan.md`](../evals/adc/judge/plan.md)
-- Rule 60 plan: [`evals/adc/judge/rules/rule60/relief-from-judgment/plan.md`](../evals/adc/judge/rules/rule60/relief-from-judgment/plan.md)
-- Rule 60 fixtures: [`evals/adc/judge/rules/rule60/relief-from-judgment/fixtures.jsonl`](../evals/adc/judge/rules/rule60/relief-from-judgment/fixtures.jsonl)
-- Candidate prompt v1: [`evals/adc/judge/rules/rule60/relief-from-judgment/prompts/candidate-v1.md`](../evals/adc/judge/rules/rule60/relief-from-judgment/prompts/candidate-v1.md)
-- Analysis: [`evals/adc/judge/rules/rule60/relief-from-judgment/analysis.md`](../evals/adc/judge/rules/rule60/relief-from-judgment/analysis.md)
-- Runner: [`runtime/eval/judge_rule60.go`](runtime/eval/judge_rule60.go)
-- CLI entry point: [`runtime/cli/eval.go`](runtime/cli/eval.go)
+- Judge eval plan: `evals/adc/judge/plan.md`
+- Rule 60 plan: `evals/adc/judge/rules/rule60/relief-from-judgment/plan.md`
+- Rule 60 fixtures: `evals/adc/judge/rules/rule60/relief-from-judgment/fixtures.jsonl`
+- Candidate prompt v1: `evals/adc/judge/rules/rule60/relief-from-judgment/prompts/candidate-v1.md`
+- Analysis: `evals/adc/judge/rules/rule60/relief-from-judgment/analysis.md`
+- Runner: `runtime/eval/judge_rule60.go`
+- CLI entry point: `runtime/cli/eval.go`
 - ARCP Rule 60: [`docs/ARCP.md`](docs/ARCP.md)
 
 ### Decisions
@@ -120,13 +120,13 @@ Production and candidate v1 both scored 16/16 after scorer correction.  Both mad
 
 ### References
 
-- Judge eval plan: [`evals/adc/judge/plan.md`](../evals/adc/judge/plan.md)
-- Rule 58 plan: [`evals/adc/judge/rules/rule58/judgment-entry/plan.md`](../evals/adc/judge/rules/rule58/judgment-entry/plan.md)
-- Rule 58 fixtures: [`evals/adc/judge/rules/rule58/judgment-entry/fixtures.jsonl`](../evals/adc/judge/rules/rule58/judgment-entry/fixtures.jsonl)
-- Candidate prompt v1: [`evals/adc/judge/rules/rule58/judgment-entry/prompts/candidate-v1.md`](../evals/adc/judge/rules/rule58/judgment-entry/prompts/candidate-v1.md)
-- Analysis: [`evals/adc/judge/rules/rule58/judgment-entry/analysis.md`](../evals/adc/judge/rules/rule58/judgment-entry/analysis.md)
-- Runner: [`runtime/eval/judge_rule58.go`](runtime/eval/judge_rule58.go)
-- CLI entry point: [`runtime/cli/eval.go`](runtime/cli/eval.go)
+- Judge eval plan: `evals/adc/judge/plan.md`
+- Rule 58 plan: `evals/adc/judge/rules/rule58/judgment-entry/plan.md`
+- Rule 58 fixtures: `evals/adc/judge/rules/rule58/judgment-entry/fixtures.jsonl`
+- Candidate prompt v1: `evals/adc/judge/rules/rule58/judgment-entry/prompts/candidate-v1.md`
+- Analysis: `evals/adc/judge/rules/rule58/judgment-entry/analysis.md`
+- Runner: `runtime/eval/judge_rule58.go`
+- CLI entry point: `runtime/cli/eval.go`
 - ARCP Rule 58: [`docs/ARCP.md`](docs/ARCP.md)
 
 ### Decisions
@@ -149,13 +149,13 @@ Production and candidate v1 both scored 16/16 live.  Both returned valid payload
 
 ### References
 
-- Judge eval plan: [`evals/adc/judge/plan.md`](../evals/adc/judge/plan.md)
-- Rule 52 plan: [`evals/adc/judge/rules/rule52/bench-opinion/plan.md`](../evals/adc/judge/rules/rule52/bench-opinion/plan.md)
-- Rule 52 fixtures: [`evals/adc/judge/rules/rule52/bench-opinion/fixtures.jsonl`](../evals/adc/judge/rules/rule52/bench-opinion/fixtures.jsonl)
-- Candidate prompt v1: [`evals/adc/judge/rules/rule52/bench-opinion/prompts/candidate-v1.md`](../evals/adc/judge/rules/rule52/bench-opinion/prompts/candidate-v1.md)
-- Analysis: [`evals/adc/judge/rules/rule52/bench-opinion/analysis.md`](../evals/adc/judge/rules/rule52/bench-opinion/analysis.md)
-- Runner: [`runtime/eval/judge_rule52.go`](runtime/eval/judge_rule52.go)
-- CLI entry point: [`runtime/cli/eval.go`](runtime/cli/eval.go)
+- Judge eval plan: `evals/adc/judge/plan.md`
+- Rule 52 plan: `evals/adc/judge/rules/rule52/bench-opinion/plan.md`
+- Rule 52 fixtures: `evals/adc/judge/rules/rule52/bench-opinion/fixtures.jsonl`
+- Candidate prompt v1: `evals/adc/judge/rules/rule52/bench-opinion/prompts/candidate-v1.md`
+- Analysis: `evals/adc/judge/rules/rule52/bench-opinion/analysis.md`
+- Runner: `runtime/eval/judge_rule52.go`
+- CLI entry point: `runtime/cli/eval.go`
 - ARCP Rule 52: [`docs/ARCP.md`](docs/ARCP.md)
 
 ### Decisions
@@ -182,14 +182,14 @@ Production and candidate v1 both scored 16/16 after deterministic scorer correct
 
 ### References
 
-- Judge eval plan: [`evals/adc/judge/plan.md`](../evals/adc/judge/plan.md)
-- Rule 11 plan: [`evals/adc/judge/rules/rule11/sanctions/plan.md`](../evals/adc/judge/rules/rule11/sanctions/plan.md)
-- Rule 11 fixtures: [`evals/adc/judge/rules/rule11/sanctions/fixtures.jsonl`](../evals/adc/judge/rules/rule11/sanctions/fixtures.jsonl)
-- Candidate prompt v1: [`evals/adc/judge/rules/rule11/sanctions/prompts/candidate-v1.md`](../evals/adc/judge/rules/rule11/sanctions/prompts/candidate-v1.md)
-- Candidate prompt v2: [`evals/adc/judge/rules/rule11/sanctions/prompts/candidate-v2.md`](../evals/adc/judge/rules/rule11/sanctions/prompts/candidate-v2.md)
-- Analysis: [`evals/adc/judge/rules/rule11/sanctions/analysis.md`](../evals/adc/judge/rules/rule11/sanctions/analysis.md)
-- Runner: [`runtime/eval/judge_rule11.go`](runtime/eval/judge_rule11.go)
-- CLI entry point: [`runtime/cli/eval.go`](runtime/cli/eval.go)
+- Judge eval plan: `evals/adc/judge/plan.md`
+- Rule 11 plan: `evals/adc/judge/rules/rule11/sanctions/plan.md`
+- Rule 11 fixtures: `evals/adc/judge/rules/rule11/sanctions/fixtures.jsonl`
+- Candidate prompt v1: `evals/adc/judge/rules/rule11/sanctions/prompts/candidate-v1.md`
+- Candidate prompt v2: `evals/adc/judge/rules/rule11/sanctions/prompts/candidate-v2.md`
+- Analysis: `evals/adc/judge/rules/rule11/sanctions/analysis.md`
+- Runner: `runtime/eval/judge_rule11.go`
+- CLI entry point: `runtime/cli/eval.go`
 - ARCP Rule 11: [`docs/ARCP.md`](docs/ARCP.md)
 
 ### Decisions
@@ -214,14 +214,14 @@ Production scored 5/16 live because 11 payloads were invalid.  Nine denied motio
 
 ### References
 
-- Judge eval plan: [`evals/adc/judge/plan.md`](../evals/adc/judge/plan.md)
-- Rule 37 plan: [`evals/adc/judge/rules/rule37/discovery-sanctions/plan.md`](../evals/adc/judge/rules/rule37/discovery-sanctions/plan.md)
-- Rule 37 fixtures: [`evals/adc/judge/rules/rule37/discovery-sanctions/fixtures.jsonl`](../evals/adc/judge/rules/rule37/discovery-sanctions/fixtures.jsonl)
-- Candidate prompt v1: [`evals/adc/judge/rules/rule37/discovery-sanctions/prompts/candidate-v1.md`](../evals/adc/judge/rules/rule37/discovery-sanctions/prompts/candidate-v1.md)
-- Candidate prompt v2: [`evals/adc/judge/rules/rule37/discovery-sanctions/prompts/candidate-v2.md`](../evals/adc/judge/rules/rule37/discovery-sanctions/prompts/candidate-v2.md)
-- Analysis: [`evals/adc/judge/rules/rule37/discovery-sanctions/analysis.md`](../evals/adc/judge/rules/rule37/discovery-sanctions/analysis.md)
-- Runner: [`runtime/eval/judge_rule37.go`](runtime/eval/judge_rule37.go)
-- CLI entry point: [`runtime/cli/eval.go`](runtime/cli/eval.go)
+- Judge eval plan: `evals/adc/judge/plan.md`
+- Rule 37 plan: `evals/adc/judge/rules/rule37/discovery-sanctions/plan.md`
+- Rule 37 fixtures: `evals/adc/judge/rules/rule37/discovery-sanctions/fixtures.jsonl`
+- Candidate prompt v1: `evals/adc/judge/rules/rule37/discovery-sanctions/prompts/candidate-v1.md`
+- Candidate prompt v2: `evals/adc/judge/rules/rule37/discovery-sanctions/prompts/candidate-v2.md`
+- Analysis: `evals/adc/judge/rules/rule37/discovery-sanctions/analysis.md`
+- Runner: `runtime/eval/judge_rule37.go`
+- CLI entry point: `runtime/cli/eval.go`
 - ARCP discovery rules: [`docs/ARCP.md`](docs/ARCP.md)
 
 ### Decisions
@@ -251,13 +251,13 @@ Candidate v2 is the best measured Rule 37 prompt.  It requires `sanction_type` i
 
 ### References
 
-- Judge eval plan: [`evals/adc/judge/plan.md`](../evals/adc/judge/plan.md)
-- For-cause plan: [`evals/adc/judge/rules/rule47/for-cause-challenge/plan.md`](../evals/adc/judge/rules/rule47/for-cause-challenge/plan.md)
-- For-cause fixtures: [`evals/adc/judge/rules/rule47/for-cause-challenge/fixtures.jsonl`](../evals/adc/judge/rules/rule47/for-cause-challenge/fixtures.jsonl)
-- Candidate prompt v1: [`evals/adc/judge/rules/rule47/for-cause-challenge/prompts/candidate-v1.md`](../evals/adc/judge/rules/rule47/for-cause-challenge/prompts/candidate-v1.md)
-- Analysis: [`evals/adc/judge/rules/rule47/for-cause-challenge/analysis.md`](../evals/adc/judge/rules/rule47/for-cause-challenge/analysis.md)
-- Runner: [`runtime/eval/judge_for_cause.go`](runtime/eval/judge_for_cause.go)
-- CLI entry point: [`runtime/cli/eval.go`](runtime/cli/eval.go)
+- Judge eval plan: `evals/adc/judge/plan.md`
+- For-cause plan: `evals/adc/judge/rules/rule47/for-cause-challenge/plan.md`
+- For-cause fixtures: `evals/adc/judge/rules/rule47/for-cause-challenge/fixtures.jsonl`
+- Candidate prompt v1: `evals/adc/judge/rules/rule47/for-cause-challenge/prompts/candidate-v1.md`
+- Analysis: `evals/adc/judge/rules/rule47/for-cause-challenge/analysis.md`
+- Runner: `runtime/eval/judge_for_cause.go`
+- CLI entry point: `runtime/cli/eval.go`
 
 ### Decisions
 
@@ -282,13 +282,13 @@ Candidate v1 also scored 16/16 on the live run.  It states the for-cause boundar
 
 ### References
 
-- Judge eval plan: [`evals/adc/judge/plan.md`](../evals/adc/judge/plan.md)
-- Rule 51 plan: [`evals/adc/judge/rules/rule51/jury-instructions/plan.md`](../evals/adc/judge/rules/rule51/jury-instructions/plan.md)
-- Rule 51 fixtures: [`evals/adc/judge/rules/rule51/jury-instructions/fixtures.jsonl`](../evals/adc/judge/rules/rule51/jury-instructions/fixtures.jsonl)
-- Candidate prompt v1: [`evals/adc/judge/rules/rule51/jury-instructions/prompts/candidate-v1.md`](../evals/adc/judge/rules/rule51/jury-instructions/prompts/candidate-v1.md)
-- Analysis: [`evals/adc/judge/rules/rule51/jury-instructions/analysis.md`](../evals/adc/judge/rules/rule51/jury-instructions/analysis.md)
-- Runner: [`runtime/eval/judge_rule51.go`](runtime/eval/judge_rule51.go)
-- CLI entry point: [`runtime/cli/eval.go`](runtime/cli/eval.go)
+- Judge eval plan: `evals/adc/judge/plan.md`
+- Rule 51 plan: `evals/adc/judge/rules/rule51/jury-instructions/plan.md`
+- Rule 51 fixtures: `evals/adc/judge/rules/rule51/jury-instructions/fixtures.jsonl`
+- Candidate prompt v1: `evals/adc/judge/rules/rule51/jury-instructions/prompts/candidate-v1.md`
+- Analysis: `evals/adc/judge/rules/rule51/jury-instructions/analysis.md`
+- Runner: `runtime/eval/judge_rule51.go`
+- CLI entry point: `runtime/cli/eval.go`
 
 ### Decisions
 
@@ -314,14 +314,14 @@ Candidate v1 also scored 16/16 after rescoring.  It gives the judge more explici
 
 ### References
 
-- Judge eval plan: [`evals/adc/judge/plan.md`](../evals/adc/judge/plan.md)
-- Rule 12 plan: [`evals/adc/judge/rules/rule12/dismissal-jurisdiction/plan.md`](../evals/adc/judge/rules/rule12/dismissal-jurisdiction/plan.md)
-- Rule 12 fixtures: [`evals/adc/judge/rules/rule12/dismissal-jurisdiction/fixtures.jsonl`](../evals/adc/judge/rules/rule12/dismissal-jurisdiction/fixtures.jsonl)
-- Candidate prompt v1: [`evals/adc/judge/rules/rule12/dismissal-jurisdiction/prompts/candidate-v1.md`](../evals/adc/judge/rules/rule12/dismissal-jurisdiction/prompts/candidate-v1.md)
-- Candidate prompt v2: [`evals/adc/judge/rules/rule12/dismissal-jurisdiction/prompts/candidate-v2.md`](../evals/adc/judge/rules/rule12/dismissal-jurisdiction/prompts/candidate-v2.md)
-- Analysis: [`evals/adc/judge/rules/rule12/dismissal-jurisdiction/analysis.md`](../evals/adc/judge/rules/rule12/dismissal-jurisdiction/analysis.md)
-- Runner: [`runtime/eval/judge_rule12.go`](runtime/eval/judge_rule12.go)
-- CLI entry point: [`runtime/cli/eval.go`](runtime/cli/eval.go)
+- Judge eval plan: `evals/adc/judge/plan.md`
+- Rule 12 plan: `evals/adc/judge/rules/rule12/dismissal-jurisdiction/plan.md`
+- Rule 12 fixtures: `evals/adc/judge/rules/rule12/dismissal-jurisdiction/fixtures.jsonl`
+- Candidate prompt v1: `evals/adc/judge/rules/rule12/dismissal-jurisdiction/prompts/candidate-v1.md`
+- Candidate prompt v2: `evals/adc/judge/rules/rule12/dismissal-jurisdiction/prompts/candidate-v2.md`
+- Analysis: `evals/adc/judge/rules/rule12/dismissal-jurisdiction/analysis.md`
+- Runner: `runtime/eval/judge_rule12.go`
+- CLI entry point: `runtime/cli/eval.go`
 
 ### Decisions
 
@@ -348,14 +348,14 @@ Candidate v2 is the best measured Rule 12 prompt.  It narrows the no-leave rule 
 
 ### References
 
-- Judge eval plan: [`evals/adc/judge/plan.md`](../evals/adc/judge/plan.md)
-- Rule 56 plan: [`evals/adc/judge/rules/rule56/summary-judgment/plan.md`](../evals/adc/judge/rules/rule56/summary-judgment/plan.md)
-- Rule 56 fixtures: [`evals/adc/judge/rules/rule56/summary-judgment/fixtures.jsonl`](../evals/adc/judge/rules/rule56/summary-judgment/fixtures.jsonl)
-- Candidate prompt v1: [`evals/adc/judge/rules/rule56/summary-judgment/prompts/candidate-v1.md`](../evals/adc/judge/rules/rule56/summary-judgment/prompts/candidate-v1.md)
-- Candidate prompt v2: [`evals/adc/judge/rules/rule56/summary-judgment/prompts/candidate-v2.md`](../evals/adc/judge/rules/rule56/summary-judgment/prompts/candidate-v2.md)
-- Analysis: [`evals/adc/judge/rules/rule56/summary-judgment/analysis.md`](../evals/adc/judge/rules/rule56/summary-judgment/analysis.md)
-- Runner: [`runtime/eval/judge_rule56.go`](runtime/eval/judge_rule56.go)
-- CLI entry point: [`runtime/cli/eval.go`](runtime/cli/eval.go)
+- Judge eval plan: `evals/adc/judge/plan.md`
+- Rule 56 plan: `evals/adc/judge/rules/rule56/summary-judgment/plan.md`
+- Rule 56 fixtures: `evals/adc/judge/rules/rule56/summary-judgment/fixtures.jsonl`
+- Candidate prompt v1: `evals/adc/judge/rules/rule56/summary-judgment/prompts/candidate-v1.md`
+- Candidate prompt v2: `evals/adc/judge/rules/rule56/summary-judgment/prompts/candidate-v2.md`
+- Analysis: `evals/adc/judge/rules/rule56/summary-judgment/analysis.md`
+- Runner: `runtime/eval/judge_rule56.go`
+- CLI entry point: `runtime/cli/eval.go`
 
 ### Decisions
 
@@ -380,15 +380,15 @@ Candidate v2 is the best measured Rule 56 prompt.  It preserves the scope rule f
 
 ### References
 
-- Eval suite: [Rule 47 Voir Dire Question Screening](../evals/adc/judge/rules/rule47/voir-dire-question/README.md)
-- CLI entry point: [`runtime/cli/eval.go`](runtime/cli/eval.go)
-- Eval package: [`runtime/eval/judge_voir_dire.go`](runtime/eval/judge_voir_dire.go)
-- Fixtures: [`evals/adc/judge/rules/rule47/voir-dire-question/fixtures.jsonl`](../evals/adc/judge/rules/rule47/voir-dire-question/fixtures.jsonl)
-- Hard fixtures: [`evals/adc/judge/rules/rule47/voir-dire-question/hard-fixtures.jsonl`](../evals/adc/judge/rules/rule47/voir-dire-question/hard-fixtures.jsonl)
-- Candidate prompt v1: [`evals/adc/judge/rules/rule47/voir-dire-question/prompts/candidate-v1.md`](../evals/adc/judge/rules/rule47/voir-dire-question/prompts/candidate-v1.md)
-- Candidate prompt v2: [`evals/adc/judge/rules/rule47/voir-dire-question/prompts/candidate-v2.md`](../evals/adc/judge/rules/rule47/voir-dire-question/prompts/candidate-v2.md)
-- Candidate prompt v3: [`evals/adc/judge/rules/rule47/voir-dire-question/prompts/candidate-v3.md`](../evals/adc/judge/rules/rule47/voir-dire-question/prompts/candidate-v3.md)
-- Analysis: [`evals/adc/judge/rules/rule47/voir-dire-question/analysis.md`](../evals/adc/judge/rules/rule47/voir-dire-question/analysis.md)
+- Eval suite: Rule 47 Voir Dire Question Screening (`../evals/adc/judge/rules/rule47/voir-dire-question/README.md`)
+- CLI entry point: `runtime/cli/eval.go`
+- Eval package: `runtime/eval/judge_voir_dire.go`
+- Fixtures: `evals/adc/judge/rules/rule47/voir-dire-question/fixtures.jsonl`
+- Hard fixtures: `evals/adc/judge/rules/rule47/voir-dire-question/hard-fixtures.jsonl`
+- Candidate prompt v1: `evals/adc/judge/rules/rule47/voir-dire-question/prompts/candidate-v1.md`
+- Candidate prompt v2: `evals/adc/judge/rules/rule47/voir-dire-question/prompts/candidate-v2.md`
+- Candidate prompt v3: `evals/adc/judge/rules/rule47/voir-dire-question/prompts/candidate-v3.md`
+- Analysis: `evals/adc/judge/rules/rule47/voir-dire-question/analysis.md`
 
 ### Decisions
 
@@ -433,9 +433,9 @@ Candidate v1 failed the hard set by allowing `jvdh-002`, a prohibited damages-ra
 
 ### References
 
-- New command: [`runtime/cli/juror.go`](runtime/cli/juror.go)
+- New command: `runtime/cli/juror.go`
 - Persona record loading: [`../common/persona/persona.go`](../common/persona/persona.go)
-- Voir dire experiment plan: [Voir Dire Experiments, Plan 1](docs/voir-dire-experiment-plan.md)
+- Voir dire experiment plan: Voir Dire Experiments, Plan 1 (`docs/voir-dire-experiment-plan.md`)
 
 ### Decisions
 
@@ -489,7 +489,7 @@ behavior on the request-spec path.  Verified live with
 - Replay certificate implementation: [`runtime/runner/certificate.go`](runtime/runner/certificate.go)
 - Certificate verifier command: [`runtime/cli/verify_certificate.go`](runtime/cli/verify_certificate.go)
 - Exhibit action boundary: [`engine/Main.lean`](engine/Main.lean)
-- Service artifact route: [`runtime/service/service.go`](runtime/service/service.go)
+- Service artifact route: `runtime/service/service.go`
 - ADC manual output section: [`manual.md`](manual.md#output-artifacts)
 - Certificate and proof status: [Proof Work Status](../docs/proof-notes.md)
 
@@ -525,8 +525,8 @@ Importing the closed-case opportunity theorem into the certificate proof path ex
 
 ### References
 
-- Service process manager: [`runtime/service/service.go`](runtime/service/service.go)
-- Service process tests: [`runtime/service/service_test.go`](runtime/service/service_test.go)
+- Service process manager: `runtime/service/service.go`
+- Service process tests: `runtime/service/service_test.go`
 
 ### Decisions
 
@@ -547,7 +547,7 @@ Artifact reads now distinguish names outside the allowlist from listed artifacts
 
 ### References
 
-- Service evidence route: [`runtime/service/service.go`](runtime/service/service.go)
+- Service evidence route: `runtime/service/service.go`
 - Runner evidence output: [`runtime/runner/io.go`](runtime/runner/io.go)
 - ADC manual service section: [`manual.md`](manual.md#service-api)
 
@@ -567,8 +567,8 @@ The runner now writes `evidence-manifest.json` when it initializes and after cas
 ### References
 
 - ADC manual: [`manual.md`](manual.md)
-- ADC Docker runbook: [`Dockerfile.md`](Dockerfile.md)
-- ADC attested dev-host requirements: [`docs/attested-dev-host.md`](docs/attested-dev-host.md)
+- ADC Docker runbook: `Dockerfile.md`
+- ADC attested dev-host requirements: `docs/attested-dev-host.md`
 
 ### Decisions
 
@@ -584,12 +584,12 @@ The README uses the same documentation table as AAR, AARD, and evals.  It links 
 
 ### References
 
-- ADC Docker runbook: [`Dockerfile.md`](Dockerfile.md)
-- ADC dev-host requirements: [`docs/attested-dev-host.md`](docs/attested-dev-host.md)
-- Attested ADC driver: [`tools/run-adc-attested.py`](tools/run-adc-attested.py)
-- Exec workload script: [`tools/run-adc.sh`](tools/run-adc.sh)
-- Exec container entrypoint: [`attest/exec-container-entrypoint.sh`](attest/exec-container-entrypoint.sh)
-- Clerk service attestation support: [`runtime/service/attested.go`](runtime/service/attested.go)
+- ADC Docker runbook: `Dockerfile.md`
+- ADC dev-host requirements: `docs/attested-dev-host.md`
+- Attested ADC driver: `tools/run-adc-attested.py`
+- Exec workload script: `tools/run-adc.sh`
+- Exec container entrypoint: `attest/exec-container-entrypoint.sh`
+- Clerk service attestation support: `runtime/service/attested.go`
 - Complaint packet builder: [`runtime/casepacket/case_packet.go`](runtime/casepacket/case_packet.go)
 
 ### Decisions
@@ -637,8 +637,8 @@ The ADC runbook now documents the full Clerk service path as one sequence: choos
 
 - Practice guide: [`docs/practice.md`](docs/practice.md)
 - Operating reference: [`manual.md`](manual.md)
-- Lawyer instructions: [`agent-instructions/openclaw-lawyer.md.tmpl`](agent-instructions/openclaw-lawyer.md.tmpl)
-- Juror instructions: [`agent-instructions/pi-juror.md.tmpl`](agent-instructions/pi-juror.md.tmpl)
+- Lawyer instructions: `agent-instructions/openclaw-lawyer.md.tmpl`
+- Juror instructions: `agent-instructions/pi-juror.md.tmpl`
 
 ### Decisions
 
@@ -652,8 +652,8 @@ The guide emphasizes case-file inspection, exhibit offers, technical reports, wo
 
 - Jury policy and deterministic clerk action: [`engine/Main.lean`](engine/Main.lean)
 - Scenario policy defaults and runtime overrides: [`runtime/runner/state_init.go`](runtime/runner/state_init.go), [`runtime/runner/runner.go`](runtime/runner/runner.go)
-- Direct command flags: [`runtime/cli/case.go`](runtime/cli/case.go), [`runtime/cli/run.go`](runtime/cli/run.go), [`runtime/cli/localrun.go`](runtime/cli/localrun.go)
-- Clerk create request: [`runtime/service/service.go`](runtime/service/service.go)
+- Direct command flags: [`runtime/cli/case.go`](runtime/cli/case.go), [`runtime/cli/run.go`](runtime/cli/run.go), `runtime/cli/localrun.go`
+- Clerk create request: `runtime/service/service.go`
 
 ### Decisions
 
@@ -688,8 +688,8 @@ This rule matches the operational goal for agent trials.  A single Pi model fail
 
 ### References
 
-- Local ADC full-run process management: [`runtime/localrun/localrun.go`](runtime/localrun/localrun.go)
-- Pi juror instructions: [`agent-instructions/pi-juror.md.tmpl`](agent-instructions/pi-juror.md.tmpl)
+- Local ADC full-run process management: `runtime/localrun/localrun.go`
+- Pi juror instructions: `agent-instructions/pi-juror.md.tmpl`
 - Juror deliberation prompt: [`runtime/runner/juror_prompt.go`](runtime/runner/juror_prompt.go)
 
 ### Decisions
@@ -710,11 +710,11 @@ A fresh deliberation process gets the deliberation prompt, which includes the tr
 
 ### References
 
-- ADC update plan: [`../scratch/adc/update-plan.md`](../scratch/adc/update-plan.md)
+- ADC update plan: `../scratch/adc/update-plan.md`
 - Role API: [`runtime/runner/roleapi.go`](runtime/runner/roleapi.go)
-- MCP adapter: [`runtime/mcp/mcp.go`](runtime/mcp/mcp.go)
-- Clerk service: [`runtime/service/service.go`](runtime/service/service.go)
-- Local run command: [`runtime/localrun/localrun.go`](runtime/localrun/localrun.go)
+- MCP adapter: `runtime/mcp/mcp.go`
+- Clerk service: `runtime/service/service.go`
+- Local run command: `runtime/localrun/localrun.go`
 
 ### Decisions
 
@@ -745,7 +745,7 @@ Entries below this section are historical development notes.  ACP and xproxy ent
 - ACP role runtime: `runtime/runner/acp_role.go`
 - PI-home staging: `runtime/runner/pi_container_home.go`
 - Agent documentation: [`docs/agents.md`](docs/agents.md)
-- Porting inventory: [`../scratch/adc/update.md`](../scratch/adc/update.md)
+- Porting inventory: `../scratch/adc/update.md`
 
 ### Decisions
 
@@ -771,7 +771,7 @@ The ACP prompt now names current limits instead of relying only on static docume
 - ACP CLI entrypoint: `runtime/cli/acp.go`
 - PI-home staging path: `runtime/runner/pi_container_home.go`
 - ACP role wrapper setup: `runtime/runner/acp_role.go`
-- Podman ACP wrapper: [`../common/pi-container/acp-podman.sh`](../common/pi-container/acp-podman.sh)
+- Podman ACP wrapper: `../common/pi-container/acp-podman.sh`
 
 ### Decisions
 
@@ -860,3 +860,7 @@ The ACP prompt now names current limits instead of relying only on static docume
 - Live test: `uv run ../evals/model-pool/tools/cluster-personas.py --personas-file /tmp/persona-sample-test.csv --genes-file /tmp/persona-sample-genes.json --num-samples 3 --gene-dim 3`
 - Live output: three `MP,G,C` rows for one persona and one gene through local xproxy plus direct embeddings.
 - Follow-up fix: `adc xproxy` initially returned an error on clean shutdown because the listener was already closed.  `runtime/xproxy/xproxy.go` now ignores `net.ErrClosed` in that path, and a live `Ctrl-C` shutdown now exits with status `0`.
+
+## 2026-08-05: Carve documentation audit
+
+Historical journal references to deliberately removed evaluation, service, adapter, and launcher files now retain their labels and paths without dead Markdown links.  The ADC tree contains 122 checked local links; the only unavailable targets are `confession.sig.b64` and `samantha_public.pem`, which `examples/ex1/sign.sh` generates before complaint drafting.  The current build succeeds, every retained `adc help SUBCOMMAND` topic exits successfully, and the checked shell examples parse under `bash -n`.

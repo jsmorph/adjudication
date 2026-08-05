@@ -19,6 +19,9 @@ func runComplain(args []string, stdout io.Writer, stderr io.Writer) error {
 		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
+		if err == flag.ErrHelp {
+			return nil
+		}
 		return err
 	}
 	if *situationPath == "" || *outPath == "" {

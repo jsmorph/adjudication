@@ -505,7 +505,7 @@ The host-network variant succeeded on the same exec AMI.  Exec instance `i-0c517
 
 ### Root documentation tidy
 
-Reference: [AAR Process and HTTP Specification](docs/aar-spec.md), [AAR MCP Specification](docs/aar-mcp-spec.md), [AAR MCP Test Plan](docs/aar-mcp-test.md), [AAR Case Failures](docs/case-failures.md), [AAR Case-Failure Testing](docs/case-failures-testing.md)
+Reference: [AAR Process and HTTP Specification](docs/aar-spec.md), AAR MCP Specification (`docs/aar-mcp-spec.md`), AAR MCP Test Plan (`docs/aar-mcp-test.md`), [AAR Case Failures](docs/case-failures.md), [AAR Case-Failure Testing](docs/case-failures-testing.md)
 
 Durable AAR specifications and test plans moved from the repository root into `arb/docs/`.  Temporary notes, stale drafts, and one-off OpenClaw instructions moved into root `scratch/`.  Root Markdown now contains only repository-level files: `README.md`, `NOTICES.md`, and `AGENTS.md`.
 
@@ -543,7 +543,7 @@ The Clerk `ex06` and `ex01` runs showed event timestamps that appeared to exceed
 
 ### Pi council completion
 
-Reference: [Pi council instructions](agent-instructions/pi-council.md.tmpl)
+Reference: Pi council instructions (`agent-instructions/pi-council.md.tmpl`)
 
 The Clerk `ex02` run showed C3 voting successfully and then continuing to call `wait_for_opportunity`.  That extra loop later reached C5's opportunity and produced a rejected tool call, though the case still closed correctly because C5 submitted its own vote.  The Pi council instruction template now states that a member must stop after `submit_council_vote` returns `ok: true`, and the localrun template test checks for that stop rule.
 
@@ -551,7 +551,7 @@ The Clerk `ex02` run showed C3 voting successfully and then continuing to call `
 
 ### OpenClaw lawyer authentication
 
-Reference: [OpenClaw OAuth-Derived Codex Auth](docs/openclaw-auth.md)
+Reference: OpenClaw OAuth-Derived Codex Auth (`docs/openclaw-auth.md`)
 
 `aar run` now supports both OpenClaw lawyer authentication paths.  Automatic mode prefers a readable Codex `auth.json`, stages one copied Codex home per lawyer container, mounts it as `/aar-codex`, and sets `CODEX_HOME=/aar-codex`.  If no readable Codex auth file exists, automatic mode uses `OPENAI_API_KEY`.  Explicit `codex` and `api-key` modes force either path.
 
@@ -577,7 +577,7 @@ The failure specification now distinguishes direct `aar case` terminal artifacts
 
 ### AAR MCP specification
 
-Reference: [AAR MCP Specification](docs/aar-mcp-spec.md), [AAR MCP Test Plan](docs/aar-mcp-test.md)
+Reference: AAR MCP Specification (`docs/aar-mcp-spec.md`), AAR MCP Test Plan (`docs/aar-mcp-test.md`)
 
 The MCP behavior now has separate root-level specification and test-plan documents.  The spec treats `aar mcp` as a transport adapter that binds each MCP session to one case-role or case-member assignment, exposes stable assignment tool sets, normalizes wait responses, injects the active opportunity id, and forwards calls to the service role APIs.  AAR remains the authority for case state, role validation, member validation, deadlines, attempts, and terminal case status.
 
@@ -587,7 +587,7 @@ The first executable pass now starts `aar mcp` as a subprocess, drives `/mcp` wi
 
 ### Provider and transport cleanup
 
-Reference: [Council API](../scratch/arb/councilapi.md), [OpenClaw service runbook](../scratch/arb/running.md), [Pi container README](../common/pi-container/README.md)
+Reference: Council API (`../scratch/arb/councilapi.md`), OpenClaw service runbook (`../scratch/arb/running.md`), Pi container README (`../common/pi-container/README.md`)
 
 AAR council calls now use direct provider clients for the `direct` backend.  Council seats carry JSON request specs with endpoint, model, provider, quantization, request parameters, and persona information.  The case runner no longer starts a local provider proxy, and the CLI no longer accepts provider-proxy or removed council-agent flags.
 
@@ -595,7 +595,7 @@ Local service examples now run OpenClaw containers for lawyers and Pi containers
 
 ### Lawyer case results
 
-Reference: [Lawyer HTTP API](../scratch/arb/lawyerapi.md), [OpenClaw service runbook](../scratch/arb/running.md)
+Reference: Lawyer HTTP API (`../scratch/arb/lawyerapi.md`), OpenClaw service runbook (`../scratch/arb/running.md`)
 
 The Lawyer API now exposes `GET /lawyerapi/v1/result`.  The request uses the same `case_id` and `role_id` shape as the rest of the API.  While the case remains open, the response reports `status: "pending"` and returns the live turn envelope.  After the case closes, it returns the resolution, final reason when known, deliberation round, every stored council vote with rationale, and vote counts by round.
 
@@ -603,13 +603,13 @@ The unified MCP server exposes the same data through the read-only `get_case_res
 
 ### Lawyer case status
 
-Reference: [Lawyer HTTP API](../scratch/arb/lawyerapi.md), [OpenClaw service runbook](../scratch/arb/running.md)
+Reference: Lawyer HTTP API (`../scratch/arb/lawyerapi.md`), OpenClaw service runbook (`../scratch/arb/running.md`)
 
 The Lawyer API now exposes `GET /lawyerapi/v1/status` and the read-only `case_status` tool.  The response reports the role's current status, case phase, case status, active turn, current opportunity details, state version, and compact counts for evidence, filings, events, and council votes.  The unified MCP server exposes `case_status` through the stable tool set and calls the status endpoint directly, so a waiting lawyer can inspect case status without an active `opportunity_id`.
 
 ### Lawyer Evidence Tools
 
-Reference: [Evidence Handling](docs/evidence-handling.md), [OpenClaw lawyer runbook](../scratch/arb/running.md)
+Reference: [Evidence Handling](docs/evidence-handling.md), OpenClaw lawyer runbook (`../scratch/arb/running.md`)
 
 The Lawyer API now separates read access from evidence submission.  Read-only evidence tools are available in every active lawyer phase, so a remote lawyer can inspect case-packet files before an opening or closing.  Evidence-submission tools remain limited to arguments, rebuttals, and surrebuttals.
 
@@ -629,7 +629,7 @@ Repeated OpenClaw runs showed plaintiff finding useful sources but attempting to
 
 ### Council API and MCP adapter
 
-Reference: [Council HTTP API](../scratch/arb/councilapi.md)
+Reference: Council HTTP API (`../scratch/arb/councilapi.md`)
 
 The Council API follows the Lawyer API architecture but binds each active client to `case_id` and `member_id`.  The HTTP server exposes `get`, `wait`, and `do`, and the MCP adapter only brokers those calls over Streamable HTTP.  The API keeps vote validation, deadlines, attempts, and evidence read budgets in AAR rather than moving that state into an agent adapter.
 
@@ -639,7 +639,7 @@ The adapter uses one MCP session per case-member.  A failed or expired MCP sessi
 
 ### Lawyer API
 
-Reference: [Lawyer HTTP API](../scratch/arb/lawyerapi.md)
+Reference: Lawyer HTTP API (`../scratch/arb/lawyerapi.md`)
 
 The lawyer side now uses one HTTP API owned by `aar case`.  The runner starts `/lawyerapi/v1`, publishes one active turn at a time, and blocks until the active lawyer submits a valid `submit_decision` call, exhausts attempts, or reaches the turn deadline.  Plaintiff and defendant integrations now sit outside the runtime and can use curl, a CLI, an MCP server, or another client that speaks this API.
 
@@ -1221,7 +1221,7 @@ proposition.
 
 ### Public service startup
 
-Reference: [AAR service](runtime/service/service.go)
+Reference: AAR service (`runtime/service/service.go`)
 
 The first `ex01` service run failed during case creation because the public
 service waited only thirty seconds for the child runner to announce private
@@ -1247,7 +1247,7 @@ lets `set -e` fail the run when a command fails.
 
 ### Private case API startup
 
-Reference: [Service runner](runtime/service/service.go)
+Reference: Service runner (`runtime/service/service.go`)
 
 The public service no longer reads child API URLs from child stderr.  It chooses
 one local private address before it starts `aar case`, passes that address as
@@ -1263,7 +1263,7 @@ requirements and preserving the final JSON summary for service status.
 
 ### Service-backed MCP process test
 
-Reference: [MCP process test](runtime/cmd/aar/mcp_blackbox_test.go)
+Reference: MCP process test (`runtime/cmd/aar/mcp_blackbox_test.go`)
 
 The external MCP test now starts `aar service`, starts `aar mcp`, creates a
 real service-managed case with the Council API backend, and drives plaintiff,
@@ -1276,7 +1276,7 @@ the case artifacts written under the output directory.
 
 ### OpenClaw stream retry
 
-Reference: [Local run launcher](runtime/localrun/localrun.go)
+Reference: Local run launcher (`runtime/localrun/localrun.go`)
 
 An attested `ex01` AAR run on the Docker-enabled exec AMI reached the plaintiff
 OpenClaw lawyer and failed inside `openclaw agent`.  The plaintiff stderr log
@@ -1292,7 +1292,7 @@ OpenClaw failures.  The localrun package test covers the generated command, and
 
 ### Exec completion marker
 
-Reference: [AAR exec container entrypoint](attest/exec-container-entrypoint.sh)
+Reference: AAR exec container entrypoint (`attest/exec-container-entrypoint.sh`)
 
 The exec launcher waits for an `ATTESTATION END` marker in the application
 console output.  The AAR exec entrypoint path wrote the attestation to S3 but printed only
@@ -1303,7 +1303,7 @@ after it uploads `run.log`, `manifest.json`, `manifest.sha384`, and
 
 ### Exec retry result
 
-Reference: [Local run launcher](runtime/localrun/localrun.go)
+Reference: Local run launcher (`runtime/localrun/localrun.go`)
 
 The rebuilt post-retry attested workload image tar was uploaded to
 `s3://agentcourt-data/arbattest/images/arb-glue-poc.tar` with SHA-384
@@ -1333,7 +1333,7 @@ child OpenClaw container used Docker host networking.
 
 ### Agent cleanup ordering
 
-Reference: [Local run launcher](runtime/localrun/localrun.go)
+Reference: Local run launcher (`runtime/localrun/localrun.go`)
 
 The host-network AAR run on instance `i-0fe13af586ae3c639` passed the previous
 OpenClaw stream-disconnect point, reached council deliberation, and entered the
@@ -1358,7 +1358,7 @@ covers the ordering.
 
 ### Attested `ex03` run
 
-Reference: [AAR Docker image runbook](Dockerfile.md)
+Reference: AAR Docker image runbook (`Dockerfile.md`)
 
 The `ex03` attested run used the checked-in driver at
 `tools/run-arb-attested.py` with verification enabled.  The first build command
@@ -1416,7 +1416,7 @@ completion record and did not require manual cleanup of the launched instance.
 
 ### Attested `ex06` run
 
-Reference: [AAR Docker image runbook](Dockerfile.md)
+Reference: AAR Docker image runbook (`Dockerfile.md`)
 
 The `ex06` attested run used `tools/run-arb-attested.py` with verification
 enabled.  The dev-side image validated `examples/ex06/complaint.md` before
@@ -1520,3 +1520,9 @@ Focused tests cover persona override loading, missing and empty persona failures
 Manual service testing found that `/clerk/v1/cases/{case_id}/evidence/{evidence_id}` returned `manifest_missing` during active long Clerk runs after lawyers had submitted evidence.  Submitted evidence bytes entered `evidence-store/` and live run state immediately, but `evidence-manifest.json` was written only during final packet rendering.  The service route uses the manifest to map an evidence id to stored bytes, so it could not fetch live evidence before terminal rendering.
 
 The proceeding now writes `evidence-manifest.json` when the evidence registry initializes and after each accepted submitted-evidence item.  The manifest writer uses a temporary file in the output directory and renames it into place, so the service route does not read partial JSON during a concurrent write.  The Clerk and direct service evidence routes now report an active missing manifest as HTTP `409` with error code `evidence_manifest_pending`; terminal packets without a manifest still return HTTP `404` with error code `manifest_missing`.
+
+## 2026-08-05: Carve documentation and command audit
+
+Historical journal references to deliberately removed service, adapter, launcher, and experimental files now retain their labels and paths without dead Markdown links.  The case-failure test plan now describes the retained direct `aar case`, Council API, and proceeding tests, including their current test names and expected records.  The ARB tree contains 82 checked local links with no missing target, and every tracked shell example parses under `bash -n`.
+
+The command audit found that `aar help complain` and `aar help validate` printed usage but returned `flag.ErrHelp`, causing exit status 1.  Both subcommands now treat requested help as success, matching the other retained commands and the manual.  `TestHelpTopicsSucceed` covers every root help topic, and the complete `runtime/cmd/aar` package test passes.
