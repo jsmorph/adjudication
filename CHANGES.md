@@ -10,6 +10,8 @@ The three attested image builds accept full core and service commit IDs, verify 
 
 The retained Lean projects and all three attested build stages moved to Lean 4.32.0 before core source left this branch.  The proof migration matches `carve@e887cc3e0379b5a3eb9892a4183b6e6259d75305`.  Subsequent service commits retain only the image builders' 4.32.0 installation pins.
 
+The service runbooks now identify ADC `ex1`, ARB `ex01`, and AARD `ex1` as the core acceptance examples.  These names match the service defaults and the distilled core example set.  Arbitrary complaint packets remain available for cases outside those fixtures.
+
 ## July 23-24, 2026
 
 ### Web programs

@@ -55,7 +55,7 @@ The attested workload image reads secrets from S3 so the attested instance does 
 
 The verified instance profile for the first version is the same profile used on `dev`, passed to `exec.sh` as `IAM_INSTANCE_PROFILE=ec2-nix-builder`.  The verified instance type is `m5.4xlarge`, because the exec AMI root filesystem is RAM-backed and Docker extracts image layers into that RAM-backed filesystem.  The verified region is `us-east-2`, and the verified S3 bucket prefix is `s3://agentcourt-data/arbattest/`.
 
-Valid `AAR_EXAMPLE` values are core example directory names accepted by `aar-run`: nonempty, no slash, no dot prefix, and no `..`.  Current examples include `ex01` through `ex12` and the long-form condition examples under `arb/examples`.  The exec container entrypoint records the chosen example in `manifest.json` as `aar_example`.
+Valid `AAR_EXAMPLE` values are core example directory names accepted by `aar-run`: nonempty, no slash, no dot prefix, and no `..`.  The distilled core retains `ex01` as its acceptance example.  The exec container entrypoint records the chosen example in `manifest.json` as `aar_example`.
 
 Case-packet input uses `AAR_INPUT_MODE=case-packet`.  The local driver invokes the installed `aar case-packet` command, then uploads `case.tar.gz` and `case-packet.json` through `dev` and passes their SHA-384 hashes to the exec AMI.  The core packet builder applies complaint-directory scanning, explicit glob expansion, duplicate-basename rejection, and prohibited-extension checks; absent `--file` arguments select ordinary immediate case files, while explicit selectors limit the packet to their matches.
 
@@ -218,7 +218,7 @@ For Clerk-managed attested runs, start with the [ARB Service Manual](../../arb/R
 The example wrapper is `service/attested/arb/run-one-attested-arb.sh`.  It takes the path to an example directory from the selected core checkout and verifies that the directory contains `complaint.md`.  It stages `auth.json` and `keys.sh` into a fresh S3 input prefix, chooses timestamped input and output prefixes, starts the exec AMI, downloads the S3 artifacts, extracts the AAR archive, and verifies the attestation.
 
 ```bash
-service/attested/arb/run-one-attested-arb.sh /path/to/core/arb/examples/ex03
+service/attested/arb/run-one-attested-arb.sh /path/to/core/arb/examples/ex01
 ```
 
 The lower-level local driver is `service/attested/arb/run-arb-attested.py`.  It starts the exec AMI through `dev`, polls the S3 output prefix, writes progress and launcher logs under the local output directory, downloads all S3 artifacts into that directory, extracts the AAR archive, and can run verification.  The driver treats `run.log`, `aar-output.tar.gz`, `manifest.json`, `manifest.sha384`, and `attestation.b64` as the successful terminal set; `events.ndjson` can appear before that set and continues to be downloaded with the final artifacts.

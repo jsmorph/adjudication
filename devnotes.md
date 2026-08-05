@@ -1,5 +1,11 @@
 # Development Notes
 
+## 2026-08-02: Core acceptance examples
+
+The distilled core retains ADC `ex1`, ARB `ex01`, and AARD `ex1`.  Service defaults and service-manual examples already select those directories.  The attested ARB and AARD runbooks now describe the same retained set and use the retained examples in their one-run wrapper commands.
+
+This change removes no service fixture or test input.  Service unit tests that use names such as `ex03` create their own temporary example directory and do not read the core checkout.  Cross-branch tests build private synthetic inputs, so the reduced example set does not alter their coverage.
+
 ## 2026-08-02: Lean 4.32.0
 
 ### Decision
