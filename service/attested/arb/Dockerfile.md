@@ -397,14 +397,14 @@ echo "archive exclusion check passed"
 
 ## Verify The Attestation
 
-Run the attestation parser from the local workspace root.  The parser verifies the COSE signature and certificate chain, then prints the `User Data` field and all NitroTPM PCR values.  The current parser uses `uv`; `uv` is available locally at `/home/somebody/.local/bin/uv` in the verified environment and is absent on `dev`.
+Run the attestation parser from the local `arbattest` workspace root.  The parser verifies the COSE signature and certificate chain, then prints the `User Data` field and all NitroTPM PCR values.  The current parser uses `uv`; set `UV` when the executable is outside `PATH`.
 
 ```bash
 set -eu
 RUN_ID=aar-ex01-REPLACE_WITH_STAMP
 LOCAL="/tmp/$RUN_ID"
-UV="${UV:-/home/somebody/.local/bin/uv}"
-cd /media/hd2/src/arbattest
+UV="${UV:-uv}"
+cd /path/to/arbattest
 "$UV" run attest/parse_attestation.py "$LOCAL/attestation.b64" > "$LOCAL/attestation.txt"
 sed -n '1,40p' "$LOCAL/attestation.txt"
 ```

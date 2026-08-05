@@ -80,7 +80,7 @@ If the bucket enforces SSE-KMS, add KMS permissions for the same actors.  Upload
 
 ## OpenClaw Networking
 
-Attested ADC runs start OpenClaw lawyer containers from inside the exec workload container through the host Docker socket.  Those child OpenClaw containers must use Docker host networking on the Docker-enabled exec AMI.  The ADC exec entrypoint passes `--openclaw-network host`, and `adc run` uses `127.0.0.1` as the Docker MCP host in that mode.
+Attested ADC runs start OpenClaw lawyer containers from inside the exec workload container through the host Docker socket.  Those child OpenClaw containers must use Docker host networking on the Docker-enabled exec AMI.  The ADC exec entrypoint passes `--openclaw-network host`, and `adc-run` uses `127.0.0.1` as the Docker MCP host in that mode.
 
 ## Verification Configuration
 

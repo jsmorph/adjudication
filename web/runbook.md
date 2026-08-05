@@ -23,8 +23,8 @@ The report scans root directories for run output directories and serves a read-o
 ```sh
 go run ./web/cmd/adjudication-report \
   --listen :9090 \
-  --root arbattest=/media/hd2/src/arbattest/adjudication \
-  --root recon=/media/hd2/src/reconometrics/var/packets
+  --root arbattest=/path/to/arbattest/adjudication \
+  --root packets=/path/to/packets
 ```
 
 Stop with SIGINT or SIGTERM.  The report holds no state and writes nothing, so restarts and upgrades are safe at any time.
@@ -37,7 +37,7 @@ Stop with SIGINT or SIGTERM.  The report holds no state and writes nothing, so r
 | `--root [name=]path` | A tree to scan, repeatable.  Without `name=`, the name is the path base name. |
 | `--config path` | JSON config file. |
 
-The config file holds the same settings: `{"listen": "127.0.0.1:19980", "roots": [{"name": "arbattest", "path": "/media/hd2/src/arbattest/adjudication"}]}`.  Command-line roots append after config-file roots, and a `--listen` flag overrides the file.  Root names appear in URLs and must match `[A-Za-z0-9._-]+`.  A repeated name gets a numeric suffix, and a repeated path fails at startup.  Each root must exist as a readable directory when the server starts.
+The config file holds the same settings: `{"listen": "127.0.0.1:19980", "roots": [{"name": "arbattest", "path": "/path/to/arbattest/adjudication"}]}`.  Command-line roots append after config-file roots, and a `--listen` flag overrides the file.  Root names appear in URLs and must match `[A-Za-z0-9._-]+`.  A repeated name gets a numeric suffix, and a repeated path fails at startup.  Each root must exist as a readable directory when the server starts.
 
 ### Scanning
 
@@ -68,20 +68,20 @@ A missing run means its directory holds none of the marker files, sits under a h
 
 ## ARB Management
 
-The management UI starts, monitors, and stops ARB cases through one `aar service`.  Clerk cases are full `aar run` children, attested cases are clerk cases with `execution.mode` `attested`, and direct cases are `aar case` children whose roles are driven over HTTP.  The UI holds no case state: every page reads the service, and every action posts to it.  It triggers runs and has no authentication of its own, so bind it to `127.0.0.1` unless the host network is trusted.  POST routes reject cross-origin browser senders by their `Sec-Fetch-Site` and `Origin` headers, so a hostile page in an operator's browser cannot submit actions; requests without those headers, such as curl, pass.
+The management UI starts, monitors, and stops ARB cases through one `aar-service` process.  Clerk cases are full `aar-run` children, attested cases are Clerk cases with `execution.mode` `attested`, and direct cases are `aar case` children whose roles are driven over HTTP.  The UI holds no case state: every page reads the service, and every action posts to it.  It triggers runs and has no authentication of its own, so bind it to `127.0.0.1` unless the host network is trusted.  POST routes reject cross-origin browser senders by their `Sec-Fetch-Site` and `Origin` headers, so a hostile page in an operator's browser cannot submit actions; requests without those headers, such as curl, pass.
 
 ```sh
 go run ./web/cmd/adjudication-manage \
   --listen 127.0.0.1:9091 \
   --arb-url http://127.0.0.1:19770 \
   --report-url http://127.0.0.1:9090 \
-  --report-root svc=/media/hd2/src/adjudication/arb/out/service
+  --report-root svc=/path/to/arb/service-output
 ```
 
 | Flag | Meaning |
 |------|---------|
 | `--listen` | Listen address, default `127.0.0.1:9091`. |
-| `--arb-url` | `aar service` base URL, default `http://127.0.0.1:19770`. |
+| `--arb-url` | `aar-service` base URL, default `http://127.0.0.1:19770`. |
 | `--arb-token` | Service bearer token. |
 | `--report-url` | Report server base URL for read links. |
 | `--report-root name=path` | Absolute path prefix mapped to a report root name, repeatable.  Use the same names and paths as the report server's `--root` flags. |

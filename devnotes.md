@@ -226,3 +226,9 @@ The one-complaint helper calls the sibling service-owned driver and stores outpu
 - [x] Build the base image from exact service and core commits, inspect its entrypoint and working directory, display `adc-run --help`, and build a packet from a mounted complaint through the installed core executable.
 
 The base image build passed for `service@58bd12061e604cca551ddcebcf9e76e46dea3098` and `carve@755246b50d0726dfc8dce9faf6a852b3a31f8b18`.  Docker produced image `sha256:89b6e85a6de9525bc8402e82b14ecc0fabe9102f4bd38e166819a28059cae938` with entrypoint `/usr/local/bin/adc-run-entrypoint` and working directory `/opt/core/adc`.  The image displayed `adc-run` help and built a deterministic complaint packet through `/opt/core/adc/.bin/adc`.
+
+## 2026-08-05: Service documentation and command audit
+
+Current operator documentation now names the standalone `adc-run`, `aar-run`, `aard-run`, and service commands.  Host-specific workspace paths in current runbook examples now use explicit `/path/to/...` placeholders, while historical verification paths remain in this journal.  A current-source search found no core implementation import, removed combined-command path, or assumption that the core and service worktrees share a parent directory.
+
+The tracked documentation contains 50 checked local links with no missing target and 73 shell blocks that parse under `bash -n`.  All nine service, run, and MCP commands return successful `--help`, and `go build -buildvcs=false ./cmd/... ./web/cmd/...` passes.  The service manuals continue to identify the exact core executable and working-directory flags needed for separate checkouts.
