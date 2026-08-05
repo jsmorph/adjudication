@@ -1763,17 +1763,13 @@ func newCouncilOpportunityTestContext(t *testing.T, failureReason string) *runCo
 	t.Helper()
 
 	dir := t.TempDir()
-	enginePath := filepath.Join(dir, "engine.sh")
 	script := councilEngineScript(failureReason)
-	if err := os.WriteFile(enginePath, []byte(script), 0o755); err != nil {
-		t.Fatalf("write engine script: %v", err)
-	}
 	runtimeLimits := DefaultRuntimeLimits()
 	runtimeLimits.MaxResponseBytes = 2048
 	runtimeLimits.InvalidAttemptLimit = 3
 	return &runContext{
 		cfg: Config{
-			Engine:    lean.Engine{Command: []string{enginePath}},
+			Engine:    lean.Engine{Command: []string{"/bin/sh", "-c", script}},
 			OutputDir: dir,
 			Policy:    DefaultPolicy(),
 			Runtime:   runtimeLimits,
@@ -1820,14 +1816,10 @@ func newCouncilRemovalTestContext(t *testing.T, failureReason string) *runContex
 	t.Helper()
 
 	dir := t.TempDir()
-	enginePath := filepath.Join(dir, "engine.sh")
 	script := councilEngineScript(failureReason)
-	if err := os.WriteFile(enginePath, []byte(script), 0o755); err != nil {
-		t.Fatalf("write engine script: %v", err)
-	}
 	return &runContext{
 		cfg: Config{
-			Engine:    lean.Engine{Command: []string{enginePath}},
+			Engine:    lean.Engine{Command: []string{"/bin/sh", "-c", script}},
 			OutputDir: dir,
 		},
 		state: map[string]any{
