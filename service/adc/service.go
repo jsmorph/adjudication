@@ -823,7 +823,12 @@ func (s *Server) waitChild(rec *CaseRecord, stdoutFile *os.File, stderrFile *os.
 }
 
 func parseLastJSON(stdout string) map[string]any {
-	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	trimmed := strings.TrimSpace(stdout)
+	var complete map[string]any
+	if err := json.Unmarshal([]byte(trimmed), &complete); err == nil {
+		return complete
+	}
+	lines := strings.Split(trimmed, "\n")
 	for i := len(lines) - 1; i >= 0; i-- {
 		line := strings.TrimSpace(lines[i])
 		if line == "" {

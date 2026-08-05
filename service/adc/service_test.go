@@ -848,6 +848,13 @@ func TestKillRouteRejectsTerminalCase(t *testing.T) {
 	}
 }
 
+func TestParseLastJSONAcceptsFormattedObject(t *testing.T) {
+	got := parseLastJSON("{\n  \"scenario\": \"adc-case\",\n  \"assertion_failures\": 0\n}\n")
+	if got["scenario"] != "adc-case" || got["assertion_failures"] != float64(0) {
+		t.Fatalf("parsed summary = %#v", got)
+	}
+}
+
 func containsArg(args []string, want string) bool {
 	for _, arg := range args {
 		if arg == want {

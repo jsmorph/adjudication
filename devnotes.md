@@ -232,3 +232,11 @@ The base image build passed for `service@58bd12061e604cca551ddcebcf9e76e46dea309
 Current operator documentation now names the standalone `adc-run`, `aar-run`, `aard-run`, and service commands.  Host-specific workspace paths in current runbook examples now use explicit `/path/to/...` placeholders, while historical verification paths remain in this journal.  A current-source search found no core implementation import, removed combined-command path, or assumption that the core and service worktrees share a parent directory.
 
 The tracked documentation contains 50 checked local links with no missing target and 73 shell blocks that parse under `bash -n`.  All nine service, run, and MCP commands return successful `--help`, and `go build -buildvcs=false ./cmd/... ./web/cmd/...` passes.  The service manuals continue to identify the exact core executable and working-directory flags needed for separate checkouts.
+
+## 2026-08-05: ADC Clerk and MCP compatibility
+
+The ADC compatibility package now completes a bench case through the standalone `adc-service` and `adc-mcp` commands.  It creates the case through `/clerk/v1/cases`, drives the plaintiff and defendant through MCP, and leaves the procedural clerk and judge inside the installed core process.  It verifies the terminal service record, Clerk artifact list, MCP observer result, private work notes, accepted actions, final state, scenario assertions, and replay certificate.
+
+The test uses a local Responses endpoint for the internal judge and digest summary, so it requires no network access or external credential.  The first complete run exposed that `parseLastJSON` could parse a compact final summary but not ADC's formatted JSON summary.  The service parser now accepts the complete formatted object before applying its existing final-line behavior, and a focused test covers that output.
+
+The focused service parser test and the complete paired ADC compatibility test pass.  Fresh test binaries came from the current `service` and `carve` worktrees, and the Lean engine came from the current ADC proof build.  The final branch verification will assign immutable commit IDs to this tested interface.
