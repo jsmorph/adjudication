@@ -1,5 +1,13 @@
 # Changes
 
+## August 8, 2026
+
+### Terminal core records
+
+The ADC, ARB, and AARD Clerk services now require a readable terminal `run.json` after an ordinary core process exits successfully.  They use that file as the terminal summary and recognize failed case status within the final state.  A missing or unreadable file produces a failed service record instead of accepting standard-output JSON as proof of completion.
+
+ADC prepared-scenario requests now preserve report-model and juror-temperature overrides.  Direct scenario execution supplies the core flag that records assertion failures in `run.json`.  The complete compatibility suite passes for `service@46b2d7c92ebf6a82ae1ea3d6d7eaabd170d15952` and `carve@0c4162fcd985fa0888893f1e25088e9600bdb207`.
+
 ## August 2, 2026
 
 ### Core and service branch split

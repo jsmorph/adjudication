@@ -240,3 +240,20 @@ The ADC compatibility package now completes a bench case through the standalone 
 The test uses a local Responses endpoint for the internal judge and digest summary, so it requires no network access or external credential.  The first complete run exposed that `parseLastJSON` could parse a compact final summary but not ADC's formatted JSON summary.  The service parser now accepts the complete formatted object before applying its existing final-line behavior, and a focused test covers that output.
 
 The focused service parser test and the complete paired ADC compatibility test pass.  Fresh test binaries came from the current `service` and `carve` worktrees, and the Lean engine came from the current ADC proof build.  The final branch verification will assign immutable commit IDs to this tested interface.
+
+## 2026-08-08: Terminal record reconciliation
+
+The ordinary ADC, ARB, and AARD process supervisors now require a readable terminal `run.json` before recording successful completion.  The standalone ARB and AARD Clerk supervisors apply the same rule, and all supervisors use the core record rather than standard-output JSON as the terminal summary.  A zero exit without that record produces a failed service record with a `read terminal run.json` error.
+
+ADC prepared-scenario requests now pass `report_model` and `juror_temperature` through both direct and local-agent modes.  Direct prepared-scenario execution also supplies `--allow-assertion-failures`, allowing the service to retain a failed assertion in the terminal record instead of losing the record to a nonzero command exit.  Stored ADC result responses now recognize a failed `final_state.case.status` even when the top-level run status does not say `failed`.
+
+The exact pair uses `service@46b2d7c92ebf6a82ae1ea3d6d7eaabd170d15952` and `carve@0c4162fcd985fa0888893f1e25088e9600bdb207`.  Fresh Go command binaries and all three Lean engine executables came from detached or branch worktrees at those revisions.  The Lean engine builds ran sequentially through `leanrun` with Lean 4.32.0, a 900-second timeout, 4 GiB memory-high, 6 GiB memory maximum, 1 GiB swap maximum, and 100% CPU.
+
+### Verification
+
+- [x] `go test -buildvcs=false -count=1 ./...`
+- [x] `go vet ./service/... ./cmd/... ./web/...`
+- [x] `python3 -B -m unittest service/attested/adc/run_adc_attested_test.py`
+- [x] `leanrun lake build adcengine`, `leanrun lake build aarengine`, and `leanrun lake build aardengine` from the exact `carve` worktree with the limits recorded above.
+- [x] `go test -buildvcs=false -count=1 ./service/compat/... -args -service-bin-dir=/home/somebody/src/adjudication-clones/adjudication-1/tmp/verify/service-bins -carve-bin-dir=/home/somebody/src/adjudication-clones/adjudication-1/tmp/verify/carve-bins -carve-root=/home/somebody/src/adjudication-clones/adjudication-1/tmp/carve-pair`
+- [x] `git diff --check 1f62a56f66da3a476a7f4064a86a580a2970fadc` and `git diff --check`.
