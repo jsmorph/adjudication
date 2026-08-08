@@ -44,6 +44,7 @@ func TestADCClerkMCPCompatibility(t *testing.T) {
 		"run_id":                  "run-" + caseID,
 		"scenario_path":           fx.scenarioPath,
 		"out_dir":                 outDir,
+		"report_model":            "blackbox-summary",
 		"external_roles":          []string{"plaintiff", "defendant"},
 		"roleapi_timeout_seconds": 30,
 		"timeout_seconds":         30,
@@ -281,6 +282,9 @@ func newADCProvider(t *testing.T, judgeCalls *atomic.Int64, summaryCalls *atomic
 		}
 		tools := adcList(request["tools"])
 		if len(tools) == 0 {
+			if model := adcString(request["model"]); model != "blackbox-summary" {
+				t.Errorf("summary model = %q, want blackbox-summary", model)
+			}
 			summaryCalls.Add(1)
 			writeADCProviderResponse(t, w, []map[string]any{{
 				"id": "msg_adc_summary", "type": "message", "status": "completed", "role": "assistant",

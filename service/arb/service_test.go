@@ -199,6 +199,7 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 mkdir -p "$out_dir"
+printf '{"case_id":"%s","run_id":"%s","status":"completed","resolution":"demonstrated","example":"%s","complaint":"%s"}\n' "$case_id" "$run_id" "$example" "$complaint" > "$out_dir/run.json"
 printf '{"case_id":"%s","run_id":"%s","status":"ok","resolution":"demonstrated","example":"%s","complaint":"%s"}\n' "$case_id" "$run_id" "$example" "$complaint"
 `)
 	s := newClerkTestServer(t, root, aarBin)
@@ -224,7 +225,7 @@ printf '{"case_id":"%s","run_id":"%s","status":"ok","resolution":"demonstrated",
 		t.Fatalf("stat clerk record: %v", err)
 	}
 	summary, ok := rec["summary"].(map[string]any)
-	if !ok || summary["status"] != "ok" || summary["resolution"] != "demonstrated" {
+	if !ok || summary["status"] != "completed" || summary["resolution"] != "demonstrated" {
 		t.Fatalf("summary = %#v", rec["summary"])
 	}
 
@@ -234,6 +235,28 @@ printf '{"case_id":"%s","run_id":"%s","status":"ok","resolution":"demonstrated",
 	})
 	if status != http.StatusBadRequest {
 		t.Fatalf("duplicate status = %d, want %d", status, http.StatusBadRequest)
+	}
+}
+
+func TestClerkCreateRejectsZeroExitWithoutRunJSON(t *testing.T) {
+	root := t.TempDir()
+	aarBin := writeFakeAAR(t, "#!/bin/sh\nexit 0\n")
+	s := newClerkTestServer(t, root, aarBin)
+	complaint := filepath.Join(t.TempDir(), "complaint.md")
+	if err := os.WriteFile(complaint, []byte("# Complaint\n"), 0o644); err != nil {
+		t.Fatalf("write complaint: %v", err)
+	}
+
+	status, got := servicePost(t, s, "/clerk/v1/cases", map[string]any{
+		"case_id":        "missing-run",
+		"complaint_path": complaint,
+	})
+	if status != http.StatusAccepted {
+		t.Fatalf("status = %d, want %d: %#v", status, http.StatusAccepted, got)
+	}
+	rec := waitClerkStatus(t, s, "missing-run", "failed")
+	if !strings.Contains(mapString(rec["error"]), "read terminal run.json") {
+		t.Fatalf("error = %#v", rec["error"])
 	}
 }
 

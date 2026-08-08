@@ -9,6 +9,7 @@ analysis.md
 /out/
 /dev/
 /run.sh
+/tmp/
 /.codex/
 
 /service/pi-container/state/

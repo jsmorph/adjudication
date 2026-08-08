@@ -548,6 +548,8 @@ func (s *Server) waitChild(rec *CaseRecord, stdoutFile *os.File, stderrFile *os.
 		}
 	}
 	logErr := errors.Join(stdoutFile.Close(), stderrFile.Close())
+	var terminalRun map[string]any
+	var terminalRunErr error
 	s.mu.Lock()
 	rec.FinishedAt = time.Now().UTC().Format(time.RFC3339)
 	rec.ExitCode = &exitCode
@@ -562,24 +564,24 @@ func (s *Server) waitChild(rec *CaseRecord, stdoutFile *os.File, stderrFile *os.
 		} else if summary := parseLastJSON(string(stdoutRaw)); summary != nil {
 			rec.Summary = summary
 		}
+		terminalRun, terminalRunErr = readRunJSON(rec)
+		if terminalRunErr == nil {
+			rec.Summary = terminalRun
+		}
 	}
 	switch {
 	case rec.canceling:
 		rec.Status = "canceled"
 	case logErr != nil:
 		rec.Status = "failed"
-	case rec.Error != "" && rec.Summary == nil:
+	case exitCode != 0:
 		rec.Status = "failed"
-	case exitCode == 0 && mapString(rec.Summary["status"]) == "failed":
+		rec.Error = firstNonEmpty(mapString(terminalRun["error"]), rec.Error, fmt.Sprintf("child exited with code %d", exitCode))
+	case terminalRunErr != nil:
 		rec.Status = "failed"
-		rec.Error = mapString(rec.Summary["error"])
-	case exitCode == 0:
-		rec.Status = "completed"
+		rec.Error = fmt.Sprintf("read terminal run.json: %v", terminalRunErr)
 	default:
-		rec.Status = "failed"
-		if rec.Error == "" {
-			rec.Error = fmt.Sprintf("child exited with code %d", exitCode)
-		}
+		applyRunJSONToRecord(rec, terminalRun)
 	}
 	s.cond.Broadcast()
 	s.mu.Unlock()

@@ -178,6 +178,30 @@ func TestListCasesOmitsStoredSummary(t *testing.T) {
 	}
 }
 
+func TestStoredResultUsesFinalCaseStatus(t *testing.T) {
+	outDir := t.TempDir()
+	writeJSONFile(t, filepath.Join(outDir, "run.json"), map[string]any{
+		"status": "completed",
+		"final_state": map[string]any{
+			"case": map[string]any{"status": "failed"},
+		},
+	})
+	s := testServiceWithCase(t, CaseRecord{
+		CaseID:    "case-1",
+		RunID:     "run-case-1",
+		Status:    "completed",
+		OutputDir: outDir,
+	})
+
+	status, got := serviceGet(t, s, "/clerk/v1/cases/case-1/result")
+	if status != http.StatusOK {
+		t.Fatalf("status = %d body=%#v", status, got)
+	}
+	if got["status"] != "failed" || got["ok"] != false {
+		t.Fatalf("result = %#v", got)
+	}
+}
+
 func TestCaseProcessArgsDefaultsToRun(t *testing.T) {
 	s := &Server{cfg: Config{
 		ADCBin:        "/opt/carve/adc",
@@ -188,7 +212,9 @@ func TestCaseProcessArgsDefaultsToRun(t *testing.T) {
 	unanimousRequired := false
 	args := s.caseProcessArgs("", CaseCreateRequest{
 		Model:                     "model-1",
+		ReportModel:               "report-model",
 		JurorPersonas:             "pool.jsonl",
+		JurorTemperature:          "0.4",
 		JurorCount:                8,
 		MinimumConcurring:         6,
 		UnanimousRequired:         &unanimousRequired,
@@ -206,7 +232,7 @@ func TestCaseProcessArgsDefaultsToRun(t *testing.T) {
 	if len(args) < 2 || args[0] != "--adc-bin" || args[1] != "/opt/carve/adc" {
 		t.Fatalf("command = %#v", args)
 	}
-	for _, want := range []string{"--adc-working-dir", "/opt/carve", "--scenario", "/tmp/scenario.json", "--caseapi-addr", "127.0.0.1:9001", "--model", "model-1", "--juror-personas", "pool.jsonl", "--juror-count", "8", "--minimum-concurring", "6", "--unanimous-required", "false", "--offline", "--mcp-listen", "127.0.0.1:8001", "--lawyer-timeout-seconds", "900", "--juror-timeout-seconds", "900", "--auto-lawyers", "defendant", "--openclaw-auth", "codex", "--openclaw-codex-auth", "auth.json", "--openclaw-lawyer-start-delay-seconds", "15", "--pi-image", "pi-image", "--juror-output-limit-bytes", "4096"} {
+	for _, want := range []string{"--adc-working-dir", "/opt/carve", "--scenario", "/tmp/scenario.json", "--caseapi-addr", "127.0.0.1:9001", "--model", "model-1", "--report-model", "report-model", "--juror-personas", "pool.jsonl", "--juror-temperature", "0.4", "--juror-count", "8", "--minimum-concurring", "6", "--unanimous-required", "false", "--offline", "--mcp-listen", "127.0.0.1:8001", "--lawyer-timeout-seconds", "900", "--juror-timeout-seconds", "900", "--auto-lawyers", "defendant", "--openclaw-auth", "codex", "--openclaw-codex-auth", "auth.json", "--openclaw-lawyer-start-delay-seconds", "15", "--pi-image", "pi-image", "--juror-output-limit-bytes", "4096"} {
 		if !containsArg(args, want) {
 			t.Fatalf("missing %q in %#v", want, args)
 		}
@@ -299,7 +325,7 @@ func TestStartCaseRejectsPathCaseIDs(t *testing.T) {
 	}
 }
 
-func TestStartCaseWritesChildLogsDirectly(t *testing.T) {
+func TestStartCaseRejectsZeroExitWithoutRunJSONAndWritesLogs(t *testing.T) {
 	root := t.TempDir()
 	bin := filepath.Join(t.TempDir(), "adc")
 	script := `#!/bin/sh
@@ -326,7 +352,7 @@ exit 0
 	if err != nil {
 		t.Fatalf("start case: %v", err)
 	}
-	rec := waitCaseStatus(t, s, "case-logs", "completed")
+	rec := waitCaseStatus(t, s, "case-logs", "failed")
 	stdout, err := os.ReadFile(created.StdoutLog)
 	if err != nil {
 		t.Fatalf("read stdout log: %v", err)
@@ -343,6 +369,9 @@ exit 0
 	}
 	if rec.Summary["status"] != "ok" {
 		t.Fatalf("summary = %#v", rec.Summary)
+	}
+	if !strings.Contains(rec.Error, "read terminal run.json") {
+		t.Fatalf("error = %q", rec.Error)
 	}
 }
 
@@ -681,15 +710,17 @@ func TestCaseProcessArgsForDirectExistingScenario(t *testing.T) {
 	s := &Server{cfg: Config{EnginePath: "lake exe adc-engine"}}
 	args := s.caseProcessArgs("direct", CaseCreateRequest{
 		Model:                 "model-1",
+		ReportModel:           "report-model",
 		NonJurorModel:         "case-only-model",
 		JurorPersonas:         "pool.jsonl",
+		JurorTemperature:      "0.4",
 		ExternalRoles:         []string{"plaintiff", "juror"},
 		RoleAPITimeoutSeconds: 900,
 	}, "case-1", "run-case-1", "/tmp/out", "127.0.0.1:9001", "", "/tmp/scenario.json")
 	if args[0] != "scenario" {
 		t.Fatalf("command = %#v", args)
 	}
-	for _, want := range []string{"--scenario", "/tmp/scenario.json", "--output", "/tmp/out/run.json", "--caseapi-addr", "127.0.0.1:9001", "--model", "model-1", "--juror-personas", "pool.jsonl", "--external-role", "plaintiff", "--external-role", "juror"} {
+	for _, want := range []string{"--scenario", "/tmp/scenario.json", "--output", "/tmp/out/run.json", "--allow-assertion-failures", "--caseapi-addr", "127.0.0.1:9001", "--model", "model-1", "--report-model", "report-model", "--juror-personas", "pool.jsonl", "--juror-temperature", "0.4", "--external-role", "plaintiff", "--external-role", "juror"} {
 		if !containsArg(args, want) {
 			t.Fatalf("missing %q in %#v", want, args)
 		}

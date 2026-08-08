@@ -542,7 +542,9 @@ func (s *Server) caseProcessArgs(mode string, req CaseCreateRequest, caseID stri
 	addCommon := func(args []string) []string {
 		args = addString(args, "--model", req.Model)
 		args = addString(args, "--temperature", req.Temperature)
+		args = addString(args, "--report-model", req.ReportModel)
 		args = addString(args, "--juror-personas", req.JurorPersonas)
+		args = addString(args, "--juror-temperature", req.JurorTemperature)
 		args = addString(args, "--engine", firstNonEmpty(req.EnginePath, s.cfg.EnginePath))
 		args = addInt(args, "--timeout-seconds", req.TimeoutSeconds)
 		args = addInt(args, "--invalid-attempt-limit", req.InvalidAttemptLimit)
@@ -573,9 +575,7 @@ func (s *Server) caseProcessArgs(mode string, req CaseCreateRequest, caseID stri
 		args = addString(args, "--judge-model", req.JudgeModel)
 		args = addString(args, "--clerk-model", req.ClerkModel)
 		args = addString(args, "--planner-model", req.PlannerModel)
-		args = addString(args, "--report-model", req.ReportModel)
 		args = addString(args, "--non-juror-temperature", req.NonJurorTemperature)
-		args = addString(args, "--juror-temperature", req.JurorTemperature)
 		args = addString(args, "--trial-mode", req.TrialMode)
 		if req.SkipVoirDire {
 			args = append(args, "--skip-voir-dire")
@@ -642,6 +642,7 @@ func (s *Server) caseProcessArgs(mode string, req CaseCreateRequest, caseID stri
 			"--db", filepath.Join(outDir, "run.db"),
 			"--transcript", filepath.Join(outDir, "transcript.md"),
 			"--digest", filepath.Join(outDir, "digest.md"),
+			"--allow-assertion-failures",
 			"--caseapi-addr", caseAPIAddr,
 		}
 		if req.Offline {
@@ -771,6 +772,8 @@ func (s *Server) waitChild(rec *CaseRecord, stdoutFile *os.File, stderrFile *os.
 	logErr := errors.Join(stdoutFile.Close(), stderrFile.Close())
 	isAttested := rec.Execution != nil && rec.Execution.Mode == clerkExecutionAttested
 	attested := attestedCaseUpdate{}
+	var terminalRun map[string]any
+	var terminalRunErr error
 	s.mu.Lock()
 	rec.FinishedAt = time.Now().UTC().Format(time.RFC3339)
 	rec.ExitCode = &exitCode
@@ -790,6 +793,10 @@ func (s *Server) waitChild(rec *CaseRecord, stdoutFile *os.File, stderrFile *os.
 		} else if summary := parseLastJSON(string(stdoutRaw)); summary != nil {
 			rec.Summary = summary
 		}
+		terminalRun, terminalRunErr = readRunJSON(rec)
+		if terminalRunErr == nil {
+			rec.Summary = terminalRun
+		}
 	}
 	if isAttested && rec.Execution != nil && attested.attestation != nil {
 		rec.Execution.Attestation = attested.attestation
@@ -802,18 +809,19 @@ func (s *Server) waitChild(rec *CaseRecord, stdoutFile *os.File, stderrFile *os.
 	case isAttested && attested.err != "":
 		rec.Status = "failed"
 		rec.Error = attested.err
-	case rec.Error != "" && rec.Summary == nil:
+	case isAttested && exitCode == 0 && runJSONFailed(rec.Summary):
 		rec.Status = "failed"
-	case exitCode == 0 && mapString(rec.Summary["status"]) == "failed":
-		rec.Status = "failed"
-		rec.Error = mapString(rec.Summary["error"])
-	case exitCode == 0:
+		rec.Error = firstNonEmpty(mapString(rec.Summary["error"]), "case wrote failed run.json")
+	case isAttested && exitCode == 0:
 		rec.Status = "completed"
-	default:
+	case exitCode != 0:
 		rec.Status = "failed"
-		if rec.Error == "" {
-			rec.Error = fmt.Sprintf("child exited with code %d", exitCode)
-		}
+		rec.Error = firstNonEmpty(mapString(terminalRun["error"]), rec.Error, fmt.Sprintf("child exited with code %d", exitCode))
+	case terminalRunErr != nil:
+		rec.Status = "failed"
+		rec.Error = fmt.Sprintf("read terminal run.json: %v", terminalRunErr)
+	default:
+		applyRunJSONToRecord(rec, terminalRun)
 	}
 	s.cond.Broadcast()
 	s.mu.Unlock()
@@ -1017,7 +1025,7 @@ func (s *Server) writeStoredResult(w http.ResponseWriter, rec *CaseRecord) {
 		return
 	}
 	status := "done"
-	if mapString(run["status"]) == "failed" {
+	if runJSONFailed(run) {
 		status = "failed"
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": status != "failed", "case_id": rec.CaseID, "status": status, "result": run})
@@ -1051,7 +1059,7 @@ func (s *Server) handleCaseResult(w http.ResponseWriter, caseID string) {
 		return
 	}
 	status := "done"
-	if mapString(run["status"]) == "failed" {
+	if runJSONFailed(run) {
 		status = "failed"
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": status != "failed", "case_id": caseID, "status": status, "result": run})
@@ -1391,13 +1399,17 @@ func applyRunJSONToRecord(rec *CaseRecord, run map[string]any) {
 	if finishedAt := mapString(run["finished_at"]); finishedAt != "" {
 		rec.FinishedAt = finishedAt
 	}
-	if mapString(run["status"]) == "failed" || mapString(mapAny(mapAny(run["final_state"])["case"])["status"]) == "failed" {
+	if runJSONFailed(run) {
 		rec.Status = "failed"
 		rec.Error = firstNonEmpty(mapString(run["error"]), "case wrote failed run.json")
 		return
 	}
 	rec.Status = "completed"
 	rec.Error = ""
+}
+
+func runJSONFailed(run map[string]any) bool {
+	return mapString(run["status"]) == "failed" || mapString(mapAny(mapAny(run["final_state"])["case"])["status"]) == "failed"
 }
 
 func caseRecordChanged(a CaseRecord, b CaseRecord) bool {

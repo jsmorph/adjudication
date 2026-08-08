@@ -404,6 +404,8 @@ func (s *Server) waitClerkChild(rec *ClerkRecord, stdoutFile *os.File, stderrFil
 	logErr := errors.Join(stdoutFile.Close(), stderrFile.Close())
 	var summary map[string]any
 	var readErr error
+	var terminalRun map[string]any
+	var terminalRunErr error
 	isAttested := rec.Execution != nil && rec.Execution.Mode == clerkExecutionAttested
 	attested := attestedClerkUpdate{}
 	if isAttested {
@@ -414,6 +416,10 @@ func (s *Server) waitClerkChild(rec *ClerkRecord, stdoutFile *os.File, stderrFil
 		stdoutRaw, readErr = os.ReadFile(rec.StdoutLog)
 		if readErr == nil {
 			summary = parseLastJSON(string(stdoutRaw))
+		}
+		terminalRun, terminalRunErr = readRunJSONFromDir(clerkEffectiveOutputDir(*rec))
+		if terminalRunErr == nil {
+			summary = terminalRun
 		}
 	}
 	s.mu.Lock()
@@ -431,20 +437,22 @@ func (s *Server) waitClerkChild(rec *ClerkRecord, stdoutFile *os.File, stderrFil
 	case logErr != nil:
 		rec.Status = "failed"
 		rec.Error = fmt.Sprintf("close process logs: %v", logErr)
-	case !isAttested && readErr != nil:
-		rec.Status = "failed"
-		rec.Error = fmt.Sprintf("read stdout log: %v", readErr)
 	case isAttested && attested.err != "":
 		rec.Status = "failed"
 		rec.Error = attested.err
-	case exitCode == 0 && mapString(summary["status"]) == "failed":
+	case isAttested && exitCode == 0 && runJSONFailed(summary):
 		rec.Status = "failed"
-		rec.Error = mapString(summary["error"])
-	case exitCode == 0:
+		rec.Error = firstNonEmpty(mapString(summary["error"]), "case wrote failed run.json")
+	case isAttested && exitCode == 0:
 		rec.Status = "completed"
-	default:
+	case exitCode != 0:
 		rec.Status = "failed"
-		rec.Error = fmt.Sprintf("child exited with code %d", exitCode)
+		rec.Error = firstNonEmpty(mapString(terminalRun["error"]), fmt.Sprintf("child exited with code %d", exitCode))
+	case terminalRunErr != nil:
+		rec.Status = "failed"
+		rec.Error = fmt.Sprintf("read terminal run.json: %v", terminalRunErr)
+	default:
+		applyRunJSONToClerkRecord(rec, terminalRun)
 	}
 	s.cond.Broadcast()
 	s.mu.Unlock()
@@ -674,13 +682,17 @@ func applyRunJSONToClerkRecord(rec *ClerkRecord, run map[string]any) {
 	if finishedAt := mapString(run["finished_at"]); finishedAt != "" {
 		rec.FinishedAt = finishedAt
 	}
-	if mapString(run["status"]) == "failed" || mapString(mapAny(mapAny(run["final_state"])["case"])["status"]) == "failed" {
+	if runJSONFailed(run) {
 		rec.Status = "failed"
 		rec.Error = firstNonEmpty(mapString(run["error"]), "case wrote failed run.json")
 		return
 	}
 	rec.Status = "completed"
 	rec.Error = ""
+}
+
+func runJSONFailed(run map[string]any) bool {
+	return mapString(run["status"]) == "failed" || mapString(mapAny(mapAny(run["final_state"])["case"])["status"]) == "failed"
 }
 
 func clerkRecordChanged(a ClerkRecord, b ClerkRecord) bool {
