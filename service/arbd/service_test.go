@@ -3,9 +3,11 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -1129,6 +1131,101 @@ func TestStartupPollMarksFailedAfterTimeout(t *testing.T) {
 	}
 }
 
+func TestStartupPollStopsChildAfterTimeout(t *testing.T) {
+	health := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer health.Close()
+	s, rec := testServerWithStartingCase(t)
+	rec.CaseAPIBase = health.URL
+	cmd, done := startSleepingTestProcess(t)
+	rec.cmd = cmd
+
+	s.pollCaseAPIStartup(rec, 20*time.Millisecond)
+
+	if rec.Status != "failed" {
+		t.Fatalf("status = %q, want failed", rec.Status)
+	}
+	waitForTestProcess(t, done)
+}
+
+func TestWaitChildPreservesStartupFailure(t *testing.T) {
+	s, rec := testServerWithStartingCase(t)
+	rec.Status = "failed"
+	rec.Error = "case API did not become healthy"
+	rec.OutputDir = t.TempDir()
+	if err := os.WriteFile(filepath.Join(rec.OutputDir, "run.json"), []byte(`{"status":"completed"}`), 0o644); err != nil {
+		t.Fatalf("write run.json: %v", err)
+	}
+	rec.StdoutLog = filepath.Join(rec.OutputDir, "stdout.log")
+	rec.StderrLog = filepath.Join(rec.OutputDir, "stderr.log")
+	stdoutFile, err := os.Create(rec.StdoutLog)
+	if err != nil {
+		t.Fatalf("create stdout log: %v", err)
+	}
+	stderrFile, err := os.Create(rec.StderrLog)
+	if err != nil {
+		t.Fatalf("create stderr log: %v", errors.Join(err, stdoutFile.Close()))
+	}
+	cmd := exec.Command("sh", "-c", "exit 0")
+	cmd.Stdout = stdoutFile
+	cmd.Stderr = stderrFile
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start child: %v", errors.Join(err, stdoutFile.Close(), stderrFile.Close()))
+	}
+	rec.cmd = cmd
+
+	s.waitChild(rec, stdoutFile, stderrFile)
+
+	if rec.Status != "failed" || rec.Error != "case API did not become healthy" {
+		t.Fatalf("record = %#v", rec)
+	}
+}
+
+func TestMarkRunningReportsPersistenceFailure(t *testing.T) {
+	s, rec := testServerWithStartingCase(t)
+	registryFile := filepath.Join(t.TempDir(), "registry")
+	if err := os.WriteFile(registryFile, []byte("not a directory"), 0o644); err != nil {
+		t.Fatalf("write registry file: %v", err)
+	}
+	s.cfg.RegistryDir = registryFile
+
+	s.markRunning(rec)
+
+	if rec.Status != "failed" {
+		t.Fatalf("status = %q, want failed", rec.Status)
+	}
+	if !strings.Contains(rec.Error, "persist service record") {
+		t.Fatalf("error = %q", rec.Error)
+	}
+}
+
+func TestCancelReportsPersistenceFailureAndStopsChild(t *testing.T) {
+	s, rec := testServerWithStartingCase(t)
+	rec.Status = "running"
+	cmd, done := startSleepingTestProcess(t)
+	rec.cmd = cmd
+	registryFile := filepath.Join(t.TempDir(), "registry")
+	if err := os.WriteFile(registryFile, []byte("not a directory"), 0o644); err != nil {
+		t.Fatalf("write registry file: %v", err)
+	}
+	s.cfg.RegistryDir = registryFile
+
+	status, got := servicePost(t, s, "/api/v1/cases/case-1/cancel", map[string]any{})
+
+	if status != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d: %#v", status, http.StatusInternalServerError, got)
+	}
+	errObj, ok := got["error"].(map[string]any)
+	if !ok || errObj["code"] != "persist_failed" {
+		t.Fatalf("error = %#v", got["error"])
+	}
+	if rec.Status != "failed" || rec.canceling {
+		t.Fatalf("record = %#v", rec)
+	}
+	waitForTestProcess(t, done)
+}
+
 func testServerWithCompletedCase(t *testing.T) (*Server, *CaseRecord) {
 	t.Helper()
 	root := t.TempDir()
@@ -1267,6 +1364,50 @@ func writeFakeAAR(t *testing.T, script string) string {
 		t.Fatalf("write fake aard: %v", err)
 	}
 	return path
+}
+
+func startSleepingTestProcess(t *testing.T) (*exec.Cmd, <-chan struct{}) {
+	t.Helper()
+	path := writeFakeAAR(t, "#!/bin/sh\ntrap 'exit 0' INT TERM\nwhile :; do sleep 1; done\n")
+	cmd := exec.Command(path)
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start test process: %v", err)
+	}
+	done := make(chan struct{})
+	go func() {
+		if err := cmd.Wait(); err != nil {
+			var exitErr *exec.ExitError
+			if !errors.As(err, &exitErr) {
+				t.Errorf("wait for test process: %v", err)
+			}
+		}
+		close(done)
+	}()
+	t.Cleanup(func() {
+		select {
+		case <-done:
+			return
+		default:
+		}
+		if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+			t.Errorf("kill test process: %v", err)
+		}
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Errorf("test process did not exit")
+		}
+	})
+	return cmd, done
+}
+
+func waitForTestProcess(t *testing.T, done <-chan struct{}) {
+	t.Helper()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("test process did not exit")
+	}
 }
 
 func writeFakeAttestedDriver(t *testing.T, exitCode int) string {

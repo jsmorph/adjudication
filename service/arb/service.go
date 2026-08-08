@@ -51,6 +51,7 @@ type Config struct {
 type Server struct {
 	cfg        Config
 	mu         sync.Mutex
+	persistMu  sync.Mutex
 	cond       *sync.Cond
 	cases      map[string]*CaseRecord
 	clerkCases map[string]*ClerkRecord
@@ -394,8 +395,7 @@ func (s *Server) startCase(ctx context.Context, req CaseCreateRequest) (CaseReco
 	}
 	stderrFile, err := os.Create(stderrPath)
 	if err != nil {
-		_ = stdoutFile.Close()
-		return CaseRecord{}, fmt.Errorf("create stderr log: %w", err)
+		return CaseRecord{}, errors.Join(fmt.Errorf("create stderr log: %w", err), stdoutFile.Close())
 	}
 
 	cmd := exec.CommandContext(context.Background(), s.cfg.AARBin, args...)
@@ -435,15 +435,25 @@ func (s *Server) startCase(ctx context.Context, req CaseCreateRequest) (CaseReco
 		return CaseRecord{}, errors.Join(err, closeLogs())
 	}
 	if err := cmd.Start(); err != nil {
-		s.markFailed(rec, fmt.Sprintf("start child: %v", err))
-		return CaseRecord{}, errors.Join(fmt.Errorf("start child: %w", err), closeLogs())
+		markErr := s.markFailed(rec, fmt.Sprintf("start child: %v", err))
+		return CaseRecord{}, errors.Join(fmt.Errorf("start child: %w", err), markErr, closeLogs())
 	}
 	s.mu.Lock()
 	rec.PID = cmd.Process.Pid
 	rec.StartedAt = time.Now().UTC().Format(time.RFC3339)
 	s.mu.Unlock()
-	s.persistRecordBestEffort(rec)
-
+	if err := s.persistRecord(rec); err != nil {
+		s.setRecordError(rec, "failed", fmt.Sprintf("persist service record: %v", err))
+		stopErr := stopProcess(cmd, 2*time.Second)
+		if stopErr != nil {
+			s.setRecordError(rec, "failed", fmt.Sprintf("persist service record: %v; %v", err, stopErr))
+			go s.waitChild(rec, stdoutFile, stderrFile)
+		} else {
+			s.waitChild(rec, stdoutFile, stderrFile)
+		}
+		failed, _ := s.getCase(caseID)
+		return CaseRecord{}, errors.New(failed.Error)
+	}
 	go s.waitChild(rec, stdoutFile, stderrFile)
 	go s.pollCaseAPIStartup(rec, s.cfg.StartupWait)
 
@@ -521,7 +531,9 @@ func (s *Server) markRunning(rec *CaseRecord) {
 	rec.Status = "running"
 	s.cond.Broadcast()
 	s.mu.Unlock()
-	s.persistRecordBestEffort(rec)
+	if err := s.persistRecord(rec); err != nil {
+		s.failForPersistenceError(rec, err)
+	}
 }
 
 func (s *Server) markStartupFailed(rec *CaseRecord, message string) {
@@ -530,11 +542,24 @@ func (s *Server) markStartupFailed(rec *CaseRecord, message string) {
 		s.mu.Unlock()
 		return
 	}
+	cmd := rec.cmd
 	rec.Status = "failed"
 	rec.Error = message
 	s.cond.Broadcast()
 	s.mu.Unlock()
-	s.persistRecordBestEffort(rec)
+	var errs []error
+	if err := s.persistRecord(rec); err != nil {
+		errs = append(errs, fmt.Errorf("persist service record: %w", err))
+	}
+	if err := stopProcess(cmd, 2*time.Second); err != nil {
+		errs = append(errs, err)
+	}
+	if len(errs) > 0 {
+		s.setRecordError(rec, "failed", fmt.Sprintf("%s; %s", message, errors.Join(errs...).Error()))
+		if err := s.persistRecord(rec); err != nil {
+			s.setRecordError(rec, "failed", fmt.Sprintf("%s; %s; persist service record: %v", message, errors.Join(errs...).Error(), err))
+		}
+	}
 }
 
 func (s *Server) waitChild(rec *CaseRecord, stdoutFile *os.File, stderrFile *os.File) {
@@ -574,6 +599,8 @@ func (s *Server) waitChild(rec *CaseRecord, stdoutFile *os.File, stderrFile *os.
 		rec.Status = "canceled"
 	case logErr != nil:
 		rec.Status = "failed"
+	case rec.Status == "failed" && rec.Error != "":
+		// Preserve a supervisor failure recorded before process exit.
 	case exitCode != 0:
 		rec.Status = "failed"
 		rec.Error = firstNonEmpty(mapString(terminalRun["error"]), rec.Error, fmt.Sprintf("child exited with code %d", exitCode))
@@ -585,7 +612,9 @@ func (s *Server) waitChild(rec *CaseRecord, stdoutFile *os.File, stderrFile *os.
 	}
 	s.cond.Broadcast()
 	s.mu.Unlock()
-	s.persistRecordBestEffort(rec)
+	if err := s.persistRecord(rec); err != nil {
+		s.setRecordError(rec, "failed", fmt.Sprintf("persist service record: %v", err))
+	}
 }
 
 func parseLastJSON(stdout string) map[string]any {
@@ -611,19 +640,32 @@ func (s *Server) handleCancelCase(w http.ResponseWriter, caseID string) {
 		writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "case_id": caseID, "error": apiError("unknown_case", "unknown case_id")})
 		return
 	}
+	if !isActive(rec) || rec.cmd == nil {
+		status := rec.Status
+		s.mu.Unlock()
+		writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "case_id": caseID, "status": status, "error": apiError("case_not_active", "case has no attached active process")})
+		return
+	}
 	rec.canceling = true
 	cmd := rec.cmd
 	rec.Status = "canceling"
+	s.cond.Broadcast()
 	s.mu.Unlock()
-	if cmd != nil && cmd.Process != nil {
-		_ = cmd.Process.Signal(os.Interrupt)
-		time.Sleep(2 * time.Second)
-		if cmd.ProcessState == nil {
-			_ = cmd.Process.Kill()
-		}
+	if err := s.persistRecord(rec); err != nil {
+		s.failForPersistenceError(rec, err)
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "case_id": caseID, "error": apiError("persist_failed", err.Error())})
+		return
 	}
-	s.persistRecordBestEffort(rec)
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "case": publicRecord(rec)})
+	if err := stopProcess(cmd, 2*time.Second); err != nil {
+		s.setRecordError(rec, "failed", err.Error())
+		if persistErr := s.persistRecord(rec); persistErr != nil {
+			s.setRecordError(rec, "failed", fmt.Sprintf("%s; persist service record: %v", err.Error(), persistErr))
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "case_id": caseID, "error": apiError("cancel_failed", err.Error())})
+		return
+	}
+	out, _ := s.getCase(caseID)
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "case": out})
 }
 
 func (s *Server) proxyLawyerGET(w http.ResponseWriter, r *http.Request) {
@@ -633,7 +675,7 @@ func (s *Server) proxyLawyerGET(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": apiError("missing_case_id", "case_id is required")})
 		return
 	}
-	rec, ok := s.getCasePtr(caseID)
+	rec, ok := s.getCase(caseID)
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "case_id": caseID, "role_id": roleID, "error": apiError("unknown_case", "unknown case_id")})
 		return
@@ -642,11 +684,11 @@ func (s *Server) proxyLawyerGET(w http.ResponseWriter, r *http.Request) {
 		s.forward(w, r, rec.CaseAPIBase)
 		return
 	}
-	if isActive(rec) {
-		s.startingLawyerRead(w, r, rec, roleID)
+	if isActive(&rec) {
+		s.startingLawyerRead(w, r, &rec, roleID)
 		return
 	}
-	s.completedLawyerRead(w, r, rec, roleID)
+	s.completedLawyerRead(w, r, &rec, roleID)
 }
 
 func (s *Server) proxyCouncilGET(w http.ResponseWriter, r *http.Request) {
@@ -656,7 +698,7 @@ func (s *Server) proxyCouncilGET(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": apiError("missing_case_id", "case_id is required")})
 		return
 	}
-	rec, ok := s.getCasePtr(caseID)
+	rec, ok := s.getCase(caseID)
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "case_id": caseID, "member_id": memberID, "error": apiError("unknown_case", "unknown case_id")})
 		return
@@ -669,11 +711,11 @@ func (s *Server) proxyCouncilGET(w http.ResponseWriter, r *http.Request) {
 		s.forward(w, r, rec.CaseAPIBase)
 		return
 	}
-	if isActive(rec) {
-		s.startingCouncilRead(w, r, rec, memberID)
+	if isActive(&rec) {
+		s.startingCouncilRead(w, r, &rec, memberID)
 		return
 	}
-	s.completedCouncilRead(w, r, rec, memberID)
+	s.completedCouncilRead(w, r, &rec, memberID)
 }
 
 func (s *Server) proxyLawyerDo(w http.ResponseWriter, r *http.Request) {
@@ -708,12 +750,12 @@ func (s *Server) proxyDo(w http.ResponseWriter, r *http.Request, kind string) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "error": apiError("missing_case_id", "case_id is required")})
 		return
 	}
-	rec, ok := s.getCasePtr(caseID)
+	rec, ok := s.getCase(caseID)
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "case_id": caseID, "error": apiError("unknown_case", "unknown case_id")})
 		return
 	}
-	if !isActive(rec) {
+	if !isActive(&rec) {
 		writeJSON(w, http.StatusGone, map[string]any{"ok": false, "case_id": caseID, "error": apiError("case_not_active", "case has no active case process for mutating requests")})
 		return
 	}
@@ -958,7 +1000,7 @@ func finalResultResponse(caseID string, roleID string, run map[string]any) map[s
 }
 
 func (s *Server) handleCaseResult(w http.ResponseWriter, caseID string) {
-	rec, ok := s.getCasePtr(caseID)
+	rec, ok := s.getCase(caseID)
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "case_id": caseID, "error": apiError("unknown_case", "unknown case_id")})
 		return
@@ -975,7 +1017,7 @@ func (s *Server) handleCaseResult(w http.ResponseWriter, caseID string) {
 			}
 		}
 	}
-	run, err := readRunJSON(rec)
+	run, err := readRunJSON(&rec)
 	if err != nil {
 		if rec.Status == "failed" {
 			writeJSON(w, http.StatusOK, map[string]any{"ok": true, "case_id": caseID, "status": "failed", "error": rec.Error})
@@ -1004,7 +1046,7 @@ func readRunJSONFromDir(outDir string) (map[string]any, error) {
 }
 
 func (s *Server) handleArtifact(w http.ResponseWriter, r *http.Request, caseID string, name string) {
-	rec, ok := s.getCasePtr(caseID)
+	rec, ok := s.getCase(caseID)
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "case_id": caseID, "error": apiError("unknown_case", "unknown case_id")})
 		return
@@ -1022,7 +1064,7 @@ func (s *Server) handleArtifact(w http.ResponseWriter, r *http.Request, caseID s
 }
 
 func (s *Server) handleEvidence(w http.ResponseWriter, r *http.Request, caseID string, evidenceID string) {
-	rec, ok := s.getCasePtr(caseID)
+	rec, ok := s.getCase(caseID)
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "case_id": caseID, "error": apiError("unknown_case", "unknown case_id")})
 		return
@@ -1202,13 +1244,6 @@ func (s *Server) getCase(caseID string) (CaseRecord, bool) {
 	return publicRecord(rec), true
 }
 
-func (s *Server) getCasePtr(caseID string) (*CaseRecord, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	rec := s.cases[caseID]
-	return rec, rec != nil
-}
-
 func isActive(rec *CaseRecord) bool {
 	return rec.Status == "starting" || rec.Status == "running" || rec.Status == "canceling"
 }
@@ -1220,17 +1255,25 @@ func publicRecord(rec *CaseRecord) CaseRecord {
 	return out
 }
 
-func (s *Server) markFailed(rec *CaseRecord, message string) {
+func (s *Server) markFailed(rec *CaseRecord, message string) error {
 	s.mu.Lock()
 	rec.Status = "failed"
 	rec.Error = message
 	s.cond.Broadcast()
 	s.mu.Unlock()
-	s.persistRecordBestEffort(rec)
+	if err := s.persistRecord(rec); err != nil {
+		s.setRecordError(rec, "failed", fmt.Sprintf("%s; persist service record: %v", message, err))
+		return fmt.Errorf("persist service record: %w", err)
+	}
+	return nil
 }
 
 func (s *Server) persistRecord(rec *CaseRecord) error {
+	s.persistMu.Lock()
+	defer s.persistMu.Unlock()
+	s.mu.Lock()
 	public := publicRecord(rec)
+	s.mu.Unlock()
 	raw, err := json.MarshalIndent(public, "", "  ")
 	if err != nil {
 		return err
@@ -1241,10 +1284,6 @@ func (s *Server) persistRecord(rec *CaseRecord) error {
 		return err
 	}
 	return os.Rename(tmp, final)
-}
-
-func (s *Server) persistRecordBestEffort(rec *CaseRecord) {
-	_ = s.persistRecord(rec)
 }
 
 func (s *Server) loadRegistry() error {
@@ -1357,6 +1396,50 @@ func validateServiceOutputDir(outputRoot string, outDir string) error {
 		return fmt.Errorf("out_dir is invalid")
 	}
 	return nil
+}
+
+func (s *Server) setRecordError(rec *CaseRecord, status string, message string) {
+	s.mu.Lock()
+	rec.Status = status
+	rec.Error = message
+	if status == "failed" {
+		rec.canceling = false
+	}
+	s.cond.Broadcast()
+	s.mu.Unlock()
+}
+
+func (s *Server) failForPersistenceError(rec *CaseRecord, err error) {
+	message := fmt.Sprintf("persist service record: %v", err)
+	s.mu.Lock()
+	cmd := rec.cmd
+	rec.Status = "failed"
+	rec.Error = message
+	rec.canceling = false
+	s.cond.Broadcast()
+	s.mu.Unlock()
+	if stopErr := stopProcess(cmd, 2*time.Second); stopErr != nil {
+		s.setRecordError(rec, "failed", fmt.Sprintf("%s; %v", message, stopErr))
+	}
+}
+
+func stopProcess(cmd *exec.Cmd, grace time.Duration) error {
+	if cmd == nil || cmd.Process == nil {
+		return nil
+	}
+	var errs []error
+	if err := cmd.Process.Signal(os.Interrupt); errors.Is(err, os.ErrProcessDone) {
+		return nil
+	} else if err != nil {
+		errs = append(errs, fmt.Errorf("interrupt child: %w", err))
+	}
+	if grace > 0 {
+		time.Sleep(grace)
+	}
+	if err := cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+		errs = append(errs, fmt.Errorf("kill child: %w", err))
+	}
+	return errors.Join(errs...)
 }
 
 func randomHex(bytesLen int) string {

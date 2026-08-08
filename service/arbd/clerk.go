@@ -253,8 +253,7 @@ func (s *Server) startClerkCase(req ClerkCreateRequest) (ClerkRecord, error) {
 	stderrFile, err := os.Create(stderrPath)
 	if err != nil {
 		s.unreserveClerkCase(caseID)
-		_ = stdoutFile.Close()
-		return ClerkRecord{}, fmt.Errorf("create clerk stderr log: %w", err)
+		return ClerkRecord{}, errors.Join(fmt.Errorf("create clerk stderr log: %w", err), stdoutFile.Close())
 	}
 	closeLogs := func() error {
 		return errors.Join(stdoutFile.Close(), stderrFile.Close())
@@ -273,9 +272,9 @@ func (s *Server) startClerkCase(req ClerkCreateRequest) (ClerkRecord, error) {
 		return ClerkRecord{}, errors.Join(err, closeLogs())
 	}
 	if err := cmd.Start(); err != nil {
-		s.markClerkFailed(rec, fmt.Sprintf("start child: %v", err))
+		persistErr := s.markClerkFailed(rec, fmt.Sprintf("start child: %v", err))
 		close(rec.done)
-		return ClerkRecord{}, errors.Join(fmt.Errorf("start child: %w", err), closeLogs())
+		return ClerkRecord{}, errors.Join(fmt.Errorf("start child: %w", err), persistErr, closeLogs())
 	}
 	s.mu.Lock()
 	rec.PID = cmd.Process.Pid
@@ -283,7 +282,17 @@ func (s *Server) startClerkCase(req ClerkCreateRequest) (ClerkRecord, error) {
 	rec.Status = "running"
 	s.cond.Broadcast()
 	s.mu.Unlock()
-	s.persistClerkRecordBestEffort(rec)
+	if err := s.persistClerkRecord(rec); err != nil {
+		s.markClerkPersistenceFailed(rec, err)
+		stopErr := stopProcess(cmd, 2*time.Second)
+		if stopErr != nil {
+			s.markClerkPersistenceFailed(rec, errors.Join(err, stopErr))
+			go s.waitClerkChild(rec, stdoutFile, stderrFile)
+		} else {
+			s.waitClerkChild(rec, stdoutFile, stderrFile)
+		}
+		return ClerkRecord{}, errors.Join(fmt.Errorf("persist clerk record: %w", err), stopErr)
+	}
 	go s.waitClerkChild(rec, stdoutFile, stderrFile)
 	s.mu.Lock()
 	out := publicClerkRecord(rec)
@@ -437,6 +446,8 @@ func (s *Server) waitClerkChild(rec *ClerkRecord, stdoutFile *os.File, stderrFil
 	case logErr != nil:
 		rec.Status = "failed"
 		rec.Error = fmt.Sprintf("close process logs: %v", logErr)
+	case rec.Status == "failed" && rec.Error != "":
+		// Preserve a supervisor failure recorded before process exit.
 	case isAttested && attested.err != "":
 		rec.Status = "failed"
 		rec.Error = attested.err
@@ -456,7 +467,9 @@ func (s *Server) waitClerkChild(rec *ClerkRecord, stdoutFile *os.File, stderrFil
 	}
 	s.cond.Broadcast()
 	s.mu.Unlock()
-	s.persistClerkRecordBestEffort(rec)
+	if err := s.persistClerkRecord(rec); err != nil {
+		s.markClerkPersistenceFailed(rec, err)
+	}
 }
 
 func (s *Server) handleKillClerkCase(w http.ResponseWriter, caseID string) {
@@ -492,7 +505,10 @@ func (s *Server) handleKillClerkCase(w http.ResponseWriter, caseID string) {
 	done := rec.done
 	s.cond.Broadcast()
 	s.mu.Unlock()
-	s.persistClerkRecordBestEffort(rec)
+	if err := s.persistClerkRecord(rec); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "case_id": caseID, "error": apiError("persist_case_failed", err.Error())})
+		return
+	}
 	if cmd != nil && cmd.Process != nil {
 		if err := cmd.Process.Signal(os.Interrupt); err != nil && !clerkDone(done) {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"ok": false, "case_id": caseID, "error": apiError("kill_failed", err.Error())})
@@ -590,8 +606,8 @@ func (s *Server) getClerkRecordPtr(caseID string) (*ClerkRecord, bool) {
 }
 
 func (s *Server) getClerkRecord(caseID string) (ClerkRecord, bool) {
-	if rec, ok := s.getClerkRecordPtr(caseID); ok {
-		return publicClerkRecord(rec), true
+	if rec, ok := s.getAttachedClerkRecord(caseID); ok {
+		return rec, true
 	}
 	disk, err := s.readClerkRecordByCaseID(caseID)
 	if err != nil {
@@ -600,13 +616,36 @@ func (s *Server) getClerkRecord(caseID string) (ClerkRecord, bool) {
 	return disk, true
 }
 
-func (s *Server) markClerkFailed(rec *ClerkRecord, message string) {
+func (s *Server) getAttachedClerkRecord(caseID string) (ClerkRecord, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	rec := s.clerkCases[caseID]
+	if rec == nil {
+		return ClerkRecord{}, false
+	}
+	return publicClerkRecord(rec), true
+}
+
+func (s *Server) markClerkFailed(rec *ClerkRecord, message string) error {
 	s.mu.Lock()
 	rec.Status = "failed"
 	rec.Error = message
 	s.cond.Broadcast()
 	s.mu.Unlock()
-	s.persistClerkRecordBestEffort(rec)
+	if err := s.persistClerkRecord(rec); err != nil {
+		s.markClerkPersistenceFailed(rec, err)
+		return fmt.Errorf("persist clerk record: %w", err)
+	}
+	return nil
+}
+
+func (s *Server) markClerkPersistenceFailed(rec *ClerkRecord, err error) {
+	s.mu.Lock()
+	rec.Status = "failed"
+	rec.Error = fmt.Sprintf("persist clerk record: %v", err)
+	rec.killing = false
+	s.cond.Broadcast()
+	s.mu.Unlock()
 }
 
 func (s *Server) listClerkRecords() ([]ClerkRecord, error) {
@@ -626,8 +665,8 @@ func (s *Server) listClerkRecords() ([]ClerkRecord, error) {
 		if err != nil {
 			return nil, err
 		}
-		if attached, ok := s.getClerkRecordPtr(rec.CaseID); ok {
-			records = append(records, publicClerkRecord(attached))
+		if attached, ok := s.getAttachedClerkRecord(rec.CaseID); ok {
+			records = append(records, attached)
 			continue
 		}
 		rec, err = s.reconcileDetachedClerkRecord(rec)
@@ -717,7 +756,11 @@ func (s *Server) readClerkRecordByCaseID(caseID string) (ClerkRecord, error) {
 }
 
 func (s *Server) persistClerkRecord(rec *ClerkRecord) error {
+	s.persistMu.Lock()
+	defer s.persistMu.Unlock()
+	s.mu.Lock()
 	public := publicClerkRecord(rec)
+	s.mu.Unlock()
 	raw, err := json.MarshalIndent(public, "", "  ")
 	if err != nil {
 		return err
@@ -730,12 +773,12 @@ func (s *Server) persistClerkRecord(rec *ClerkRecord) error {
 	return os.Rename(tmp, final)
 }
 
-func (s *Server) persistClerkRecordBestEffort(rec *ClerkRecord) {
-	_ = s.persistClerkRecord(rec)
-}
-
 func publicClerkRecord(rec *ClerkRecord) ClerkRecord {
 	out := *rec
+	if rec.Execution != nil {
+		execution := *rec.Execution
+		out.Execution = &execution
+	}
 	out.killing = false
 	out.cmd = nil
 	out.done = nil

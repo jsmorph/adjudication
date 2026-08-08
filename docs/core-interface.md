@@ -25,7 +25,9 @@ The core branch retains `validate`, `verify-certificate`, and deterministic `cas
 
 ## Private Case APIs
 
-Service may reach a private case API only through its configured loopback address.  HTTP 204 from `/health` marks a child ready for participant traffic.  Service may proxy the procedure-specific Role API without interpreting or changing procedural requests and responses.
+Service may reach a private case API only through its configured loopback address.  HTTP 204 from `/health` marks a child ready for participant traffic.  A direct-case startup-health timeout or direct-case record persistence failure marks the case failed and stops its attached child process.
+
+Service may proxy the procedure-specific Role API without interpreting or changing procedural requests and responses.  A direct-case cancellation request records the transition before signaling the child.  A direct-case persistence, interrupt, or kill failure produces an error response and a failed in-memory service record.
 
 | Procedure | Paths owned by core |
 | --- | --- |

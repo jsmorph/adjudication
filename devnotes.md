@@ -257,3 +257,16 @@ The exact pair uses `service@46b2d7c92ebf6a82ae1ea3d6d7eaabd170d15952` and `carv
 - [x] `leanrun lake build adcengine`, `leanrun lake build aarengine`, and `leanrun lake build aardengine` from the exact `carve` worktree with the limits recorded above.
 - [x] `go test -buildvcs=false -count=1 ./service/compat/... -args -service-bin-dir=/home/somebody/src/adjudication-clones/adjudication-1/tmp/verify/service-bins -carve-bin-dir=/home/somebody/src/adjudication-clones/adjudication-1/tmp/verify/carve-bins -carve-root=/home/somebody/src/adjudication-clones/adjudication-1/tmp/carve-pair`
 - [x] `git diff --check 1f62a56f66da3a476a7f4064a86a580a2970fadc` and `git diff --check`.
+
+## 2026-08-08: Supervisor synchronization and errors
+
+ARB and AARD now copy attached Clerk and direct-case records while holding the service mutex.  HTTP encoding and record persistence operate on those copies, so child completion cannot modify the source record during a read.  The public record copy also owns its `ClerkExecutionRecord` value because terminal attestation replaces a field in that value.  A separate persistence mutex serializes atomic record replacement without holding the state mutex during file I/O.
+
+ARB and AARD now stop a direct child when its private API misses the startup deadline or a running-state record cannot be persisted.  Startup, terminal, and cancellation paths record persistence and process-control failures instead of discarding them.  A cancellation persistence or signal failure returns an HTTP error, while asynchronous failures remain available through the case record.
+
+### Verification
+
+- [x] Run the focused ARB and AARD lifecycle tests under the race detector.
+- [x] Run every service Go test under the race detector.
+- [x] Run `go vet ./...` and `git diff --check`.
+- [x] Run the paired service compatibility tests against the current `carve` branch.

@@ -265,8 +265,7 @@ func (s *Server) startClerkCase(req ClerkCreateRequest) (ClerkRecord, error) {
 	stderrFile, err := os.Create(stderrPath)
 	if err != nil {
 		s.unreserveClerkCase(caseID)
-		_ = stdoutFile.Close()
-		return ClerkRecord{}, fmt.Errorf("create clerk stderr log: %w", err)
+		return ClerkRecord{}, errors.Join(fmt.Errorf("create clerk stderr log: %w", err), stdoutFile.Close())
 	}
 	closeLogs := func() error {
 		return errors.Join(stdoutFile.Close(), stderrFile.Close())
@@ -295,6 +294,14 @@ func (s *Server) startClerkCase(req ClerkCreateRequest) (ClerkRecord, error) {
 	s.mu.Unlock()
 	if err := s.persistClerkRecord(rec); err != nil {
 		s.markClerkPersistenceFailed(rec, err)
+		stopErr := stopProcess(cmd, 2*time.Second)
+		if stopErr != nil {
+			s.markClerkPersistenceFailed(rec, errors.Join(err, stopErr))
+			go s.waitClerkChild(rec, stdoutFile, stderrFile)
+		} else {
+			s.waitClerkChild(rec, stdoutFile, stderrFile)
+		}
+		return ClerkRecord{}, errors.Join(fmt.Errorf("persist clerk record: %w", err), stopErr)
 	}
 	go s.waitClerkChild(rec, stdoutFile, stderrFile)
 	s.mu.Lock()
@@ -449,6 +456,8 @@ func (s *Server) waitClerkChild(rec *ClerkRecord, stdoutFile *os.File, stderrFil
 	case logErr != nil:
 		rec.Status = "failed"
 		rec.Error = fmt.Sprintf("close process logs: %v", logErr)
+	case rec.Status == "failed" && rec.Error != "":
+		// Preserve a supervisor failure recorded before process exit.
 	case isAttested && attested.err != "":
 		rec.Status = "failed"
 		rec.Error = attested.err
@@ -734,14 +743,24 @@ func (s *Server) getClerkRecordPtr(caseID string) (*ClerkRecord, bool) {
 }
 
 func (s *Server) getClerkRecord(caseID string) (ClerkRecord, bool) {
-	if rec, ok := s.getClerkRecordPtr(caseID); ok {
-		return publicClerkRecord(rec), true
+	if rec, ok := s.getAttachedClerkRecord(caseID); ok {
+		return rec, true
 	}
 	disk, err := s.readClerkRecordByCaseID(caseID)
 	if err != nil {
 		return ClerkRecord{}, false
 	}
 	return disk, true
+}
+
+func (s *Server) getAttachedClerkRecord(caseID string) (ClerkRecord, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	rec := s.clerkCases[caseID]
+	if rec == nil {
+		return ClerkRecord{}, false
+	}
+	return publicClerkRecord(rec), true
 }
 
 func (s *Server) markClerkFailed(rec *ClerkRecord, message string) error {
@@ -757,6 +776,7 @@ func (s *Server) markClerkPersistenceFailed(rec *ClerkRecord, err error) {
 	s.mu.Lock()
 	rec.Status = "failed"
 	rec.Error = fmt.Sprintf("persist clerk record: %v", err)
+	rec.killing = false
 	s.cond.Broadcast()
 	s.mu.Unlock()
 }
@@ -778,8 +798,8 @@ func (s *Server) listClerkRecords() ([]ClerkRecord, error) {
 		if err != nil {
 			return nil, err
 		}
-		if attached, ok := s.getClerkRecordPtr(rec.CaseID); ok {
-			records = append(records, publicClerkRecord(attached))
+		if attached, ok := s.getAttachedClerkRecord(rec.CaseID); ok {
+			records = append(records, attached)
 			continue
 		}
 		rec, err = s.reconcileDetachedClerkRecord(rec)
@@ -869,7 +889,11 @@ func (s *Server) readClerkRecordByCaseID(caseID string) (ClerkRecord, error) {
 }
 
 func (s *Server) persistClerkRecord(rec *ClerkRecord) error {
+	s.persistMu.Lock()
+	defer s.persistMu.Unlock()
+	s.mu.Lock()
 	public := publicClerkRecord(rec)
+	s.mu.Unlock()
 	raw, err := json.MarshalIndent(public, "", "  ")
 	if err != nil {
 		return err
@@ -884,6 +908,10 @@ func (s *Server) persistClerkRecord(rec *ClerkRecord) error {
 
 func publicClerkRecord(rec *ClerkRecord) ClerkRecord {
 	out := *rec
+	if rec.Execution != nil {
+		execution := *rec.Execution
+		out.Execution = &execution
+	}
 	out.killing = false
 	out.cmd = nil
 	out.done = nil
