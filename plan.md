@@ -95,7 +95,7 @@ One option records supported pairs of immutable `carve` and `service` commit IDs
 
 ## Branch Creation and Work Order
 
-Both branches should begin at the current common source commit, recorded by exact object ID before any extraction.  If `plan.md` is committed first on `carve`, create `service` from the recorded pre-carve source commit rather than from the later planning commit.  Use separate worktrees for the two branches so that extraction, tests, and status checks remain isolated.
+Both branches should begin at the current common source commit, recorded by exact object ID before any extraction.  If `plan.md` is committed first on `carve`, create `service` from the recorded pre-carve source commit rather than from the later planning commit.  Use separate worktrees for the two branches so that extraction, tests, and status checks remain isolated.  Place every linked worktree under the ignored root-level `tmp/` directory in the primary checkout.
 
 The recorded split base is `1f62a56f66da3a476a7f4064a86a580a2970fadc`.  Local branches `carve`, `main`, and `service` pointed to that commit when Stage 0 began.  Later compatibility records should use full commit IDs for both branches.
 
@@ -103,7 +103,7 @@ The completed service checkpoints are `4b4fa1751fa4b8a1e709b3f80ad1cbcbc6eaa581`
 
 The first recorded compatibility pair is `service@48d19263fde43f010312cb446cd4d6970a019c4f` with `carve@e1e0c9d54783e04e30391d628c892507498007d4`.  The complete service compatibility suite passes against binaries built after `carve` removed the multi-case services, MCP adapters, local-agent launchers, and replay experiments.  The pair establishes the process boundary for the current interface version.
 
-The final recorded code pair is `service@622daf6feeca4d12b1d0a3aae3768e532a0c38af` with `carve@0c4162fcd985fa0888893f1e25088e9600bdb207`.  Fresh binaries from this pair pass the core command-interface test and the complete ADC, ARB, and AARD Clerk/MCP compatibility packages.  The ADC case also replays its certificate after service creation, MCP party activity, internal judge action, digest generation, terminal record reconciliation, and Clerk artifact listing.
+The final recorded code pair is `service@46b2d7c92ebf6a82ae1ea3d6d7eaabd170d15952` with `carve@0c4162fcd985fa0888893f1e25088e9600bdb207`.  Fresh binaries and Lean 4.32.0 engines from this pair pass the core command-interface test and the complete ADC, ARB, and AARD Clerk/MCP compatibility packages.  The ADC case also replays its certificate after service creation, MCP party activity, internal judge action, digest generation, terminal record reconciliation, and Clerk artifact listing.  Service commit `1663e920092674cce3edb9b4392ebc1e33ec366f` records the corrected interface and verification result.
 
 Every moved component should follow one order: preserve it on `service`, make it build there, add compatibility tests, and then remove it from `carve`.  Git history can recover deleted files, but a tested destination proves that the extracted component still works under its new ownership.  Each extraction commit on `service` should identify the corresponding removal commit on `carve` in its development notes.
 
@@ -121,6 +121,8 @@ Every moved component should follow one order: preserve it on `service`, make it
 - [ ] Run the current Go test suites, the three Lean proof builds, and the three engine builds before extraction.
 - [ ] Run TCP-dependent Go tests in an environment that permits loopback listeners.  The current restricted environment reports `socket: operation not permitted` in MCP, local-run, service, web, ACP, and xproxy tests, while the non-listener packages complete.
 - [ ] Save one small input and expected terminal record for each procedure as the acceptance fixtures used by both branches.
+
+These three unchecked items describe the pre-extraction baseline.  Extraction began before those runs and saved records existed, so later verification cannot establish the earlier repository state.  The retained procedure examples and service-owned compatibility fixtures provide the current acceptance coverage recorded in Stages 6 and 9.
 
 ### 1. Define the Core-to-Service Compatibility Specification
 
@@ -191,7 +193,7 @@ Admission to `service` should require a direct role in building, testing, operat
 - [x] Restrict the `carve` command dispatchers to the approved commands.  The retained commands cover one-case execution, input preparation and validation, durable-record inspection, and certificate verification.
 - [x] Preserve all runtime behavior that implements an approved procedural rule outside Lean, including evidence custody, visibility, deadlines, invalid-attempt accounting, role failure, and terminal record production.
 - [x] D1 selected the one-case runtime, so the conditional engine-protocol replacement does not apply.
-- [x] Make one complete case executable from the command line for each procedure using the saved acceptance fixtures.  The paired packages complete `adc scenario`, `aar case`, and `aard case` processes against small checked test fixtures, and the retained ARB and AARD example complaints pass command-line validation.
+- [x] Make one complete case executable from the command line for each procedure using retained examples and service-owned compatibility fixtures.  The paired packages complete `adc scenario`, `aar case`, and `aard case` processes against small checked test fixtures, and the retained ARB and AARD example complaints pass command-line validation.
 - [x] Run the service compatibility suite after every change to a command, private API, or retained record.  The final suite passes at the recorded code pair after the ADC formatted-summary correction.
 - [x] Keep command names `adc`, `aar`, and `aard` unless a separate naming decision approves an interface change.
 
@@ -225,7 +227,7 @@ Admission to `service` should require a direct role in building, testing, operat
 - [x] Use `go list -deps` to confirm that `carve` has no service package and `service` has no import of a core implementation package under the process-boundary option.
 - [x] Search both branches for deleted commands, stale package imports, obsolete paths, and broken examples.  Current source and operator documents are clean; historical paths remain in development journals as records of removed code.
 - [x] Run `git diff --check` and compare each branch's tracked-file inventory with the retention ledger.
-- [x] Record the tested code commits together: `carve@0c4162fcd985fa0888893f1e25088e9600bdb207` and `service@622daf6feeca4d12b1d0a3aae3768e532a0c38af`.
+- [x] Record the tested code commits together: `carve@0c4162fcd985fa0888893f1e25088e9600bdb207` and `service@46b2d7c92ebf6a82ae1ea3d6d7eaabd170d15952`.
 
 ## Completion Criteria
 
