@@ -30,6 +30,9 @@ Each command provides `help` for its retained subcommands.  ADC can start from a
 
 ```bash
 cd adc
+.bin/adc complain \
+  --situation examples/ex1/situation.md \
+  --out examples/ex1/complaint.md
 .bin/adc case --complaint examples/ex1/complaint.md --out-dir out/ex1
 
 cd ../arb

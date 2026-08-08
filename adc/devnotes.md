@@ -868,3 +868,12 @@ Historical journal references to deliberately removed evaluation, service, adapt
 ## 2026-08-05: Final carve and service verification
 
 The documented `make build test prove` targets pass with Lean 4.32.0, and the root Go test and vet suites pass.  The paired ADC compatibility case starts `adc scenario` from `carve@0c4162fcd985fa0888893f1e25088e9600bdb207` through `service@622daf6feeca4d12b1d0a3aae3768e532a0c38af`, completes a bench case through Clerk and MCP, and verifies the replay certificate.  The final dependency audit finds no service package in the core module.
+
+## 2026-08-08: Root ADC command example
+
+The root command-line example now creates `adc/examples/ex1/complaint.md` before passing it to `adc case`.  The complaint is generated output and does not exist in a fresh checkout.  The root sequence now matches the ADC procedure manual.
+
+### Verification
+
+- [x] Run `git diff --check`.
+- [x] Confirm that every path in the root command example either exists in Git or is produced by an earlier command.
